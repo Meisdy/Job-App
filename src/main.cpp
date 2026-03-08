@@ -1,7 +1,9 @@
 #include <iostream>
+#include <fstream>
 #define _WIN32_WINNT 0x0A00
 #include "httplib.h"
 #include "sqlite3.h"
+
 
 int main() {
     // Open (or create) the database file
@@ -53,6 +55,14 @@ int main() {
 
     // HTTP server
     httplib::Server server;
+
+    server.Get("/", [](const httplib::Request& req, httplib::Response& res) {
+        std::ifstream file("../frontend/job-dashboard-v12.html");
+        std::string content((std::istreambuf_iterator<char>(file)),
+                             std::istreambuf_iterator<char>());
+        res.set_content(content, "text/html");
+    });
+
 
     server.Get("/api/jobs", [&db](const httplib::Request& req, httplib::Response& res) {
         const char* query = "SELECT job_id, title, company_name, place, score, score_label, user_status FROM jobs;";
