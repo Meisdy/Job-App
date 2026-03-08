@@ -121,6 +121,50 @@ int main() {
         res.set_content(result.dump(), "application/json");
     });
 
+    server.Post("/api/jobs/update", [&db](const httplib::Request& req, httplib::Response& res) {
+        try {
+            json body = json::parse(req.body);
+
+            std::string job_id = body["job_id"];
+
+            if (body.contains("notes")) {
+                std::string notes = body["notes"];
+                sqlite3_stmt* stmt;
+                sqlite3_prepare_v2(db, "UPDATE jobs SET notes = ? WHERE job_id = ?", -1, &stmt, nullptr);
+                sqlite3_bind_text(stmt, 1, notes.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(stmt, 2, job_id.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
+
+            if (body.contains("rating")) {
+                int rating = body["rating"];
+                sqlite3_stmt* stmt;
+                sqlite3_prepare_v2(db, "UPDATE jobs SET rating = ? WHERE job_id = ?", -1, &stmt, nullptr);
+                sqlite3_bind_int(stmt, 1, rating);
+                sqlite3_bind_text(stmt, 2, job_id.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
+
+            if (body.contains("user_status")) {
+                std::string status = body["user_status"];
+                sqlite3_stmt* stmt;
+                sqlite3_prepare_v2(db, "UPDATE jobs SET user_status = ? WHERE job_id = ?", -1, &stmt, nullptr);
+                sqlite3_bind_text(stmt, 1, status.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_bind_text(stmt, 2, job_id.c_str(), -1, SQLITE_TRANSIENT);
+                sqlite3_step(stmt);
+                sqlite3_finalize(stmt);
+            }
+
+            res.set_content("{\"ok\":true}", "application/json");
+
+        } catch (...) {
+            res.status = 400;
+            res.set_content("{\"error\":\"bad request\"}", "application/json");
+        }
+    });
+
     std::cout << "Server running on http://localhost:8080" << std::endl;
     server.listen("localhost", 8080);
 
