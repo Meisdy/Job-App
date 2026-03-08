@@ -51,24 +51,11 @@ int main() {
         return 1;
     }
 
-    // Insert a test job
-    const char* insertJob = R"(
-        INSERT OR IGNORE INTO jobs (id, title, company)
-        VALUES (1, 'Software Engineer', 'ACME');
-    )";
-
-    rc = sqlite3_exec(db, insertJob, nullptr, nullptr, &errMsg);
-    if (rc != SQLITE_OK) {
-        std::cerr << "Cannot insert job: " << errMsg << std::endl;
-        sqlite3_free(errMsg);
-        return 1;
-    }
-
     // HTTP server
     httplib::Server server;
 
     server.Get("/api/jobs", [&db](const httplib::Request& req, httplib::Response& res) {
-        const char* query = "SELECT id, title, company FROM jobs;";
+        const char* query = "SELECT job_id, title, company_name, place, score, score_label, user_status FROM jobs;";
         sqlite3_stmt* stmt;
 
         sqlite3_prepare_v2(db, query, -1, &stmt, nullptr);
@@ -78,13 +65,22 @@ int main() {
 
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             if (!first) json += ",";
-            int id = sqlite3_column_int(stmt, 0);
-            const char* title = (const char*)sqlite3_column_text(stmt, 1);
-            const char* company = (const char*)sqlite3_column_text(stmt, 2);
 
-            json += "{\"id\":" + std::to_string(id) +
-                    ",\"title\":\"" + title +
-                    "\",\"company\":\"" + company + "\"}";
+            const char* job_id    = (const char*)sqlite3_column_text(stmt, 0);
+            const char* title     = (const char*)sqlite3_column_text(stmt, 1);
+            const char* company   = (const char*)sqlite3_column_text(stmt, 2);
+            const char* place     = (const char*)sqlite3_column_text(stmt, 3);
+            int         score     = sqlite3_column_int(stmt, 4);
+            const char* label     = (const char*)sqlite3_column_text(stmt, 5);
+            const char* status    = (const char*)sqlite3_column_text(stmt, 6);
+
+            json += "{\"job_id\":\"" + std::string(job_id ? job_id : "") +
+                    "\",\"title\":\"" + std::string(title ? title : "") +
+                    "\",\"company\":\"" + std::string(company ? company : "") +
+                    "\",\"place\":\"" + std::string(place ? place : "") +
+                    "\",\"score\":" + std::to_string(score) +
+                    ",\"score_label\":\"" + std::string(label ? label : "") +
+                    "\",\"user_status\":\"" + std::string(status ? status : "") + "\"}";
             first = false;
         }
         json += "]";

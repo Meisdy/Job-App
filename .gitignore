@@ -14,3 +14,7 @@ CMakeFiles/
 cmake_install.cmake
 compile_commands.json
 build.ninja
+
+# Data
+data/jobs.db
+data/*.csv
