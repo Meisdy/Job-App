@@ -3,7 +3,8 @@
 #define _WIN32_WINNT 0x0A00
 #include "httplib.h"
 #include "sqlite3.h"
-
+#include "json.hpp"
+using json = nlohmann::json;
 
 int main() {
     // Open (or create) the database file
@@ -65,38 +66,59 @@ int main() {
 
 
     server.Get("/api/jobs", [&db](const httplib::Request& req, httplib::Response& res) {
-        const char* query = "SELECT job_id, title, company_name, place, score, score_label, user_status FROM jobs;";
+        const char* query = R"(
+            SELECT job_id, title, company_name, place, zipcode, canton_code,
+                   employment_grade, application_url, score, score_label,
+                   score_reasons, user_status, rating, notes, matched_skills,
+                   penalized_skills, enriched_data, availability_status
+            FROM jobs;
+        )";
         sqlite3_stmt* stmt;
 
         sqlite3_prepare_v2(db, query, -1, &stmt, nullptr);
 
-        std::string json = "[";
-        bool first = true;
+        json result = json::array();
 
         while (sqlite3_step(stmt) == SQLITE_ROW) {
-            if (!first) json += ",";
+            json job;
+            job["job_id"]           = sqlite3_column_text(stmt, 0)  ? (const char*)sqlite3_column_text(stmt, 0)  : "";
+            job["title"]            = sqlite3_column_text(stmt, 1)  ? (const char*)sqlite3_column_text(stmt, 1)  : "";
+            job["company_name"]     = sqlite3_column_text(stmt, 2)  ? (const char*)sqlite3_column_text(stmt, 2)  : "";
+            job["place"]            = sqlite3_column_text(stmt, 3)  ? (const char*)sqlite3_column_text(stmt, 3)  : "";
+            job["zipcode"]          = sqlite3_column_text(stmt, 4)  ? (const char*)sqlite3_column_text(stmt, 4)  : "";
+            job["canton_code"]      = sqlite3_column_text(stmt, 5)  ? (const char*)sqlite3_column_text(stmt, 5)  : "";
+            job["employment_grade"] = sqlite3_column_int(stmt, 6);
+            job["application_url"]  = sqlite3_column_text(stmt, 7)  ? (const char*)sqlite3_column_text(stmt, 7)  : "";
+            job["score"]            = sqlite3_column_int(stmt, 8);
+            job["score_label"]      = sqlite3_column_text(stmt, 9)  ? (const char*)sqlite3_column_text(stmt, 9)  : "";
+            job["score_reasons"]    = sqlite3_column_text(stmt, 10) ? (const char*)sqlite3_column_text(stmt, 10) : "";
+            job["user_status"]      = sqlite3_column_text(stmt, 11) ? (const char*)sqlite3_column_text(stmt, 11) : "";
+            job["rating"]           = sqlite3_column_int(stmt, 12);
+            job["notes"]            = sqlite3_column_text(stmt, 13) ? (const char*)sqlite3_column_text(stmt, 13) : "";
+            job["matched_skills"]   = sqlite3_column_text(stmt, 14) ? (const char*)sqlite3_column_text(stmt, 14) : "";
+            job["penalized_skills"] = sqlite3_column_text(stmt, 15) ? (const char*)sqlite3_column_text(stmt, 15) : "";
+            job["availability_status"] = sqlite3_column_text(stmt, 17) ? (const char*)sqlite3_column_text(stmt, 17) : "";
 
-            const char* job_id    = (const char*)sqlite3_column_text(stmt, 0);
-            const char* title     = (const char*)sqlite3_column_text(stmt, 1);
-            const char* company   = (const char*)sqlite3_column_text(stmt, 2);
-            const char* place     = (const char*)sqlite3_column_text(stmt, 3);
-            int         score     = sqlite3_column_int(stmt, 4);
-            const char* label     = (const char*)sqlite3_column_text(stmt, 5);
-            const char* status    = (const char*)sqlite3_column_text(stmt, 6);
+            // enriched_data is already a JSON string — parse it in so it's not double-encoded
+            const char* enriched_raw = (const char*)sqlite3_column_text(stmt, 16);
+                if (enriched_raw) {
+                    try {
+                        // Step 1: parse the outer string (removes quotes and unescapes \n, \" etc.)
+                        json outer = json::parse(std::string(enriched_raw));
+                        // Step 2: parse the inner JSON string into a real object
+                        job["enriched_data"] = json::parse(outer.get<std::string>());
+                    } catch (...) {
+                        job["enriched_data"] = nullptr;
+                    }
+                } else {
+                    job["enriched_data"] = nullptr;
+                }
 
-            json += "{\"job_id\":\"" + std::string(job_id ? job_id : "") +
-                    "\",\"title\":\"" + std::string(title ? title : "") +
-                    "\",\"company\":\"" + std::string(company ? company : "") +
-                    "\",\"place\":\"" + std::string(place ? place : "") +
-                    "\",\"score\":" + std::to_string(score) +
-                    ",\"score_label\":\"" + std::string(label ? label : "") +
-                    "\",\"user_status\":\"" + std::string(status ? status : "") + "\"}";
-            first = false;
+            result.push_back(job);
         }
-        json += "]";
 
         sqlite3_finalize(stmt);
-        res.set_content(json, "application/json");
+        res.set_content(result.dump(), "application/json");
     });
 
     std::cout << "Server running on http://localhost:8080" << std::endl;

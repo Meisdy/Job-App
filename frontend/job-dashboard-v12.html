@@ -733,18 +733,25 @@ function setConnectionStatus(state) {
   else { dot.className='status-dot'; lbl.textContent='...'; }
 }
 
-async function init(){
-  setConnectionStatus('loading');
-  try {
-    const r=await fetch(GET_URL); allJobs=await r.json();
-    allJobs.sort((a,b)=>(b.score||0)-(a.score||0));
-    setConnectionStatus('connected');
-    updateStats(); renderList();
-  } catch(e){
-    setConnectionStatus('error');
-    document.getElementById('job-list').innerHTML='<div class="ldw" style="color:var(--red)">Connection failed</div>';
+  async function init(){
+    setConnectionStatus('loading');
+    try {
+      const r=await fetch(GET_URL);
+      console.log('Status:', r.status);
+      const text = await r.text();
+      console.log('Response length:', text.length);
+      console.log('First 200 chars:', text.substring(0, 200));
+      allJobs = JSON.parse(text);
+      console.log('Jobs parsed:', allJobs.length);
+      allJobs.sort((a,b)=>(b.score||0)-(a.score||0));
+      setConnectionStatus('connected');
+      updateStats(); renderList();
+    } catch(e){
+      console.log('Error:', e.message);
+      setConnectionStatus('error');
+      document.getElementById('job-list').innerHTML='<div class="ldw" style="color:var(--red)">Connection failed</div>';
+    }
   }
-}
 
 function onSearch() {
   searchQuery = document.getElementById('search-input').value.toLowerCase();
