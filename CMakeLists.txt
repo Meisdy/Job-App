@@ -3,4 +3,8 @@ project(Job_App)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Job_App main.cpp)
+add_executable(Job_App src/main.cpp
+        include/httplib.h)
+
+target_include_directories(Job_App PRIVATE include/)
+target_link_libraries(Job_App ws2_32)
