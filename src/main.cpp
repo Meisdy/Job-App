@@ -78,9 +78,31 @@ std::string httpPost(const std::string& url, const std::string& apiKey, const st
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 
 // Safely read a TEXT column, returning empty string if NULL
-static std::string col(sqlite3_stmt* s, int i) {
+std::string col(sqlite3_stmt* s, int i) {
     const char* v = (const char*)sqlite3_column_text(s, i);
     return v ? v : "";
+}
+
+// ── SCORING HELPER ───────────────────────────────────────────────────────────
+
+// Returns true if `target` skill matches any entry in `skillList`
+bool skillMatch(const std::string& target, const json& skillList) {
+    std::string t = target;
+    std::transform(t.begin(), t.end(), t.begin(), ::tolower);
+    for (auto& s : skillList) {
+        std::string item = s.get<std::string>();
+        std::transform(item.begin(), item.end(), item.begin(), ::tolower);
+        if (t == "c") {
+            if (item == "c") return true;
+            std::istringstream ss(item);
+            std::string token;
+            while (std::getline(ss, token, ' '))
+                if (token == "c" || token == "c," || token == "c+") return true;
+        } else {
+            if (item.find(t) != std::string::npos) return true;
+        }
+    }
+    return false;
 }
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -258,17 +280,21 @@ int main() {
     });
 
     // POST /api/scrape — scrape jobs.ch and insert new jobs
-    server.Post("/api/scrape", [&db](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/scrape", [&db, &config](const httplib::Request&, httplib::Response& res) {
         std::cout << "Scrape started..." << std::endl;
         int inserted = 0;
 
-        for (const auto& query : {"Embedded Engineer", "Robotics Engineer", "Firmware Engineer"}) {
+        auto queries  = config.value("scrape_queries", json::array({"Embedded Engineer", "Robotics Engineer", "Firmware Engineer"}));
+        int  rows     = config.value("scrape_rows", 100);
+
+        for (const auto& q : queries) {
+            std::string query = q.get<std::string>();
             std::string url = "https://job-search-api.jobs.ch/search/semantic?query="
-                + urlEncode(query) + "&rows=100&page=1";
+                + urlEncode(query) + "&rows=" + std::to_string(rows) + "&page=1";
             try {
                 json searchData = json::parse(httpGet(url));
                 auto documents  = searchData["documents"];
-                std::cout << "Query: " << query << " — " << documents.size() << " results" << std::endl;
+                std::cout << "Query: " << query << " - " << documents.size() << " results" << std::endl;
 
                 for (auto& doc : documents) {
                     std::string job_id = doc["id"];
@@ -338,7 +364,7 @@ int main() {
     });
 
     // POST /api/enrich — send unenriched jobs to Mistral for data extraction
-    server.Post("/api/enrich", [&db, &mistralApiKey](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/enrich", [&db, &mistralApiKey, &config](const httplib::Request&, httplib::Response& res) {
         if (mistralApiKey.empty()) {
             res.status = 500;
             res.set_content("{\"error\":\"No API key configured\"}", "application/json");
@@ -386,7 +412,9 @@ int main() {
         std::cout << "Jobs to enrich: " << jobs.size() << std::endl;
 
         int enriched = 0, failed = 0;
-        const int enrichLimit = 20;
+        const int enrichLimit       = config.value("enrich_limit", 20);
+        const int templateMaxChars  = config.value("enrich_template_max_chars", 3000);
+        const int enrichMaxTokens   = config.value("enrich_max_tokens", 6000);
 
         for (int i = 0; i < (int)jobs.size() && i < enrichLimit; i++) {
             auto& job = jobs[i];
@@ -395,7 +423,7 @@ int main() {
             std::string tmpl   = job["template_text"];
 
             // Truncate and sanitize description before sending
-            if (tmpl.size() > 3000) tmpl = tmpl.substr(0, 3000);
+            if ((int)tmpl.size() > templateMaxChars) tmpl = tmpl.substr(0, templateMaxChars);
             std::replace(tmpl.begin(), tmpl.end(), '"', '\'');
 
             std::string userPrompt =
@@ -411,7 +439,7 @@ int main() {
             json requestBody = {
                 {"model",           "mistral-small-latest"},
                 {"temperature",     0.1},
-                {"max_tokens",      6000},
+                {"max_tokens",      enrichMaxTokens},
                 {"response_format", {{"type", "json_object"}}},
                 {"messages", json::array({
                     {{"role", "system"}, {"content", systemPrompt}},
@@ -434,7 +462,7 @@ int main() {
                 while (!content.empty() && std::isspace(content.front())) content.erase(content.begin());
                 while (!content.empty() && std::isspace(content.back()))  content.pop_back();
 
-                json::parse(content); // validate
+                json parsedContent = json::parse(content); // throws if invalid
 
                 sqlite3_stmt* stmt;
                 sqlite3_prepare_v2(db,
@@ -482,26 +510,6 @@ int main() {
             jobs.push_back({col(selectStmt, 0), col(selectStmt, 1), col(selectStmt, 2)});
         sqlite3_finalize(selectStmt);
         std::cout << "Jobs to score: " << jobs.size() << std::endl;
-
-        // Returns true if `target` skill matches any entry in `skillList`
-        auto skillMatch = [](const std::string& target, const json& skillList) -> bool {
-            std::string t = target;
-            std::transform(t.begin(), t.end(), t.begin(), ::tolower);
-            for (auto& s : skillList) {
-                std::string i = s.get<std::string>();
-                std::transform(i.begin(), i.end(), i.begin(), ::tolower);
-                if (t == "c") {
-                    if (i == "c") return true;
-                    std::istringstream ss(i);
-                    std::string token;
-                    while (std::getline(ss, token, ' '))
-                        if (token == "c" || token == "c," || token == "c+") return true;
-                } else {
-                    if (i.find(t) != std::string::npos) return true;
-                }
-            }
-            return false;
-        };
 
         int scored = 0;
         for (auto& row : jobs) {
@@ -576,7 +584,8 @@ int main() {
                 auto salaryObj = llm.value("salary", json::object());
                 int salaryMin = (salaryObj.contains("min") && !salaryObj["min"].is_null() && salaryObj["min"].is_number())
                     ? salaryObj["min"].get<int>() : 0;
-                if (salaryMin > 0 && salaryMin < 78000) { score -= 20; reasons.push_back("Salary < 78k (-20)"); }
+                int salaryMinThreshold = config.value("salary_min_threshold", 78000);
+                if (salaryMin > 0 && salaryMin < salaryMinThreshold) { score -= 20; reasons.push_back("Salary < " + std::to_string(salaryMinThreshold/1000) + "k (-20)"); }
 
                 // Location
                 std::string zipStr = row.zipcode;
