@@ -1,0 +1,80 @@
+{
+  "scrape_queries": ["Embedded Engineer", "Robotics Engineer", "Test Engineer", "Software Engineer", "Mechatronics Engineer"],
+  "scrape_rows": 50,
+  "score_thresholds": {
+    "strong": 35,
+    "decent": 15
+  },
+  "hardware_proximity_scores": {
+    "high": 15,
+    "medium": 5,
+    "low": -8,
+    "none": -15
+  },
+  "seniority_scores": {
+    "intern": -20,
+    "junior": 15,
+    "mid": 5,
+    "senior": -15,
+    "lead": -20,
+    "PhD": -20,
+    "seniority_unspecified": 0
+  },
+  "category_bonus": {
+    "categories": ["embedded", "robotics", "software", "firmware", "systems"],
+    "pts": 8
+  },
+  "wanted_skills": [
+    {"name": "Python",                    "pts": 6},
+    {"name": "C++",                       "pts": 6},
+    {"name": "C",                         "pts": 5},
+    {"name": "ROS2",                      "pts": 3},
+    {"name": "Robotics",                  "pts": 5},
+    {"name": "Regelungstechnik",          "pts": 5},
+    {"name": "Hardware-nahe Entwicklung", "pts": 5},
+    {"name": "Agile Entwicklung",         "pts": 3},
+    {"name": "Prototyping",               "pts": 4},
+    {"name": "Linux",                     "pts": 4},
+    {"name": "Git",                       "pts": 2},
+    {"name": "Docker",                    "pts": 1},
+    {"name": "Testing",                   "pts": 2}
+  ],
+  "penalty_skills": [
+    {"name": "Altium",               "pts": -15},
+    {"name": "eCAD",                 "pts": -15},
+    {"name": "KiCad",                "pts": -15},
+    {"name": "FEM",                  "pts": -15},
+    {"name": "FEA",                  "pts": -15},
+    {"name": "CAD",                  "pts": -5},
+    {"name": "Simulation",           "pts": -5},
+    {"name": "Signalverarbeitung",   "pts": -10},
+    {"name": "React",                "pts": -10},
+    {"name": "Angular",              "pts": -10},
+    {"name": "Vue",                  "pts": -10},
+    {"name": "TypeScript",           "pts": -10},
+    {"name": "HTML",                 "pts": -10},
+    {"name": "CSS",                  "pts": -10},
+    {"name": "UI/UX",                "pts": -10},
+    {"name": "Frontend",             "pts": -10},
+    {"name": "Webentwicklung",       "pts": -10},
+    {"name": "EPLAN",                "pts": -10},
+    {"name": "AutoCAD Electrical",   "pts": -10},
+    {"name": "Elektroplanung",       "pts": -10},
+    {"name": "Schaltplanerstellung", "pts": -10},
+    {"name": "Elektrozeichner",      "pts": -10},
+    {"name": "Stromlaufplan",        "pts": -10},
+    {"name": "Oszilloskop",          "pts": -15},
+    {"name": "HMI",                  "pts": -5},
+    {"name": "Physik",               "pts": -5},
+    {"name": "FPGA",                 "pts": -5},
+    {"name": "Netzwerktechnologien", "pts": -5},
+    {"name": "Wireshark",            "pts": -5},
+    {"name": "EtherCAT",             "pts": -2},
+    {"name": "Printentwicklung",     "pts": -2},
+    {"name": "Netzwerk",             "pts": -10},
+    {"name": "Leistungselektronik",  "pts": -10},
+    {"name": "Französisch",          "pts": -15},
+    {"name": "UX/UI",                "pts": -15},
+    {"name": "UI",                   "pts": -15}
+  ]
+}

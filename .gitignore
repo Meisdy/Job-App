@@ -18,3 +18,4 @@ build.ninja
 # Data
 data/jobs.db
 data/*.csv
+/config/api_keys.json
