@@ -507,10 +507,8 @@
     .ab.as:hover, .ab.as.act { border-color:rgba(248,113,113,0.25); color:var(--red); background:var(--red-dim); }
     .ab.ae:hover, .ab.ae.act { border-color:rgba(251,146,60,0.3); color:#fb923c; background:rgba(251,146,60,0.08); }
 
-
-
-
-    .rescore-btn {
+    /* ── TOOL BUTTONS (header actions) ── */
+    .tool-btn {
       display:flex; align-items:center; gap:6px;
       padding:5px 13px;
       background:transparent;
@@ -525,68 +523,13 @@
       letter-spacing:0.03em;
       flex-shrink:0;
     }
-    .rescore-btn:hover {
-      border-color:rgba(251,191,36,0.45);
-      color:var(--yellow);
-      background:var(--yellow-dim);
-    }
-    .rescore-btn.running {
-      border-color:rgba(251,191,36,0.45);
-      color:var(--yellow);
-      background:var(--yellow-dim);
-      cursor:not-allowed;
-      opacity:0.7;
-    }
-    .rescore-btn .spin {
-      display:inline-block;
-      animation:spin 0.9s linear infinite;
-    }
+    .tool-btn.running { cursor:not-allowed; opacity:0.7; }
+    .tool-btn .spin { display:inline-block; animation:spin 0.9s linear infinite; }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
-    .scrape-btn {
-      display:flex; align-items:center; gap:6px;
-      padding:5px 13px;
-      background:transparent;
-      border:1px solid var(--border2);
-      color:var(--text3);
-      font-family:'Inter', sans-serif;
-      font-size:11px;
-      font-weight:600;
-      cursor:pointer;
-      border-radius:6px;
-      transition:all 0.18s;
-      letter-spacing:0.03em;
-      flex-shrink:0;
-    }
-    .enrich-btn {
-      display:flex; align-items:center; gap:6px;
-      padding:5px 13px;
-      background:transparent;
-      border:1px solid var(--border2);
-      color:var(--text3);
-      font-family:'Inter', sans-serif;
-      font-size:11px;
-      font-weight:600;
-      cursor:pointer;
-      border-radius:6px;
-      transition:all 0.18s;
-      letter-spacing:0.03em;
-      flex-shrink:0;
-    }
-    .enrich-btn:hover { border-color:rgba(139,92,246,0.45); color:#a78bfa; background:rgba(139,92,246,0.08); }
-    .enrich-btn.running { border-color:rgba(139,92,246,0.45); color:#a78bfa; background:rgba(139,92,246,0.08); cursor:not-allowed; opacity:0.7; }
-    .scrape-btn:hover {
-      border-color:rgba(52,211,153,0.45);
-      color:var(--green);
-      background:var(--green-dim);
-    }
-    .scrape-btn.running {
-      border-color:rgba(52,211,153,0.45);
-      color:var(--green);
-      background:var(--green-dim);
-      cursor:not-allowed;
-      opacity:0.7;
-    }
+    .rescore-btn:hover, .rescore-btn.running { border-color:rgba(251,191,36,0.45); color:var(--yellow); background:var(--yellow-dim); }
+    .scrape-btn:hover,  .scrape-btn.running  { border-color:rgba(52,211,153,0.45);  color:var(--green);  background:var(--green-dim); }
+    .enrich-btn:hover,  .enrich-btn.running  { border-color:rgba(139,92,246,0.45);  color:#a78bfa;       background:rgba(139,92,246,0.08); }
 
 
 
@@ -693,9 +636,9 @@
     <span class="search-icon">⌕</span>
     <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city..." oninput="onSearch()">
   </div>
-  <button class="rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
-  <button class="scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
-  <button class="enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
+  <button class="tool-btn rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
+  <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
+  <button class="tool-btn enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter(this,'all')">All</button>
     <button class="filter-btn" onclick="setFilter(this,'Strong')">Strong</button>
@@ -738,12 +681,15 @@
 <script>
   const GET_URL    = 'http://localhost:8080/api/jobs';
   const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
+  const RESCORE_URL = 'http://localhost:8080/api/score';
+  const SCRAPE_URL  = 'http://localhost:8080/api/scrape';
+  const ENRICH_URL  = 'http://localhost:8080/api/enrich';
 
   // ── PERSONAL SKILL PREFERENCES ──────────────────────────────────────────────
   // Dashed blue — curious / would enjoy learning (no point effect)
   const CURIOUS_SKILLS = [
     'fpga', 'verilog', 'systemverilog', 'yocto', 'buildroot',
-    'rust', 'machine learning', 'dsp', 'rtos', 'kernel', 'Testautomatisierung', 'Embedded Systems', 'STM32', 'Bluetooth', 'SCRUM', 'CI/CD', 'Bash', 'TCP/IP', 'UDP', 'Testing', 'GitHub', 'GitLab', 'Test Automation', 'Kommandozeilenkenntnisse', 'ARM Microcontroller', 'C#', 'Objektorientierte Softwareentwicklung', 'Echtzeitregelung', 'Mechatronik', 'Zustandsmaschinen', 'Mechatronik',
+    'rust', 'machine learning', 'dsp', 'rtos', 'kernel', 'Testautomatisierung', 'Embedded Systems', 'STM32', 'Bluetooth', 'SCRUM', 'CI/CD', 'Bash', 'TCP/IP', 'UDP', 'Testing', 'GitHub', 'GitLab', 'Test Automation', 'Kommandozeilenkenntnisse', 'ARM Microcontroller', 'C#', 'Objektorientierte Softwareentwicklung', 'Echtzeitregelung', 'Mechatronik', 'Zustandsmaschinen',
   ];
   // Dashed red — would rather avoid / don't want to support (no point effect)
   const AVOID_SKILLS = [
@@ -766,17 +712,11 @@
     setConnectionStatus('loading');
     try {
       const r=await fetch(GET_URL);
-      console.log('Status:', r.status);
-      const text = await r.text();
-      console.log('Response length:', text.length);
-      console.log('First 200 chars:', text.substring(0, 200));
-      allJobs = JSON.parse(text);
-      console.log('Jobs parsed:', allJobs.length);
+      allJobs = await r.json();
       allJobs.sort((a,b)=>(b.score||0)-(a.score||0));
       setConnectionStatus('connected');
       updateStats(); renderList();
     } catch(e){
-      console.log('Error:', e.message);
       setConnectionStatus('error');
       document.getElementById('job-list').innerHTML='<div class="ldw" style="color:var(--red)">Connection failed</div>';
     }
@@ -866,7 +806,6 @@
     const jobType=data.job_type;
     const rating=job.rating||0;
 
-    // ── new fields ──
     const summary=data.summary||'';
     const industry=data.industry_type||'';
     const product=data.product||'';
@@ -1003,7 +942,6 @@
       if(status==='applied')    ba.classList.add('act');
       if(status==='skipped')    bs.classList.add('act');
     }
-    if(job.availability_status==='expired') be.classList.add('act');
   }
 
   async function setStatus(s){
@@ -1065,8 +1003,6 @@
 
   init();
 
-  const RESCORE_URL= 'http://localhost:8080/api/score';
-
   async function rescoreAll(){
     const btn=document.getElementById('rescore-btn');
     if(btn.classList.contains('running')) return;
@@ -1086,8 +1022,6 @@
       btn.innerHTML='⟳ Rescore All';
     }
   }
-  const SCRAPE_URL = 'http://localhost:8080/api/scrape';
-
   async function scrapeJobs(){
     const btn=document.getElementById('scrape-btn');
     if(btn.classList.contains('running')) return;
@@ -1108,8 +1042,6 @@
       btn.innerHTML='⊕ Scrape Jobs';
     }
   }
-  const ENRICH_URL = 'http://localhost:8080/api/enrich';
-
   async function enrichJobs(){
     const btn=document.getElementById('enrich-btn');
     if(btn.classList.contains('running')) return;
