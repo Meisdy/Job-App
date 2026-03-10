@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
-#include <sstream>
 #include <curl/curl.h>
 #include "httplib.h"
 #include "sqlite3.h"
@@ -85,19 +84,32 @@ std::string col(sqlite3_stmt* s, int i) {
 
 // ── SCORING HELPER ───────────────────────────────────────────────────────────
 
-// Returns true if `target` skill matches any entry in `skillList`
+// Returns true if `target` skill matches any entry in `skillList`.
+// Short tokens (<=3 chars) use whole-word matching to prevent e.g. "UI" matching "Squish".
 bool skillMatch(const std::string& target, const json& skillList) {
     std::string t = target;
     std::transform(t.begin(), t.end(), t.begin(), ::tolower);
+
+    // Delimiters used to split skill strings into tokens for short-target matching
+    auto splitTokens = [](const std::string& s) {
+        std::vector<std::string> tokens;
+        std::string cur;
+        for (char c : s) {
+            if (std::isalnum(c)) { cur += c; }
+            else if (!cur.empty()) { tokens.push_back(cur); cur.clear(); }
+        }
+        if (!cur.empty()) tokens.push_back(cur);
+        return tokens;
+    };
+
     for (auto& s : skillList) {
         std::string item = s.get<std::string>();
         std::transform(item.begin(), item.end(), item.begin(), ::tolower);
-        if (t == "c") {
-            if (item == "c") return true;
-            std::istringstream ss(item);
-            std::string token;
-            while (std::getline(ss, token, ' '))
-                if (token == "c" || token == "c," || token == "c+") return true;
+
+        if (t.size() <= 3) {
+            // Whole-word match only — prevents "ui" matching "squish", "c" matching "scrum", etc.
+            for (auto& tok : splitTokens(item))
+                if (tok == t) return true;
         } else {
             if (item.find(t) != std::string::npos) return true;
         }
@@ -294,7 +306,7 @@ int main() {
             try {
                 json searchData = json::parse(httpGet(url));
                 auto documents  = searchData["documents"];
-                std::cout << "Query: " << query << " - " << documents.size() << " results" << std::endl;
+                std::cout << "Query: " << query << " — " << documents.size() << " results" << std::endl;
 
                 for (auto& doc : documents) {
                     std::string job_id = doc["id"];
@@ -595,28 +607,35 @@ int main() {
 
                 if (zip > 0) {
                     int p = zip / 100;
-                    if      (zip >= 1000 && zip <= 2499) { score -= 30; reasons.push_back("French CH Region (-30)"); }
-                    else if (zip >= 2500 && zip <= 2599) { score +=  5; reasons.push_back("Biel/Seeland (+5)"); }
-                    else if (zip >= 2600 && zip <= 2999) { score -= 20; reasons.push_back("Jura Region (-20)"); }
-                    else if (zip >= 6500 && zip <= 6999) { score -= 30; reasons.push_back("South of Alps – Ticino/Misox (-30)"); }
-                    else if ((zip>=7530&&zip<=7549)||(zip>=7600&&zip<=7649)||(zip>=7700&&zip<=7749)) { score -= 25; reasons.push_back("South of Alps – S. Graubünden (-25)"); }
-                    else if (zip >= 9485 && zip <= 9498) { score -= 20; reasons.push_back("Liechtenstein (-20)"); }
-                    else if (zip >= 9430 && zip <= 9484) { score -=  8; reasons.push_back("Rheintal (-8)"); }
-                    else if (zip >= 9000 && zip <= 9429) {              reasons.push_back("St. Gallen Region (Neutral)"); }
-                    else if (p == 39)                    { score -= 10; reasons.push_back("Valais/Remote Mountain (-10)"); }
-                    else if (p == 40 || p == 41)         { score -= 12; reasons.push_back("Basel City (-12)"); }
-                    else if (p >= 42 && p <= 44)         { score -=  8; reasons.push_back("Basel Surroundings (-8)"); }
-                    else if (p >= 81 && p <= 84)         { score -=  5; reasons.push_back("North ZH / Winterthur (-5)"); }
-                    else if (p == 80)                    { score += 15; reasons.push_back("Core Hub – Zürich (+15)"); }
-                    else if (p == 30)                    { score += 20; reasons.push_back("Core Hub – Bern (+20)"); }
-                    else if (p == 60)                    { score += 20; reasons.push_back("Core Hub – Luzern (+20)"); }
-                    else if (p == 63)                    { score += 20; reasons.push_back("Core Hub – Zug (+20)"); }
-                    else {
-                        static const std::vector<int> premiumP = {86,87,88,89,54,52,56,55,57,31,32,33,34,35,36,37,49,45,61,62,64};
-                        static const std::vector<int> okP      = {50,53,85,47,48,38,95,46};
-                        if      (std::find(premiumP.begin(), premiumP.end(), p) != premiumP.end()) { score += 15; reasons.push_back("Premium Commute <45min (+15)"); }
-                        else if (std::find(okP.begin(),      okP.end(),      p) != okP.end())      { score +=  6; reasons.push_back("OK Commute 45-70min (+6)"); }
-                        else                                                                         { score -=  5; reasons.push_back("Remote/Far Region (-5)"); }
+                    auto locRules   = config.value("location_rules",   json::array());
+                    auto locDefault = config.value("location_default",  json::object());
+
+                    bool matched = false;
+                    for (auto& rule : locRules) {
+                        std::string type = rule.value("match", "");
+                        bool hit = false;
+                        if (type == "range") {
+                            hit = (zip >= rule.value("min", 0) && zip <= rule.value("max", 0));
+                        } else if (type == "prefix") {
+                            hit = (p == rule.value("value", -1));
+                        } else if (type == "prefix_list") {
+                            for (auto& v : rule.value("values", json::array()))
+                                if (v.get<int>() == p) { hit = true; break; }
+                        }
+                        if (hit) {
+                            int pts      = rule.value("pts", 0);
+                            std::string lbl = rule.value("label", "");
+                            score += pts;
+                            reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched) {
+                        int pts      = locDefault.value("pts", -5);
+                        std::string lbl = locDefault.value("label", "Unknown Region");
+                        score += pts;
+                        reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
                     }
                 }
 
