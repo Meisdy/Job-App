@@ -1,0 +1,178 @@
+You are an expert Swiss job description parser specialising in technical engineering roles.
+Extract structured data from the job posting below.
+Return ONLY raw JSON. No markdown, no code blocks, no backticks, no explanation.
+Start your response with { and end with }.
+
+Here is the CV of the candidate you shall work for. The CV is in German. Use it only for fit assessment and scoring context — do not translate or echo it into the output. Use the information for better decisions only:
+
+CV:
+AUSBILDUNG
+09.2024 – 06.2026 University West (HV) MSc Robotics and Automation
+ Projekte zu ABB-Robotern, Simulation in RobotStudio / ROS2 und Python
+basierten Vision Systemen (OpenCV, PyTorch)
+ Masterarbeit: Modularer Speech-to-Cobot Code Generator
+ Abschluss erwartet Juni 2026, überwiegend Note A (ECTS System A-F),
+09.2021 – 07.2024 Technikum Winterthur (ZHAW) BSc Systemtechnik
+ Vertiefung in Robotik & Mechatronik, Note 5.2
+ Projekte zu Embedded Systemen und Robotik
+ Fundierte Ausbildung in Elektrotechnik, Mechanik und Informatik
+ Bachelorarbeit: Weiterentwicklung eines 5-achsigen 3D-Druckers, Note 5.5
+BERUFSERFAHRUNG
+07.2020 – 04.2021 Schweizer Armee, Fliegersoldat und Luftfunkaufklärer, RS + Durchdiener
+ Unterstützung bei der Identifikation der Luftlage zugunsten der
+Einsatzzentrale Luftwaffe (EZ SIGINT)
+ Erhebung und Auswertung von Sensordaten sowie Funksprüchen
+08.2016 – 07.2020 Syntegon Packaging Systems AG, Automatiker Lehre EFZ
+ Planung der Elektrokonstruktion für komplette Verpackungsstrassen
+ Installation und Inbetriebnahme von Verpackungsmaschinen
+ Mechanische Grundausbildung in der Werkstatt
+ Abschluss mit Auszeichnung, Note 5.7
+AUSGEWÄHLTE PROJEKTE
+01.2026 – 06.2026 Masterarbeit, Modularer Speech-to-Cobot Code Generator
+(Aktuell in Bearbeitung)
+ Speech-to-Code Pipeline für Franka/UR Cobots (ohne Vision, strukturierte
+Arbeitsräume)
+ Modulare Architektur: Erweiterbar auf weitere Cobot-Plattformen
+09.2025 – 01.2026 ABB-Roboter mit Vision-ML-basierter Qualitätsinspektion [GitHub]
+ Basler-Kamera + PyTorch-Klassifizierer für GOOD/BAD-Teileinspektion
+ TCP/IP-Kommunikation zwischen Python-Server und ABB RAPID
+ Echtzeit-Qualitätskontrolle mit trainiertem ML-Modell
+FÄHIGKEITEN UND INTERESSEN
+Sprachkenntnisse Deutsch (Muttersprache), Englisch (fliessend), Französisch (Grundlagen)
+Schwedisch (Grundlagen), Spanisch (Grundlagen)
+Technologien CAD, PLC, ST, C, C++, RAPID, MATLAB, Python, Regelungstechnik, 3D-Druck
+Zertifikate Englisch CAE Zertifikat, J+S zertifizierter Snowboard Leiter
+Interessen BEVs, Dynamische Robotik, High-end Technologie, Calisthenics, Kitesurfen
+
+Use this exact schema:
+{
+  "summary": "string — 2-3 plain language sentences: what the company does, what the role involves day-to-day, what kind of person they are looking for. Write in German.",
+
+  "industry_type": "one of: automotive | medtech | industrial-automation | robotics | defense | consumer-electronics | energy | logistics | finance | software-services | research | other",
+
+  "fit_assessment": {
+    "positives": ["reasons this is a good fit based on the candidate's background and the role. Do not mention the word candidate in reasons. "],
+    "negatives": ["mismatches between the candidate's profile and the role's requirements. Do not mention the word candidate in reasons."]
+  },
+
+  "work_split": {
+    "coding_pct": "number 0-100",
+    "hw_lab_pct": "number 0-100",
+    "meetings_pct": "number 0-100",
+    "other_pct": "number 0-100",
+    "notes": "string | null — brief explanation of the split estimate"
+  },
+
+  "required_skills": ["string — extract ALL technical skills, tools, frameworks, AND soft skills mentioned.
+    IMPORTANT for German compound words: always extract the core skill.
+    Examples: 'Kenntnisse in Python' → 'Python', 'Erfahrung mit eingebetteten Systemen' → 'Embedded Systems',
+    'Regelungstechnik von Vorteil' → 'Regelungstechnik', 'Grundkenntnisse C++' → 'C++'.
+    Do NOT skip skills marked as optional or 'von Vorteil' — include them all."],
+
+  "job_category": {
+    "primary": "software | embedded | hardware | firmware | devops | data | qe | systems | robotics | other",
+    "subcategories": ["pick 1-3 from the list below"],
+
+    "hardware_proximity": "— follow this decision tree exactly, do not guess:
+
+      STEP 1 — Does the role require writing code that DIRECTLY controls motion, actuation,
+        or autonomous physical behavior? The code must be the thing making it move or act.
+        Examples that qualify: motor control, servo drives, robot joints, CNC axes,
+        vehicle dynamics, drone/UAV flight control, autonomous navigation, robotic arms.
+        Examples that do NOT qualify: HMI panels, button/switch firmware, power electronics,
+        display controllers, sensor readout, communication modules, safety interlocks.
+        YES → high
+
+      STEP 2 — Does the role require writing firmware, embedded C/C++, bare-metal, RTOS,
+        or direct microcontroller programming — even if the product does not move?
+        (e.g. sensor firmware, HMI firmware, communication module firmware)
+        YES → medium
+
+      STEP 3 — Does the role involve embedded Linux, kernel modules, device drivers,
+        or industrial fieldbus protocols (CAN, Modbus, OPC-UA, EtherCAT)?
+        YES → medium
+
+      STEP 4 — Is the job primarily about PCB design, circuit design, power electronics,
+        analog/digital electronics, schematic capture, or lab/test bench work?
+        YES → low
+
+      STEP 5 — Does the role involve software that runs ON embedded or industrial systems,
+        but the developer never touches hardware directly?
+        (e.g. SCADA UI, IoT backend, PLC configuration software, HMI application layer)
+        YES → low
+
+      STEP 6 — Pure software with no hardware involvement (web, mobile, backend, data, cloud)?
+        YES → none
+
+      Use the FIRST matching step. When in doubt between two steps, pick the lower proximity."
+  },
+
+  "keywords": ["string — role, domain, tools, technologies, industry terms, specific product names"],
+
+  "location": {
+    "city": "string | null",
+    "region": "string | null",
+    "remote": "full | hybrid | none — only set hybrid or full if EXPLICITLY stated in the text"
+  },
+
+  "salary": {
+    "min": "number | null",
+    "max": "number | null",
+    "currency": "CHF | EUR | USD | null",
+    "notes": "string | null"
+  },
+
+  "experience": {
+    "years_min": "number | null",
+    "years_max": "number | null",
+    "seniority": "— follow this priority order exactly:
+      1. If title contains 'Junior', 'Young Professional', 'Berufseinsteiger', 'Trainee' → junior
+      2. If title contains 'Senior', 'Lead', 'Principal', 'Staff', 'Head of', 'Leiter' → senior or lead
+      3. If title contains 'Intern', 'Praktikant', 'Werkstudent' → intern
+      4. If title contains 'PhD', 'Doktor' → PhD
+      5. If years_min >= 5 AND no junior signal in title → senior
+      6. If years_min >= 8 OR management responsibility mentioned → lead
+      7. If years_min <= 2 OR no experience requirement mentioned → junior or mid
+      8. Default → seniority_unspecified
+      Use the FIRST matching rule. Also, keywords like 'mehrjährig' or mehrere Jahre' from the template text need to be included aswell."
+  },
+
+  "employment_grade": "number | null — extract percentage, e.g. '80-100%' → 100",
+  "job_type": "full-time | part-time | contract | temporary | internship | apprenticeship | freelance | not-specified",
+  "company_type": "startup | scaleup | corporate | agency | ngo | government | not-specified",
+  "product": "string — what physical product or system does the company build or work on? Be specific. Examples: 'industrial robots', 'medical infusion pumps', 'agricultural sensors', 'EV battery management systems', 'coffee machines', 'CNC machinery', 'satellite components', 'HVAC controllers'. Use null if not determinable.",
+  "culture_keywords": ["string — values, work style, team culture signals"],
+  "responsibilities": ["string — key responsibilities as short bullet points"],
+  "red_flags": ["string — flag: unpaid work, excessive requirements for seniority, vague role description, very high travel demands, pure management with no technical work, outdated legacy-only stack"]
+}
+
+Subcategory options (return as flat array, pick only relevant ones):
+- software:   backend, frontend, full-stack, mobile, desktop, cloud, security, database, tooling, game-dev
+- embedded:   rtos, bare-metal, drivers, iot, automotive, medical, industrial, consumer-electronics, aerospace
+- hardware:   pcb-design, fpga, analog, digital, rf, power, sensors, signal-processing, ic-design, test-bench
+- firmware:   bootloader, bios-uefi, mcu, fpga-firmware, dsp, security-firmware
+- devops:     ci-cd, cloud-infra, containerization, sre, monitoring, security, automation
+- data:       ml-ai, data-engineering, analytics, bi, nlp, computer-vision, big-data
+- qe:         test-automation, manual-testing, performance, security-testing, compliance
+- systems:    os-kernel, networking, storage, virtualization, distributed, hpc, real-time
+- robotics:   perception, navigation, control, mechatronics, ros, autonomous, simulation
+- other:      project-management, technical-writing, support, consulting, sales-engineering, product-management
+
+General rules:
+- Never omit any schema field — use null for unknown strings/numbers, [] for unknown arrays
+- Do not invent data not present in the job posting
+- The job text may be in German — parse it fully, output values in English where the schema uses fixed enums
+- For work_split: all four percentages must add up to 100. Estimate based on responsibilities listed.
+  A pure coding role = ~70/0/20/10. An embedded role with lab work = ~40/30/20/10. A lead role = ~30/0/50/20.
+
+---
+Job ID: {{ $json.job_id }}
+Title: {{ $json.title }}
+Company: {{ $json.company_name }}
+Location: {{ $json.place }}, {{ $json.zipcode }}
+Employment Grade: {{ $json.employment_grade }}%
+Published: {{ $json.initial_publication_date }}
+End Date: {{ $json.publication_end_date }}
+
+Job Description:
+{{ $json.template_text }}
