@@ -118,6 +118,9 @@ int main() {
     }
     std::cout << "Database opened successfully" << std::endl;
 
+    // Make parallel operations safer
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+
     // Create the jobs table if it doesn't exist
     const char* createTable = R"(
         CREATE TABLE IF NOT EXISTS jobs (
@@ -166,6 +169,16 @@ int main() {
         res.set_content(content, "text/html");
     });
 
+    // Add this new endpoint
+    server.Delete("/api/jobs/:id", [&db](const httplib::Request& req, httplib::Response& res) {
+        std::string job_id = req.path_params.at("id");
+        sqlite3_stmt* stmt;
+        sqlite3_prepare_v2(db, "DELETE FROM jobs WHERE job_id = ?", -1, &stmt, nullptr);
+        sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
+        sqlite3_step(stmt);
+        sqlite3_finalize(stmt);
+        res.set_content("{\"ok\":true}", "application/json");
+    });
 
     server.Get("/api/jobs", [&db](const httplib::Request& req, httplib::Response& res) {
         const char* query = R"(
@@ -354,6 +367,14 @@ int main() {
                         std::cerr << "Failed to parse detail for job: " << job_id << std::endl;
                     }
                 }
+
+                // Auto-delete expired jobs after scraping
+                sqlite3_exec(db, R"(
+                    DELETE FROM jobs
+                    WHERE publication_end_date != ''
+                    AND publication_end_date < date('now')
+                )", nullptr, nullptr, nullptr);
+                std::cout << "Expired jobs cleaned up" << std::endl;
             } catch (...) {
                 std::cerr << "Failed to parse search results for query: " << query << std::endl;
             }

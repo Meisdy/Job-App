@@ -1028,12 +1028,15 @@
 
   async function setExpired(){
     if(!currentJob) return;
-    const newAvail = currentJob.availability_status==='expired' ? 'active' : 'expired';
-    currentJob.availability_status = newAvail;
-    updateInList(currentJob);
-    renderDetail();
-    await saveJob({job_id:currentJob.job_id, availability_status:newAvail});
-    showToast(newAvail==='expired' ? 'Marked as expired' : 'Marked as active');
+    if(!confirm(`Delete "${currentJob.title}" permanently?`)) return;
+    await fetch(`http://localhost:8080/api/jobs/${currentJob.job_id}`, {method:'DELETE'});
+    allJobs = allJobs.filter(j => j.job_id !== currentJob.job_id);
+    currentJob = null;
+    document.getElementById('action-bar').style.display = 'none';
+    document.getElementById('detail-scroll').innerHTML = '<div class="empty"><div class="empty-i">⌖</div><div class="empty-t">Select a position</div></div>';
+    renderList();
+    updateStats();
+    showToast('Job deleted');
   }
 
   async function saveNotes(){

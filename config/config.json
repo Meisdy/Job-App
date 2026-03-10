@@ -1,6 +1,6 @@
 {
   "scrape_queries": ["Embedded Engineer", "Robotics Engineer", "Test Engineer", "Software Engineer", "Mechatronics Engineer"],
-  "scrape_rows": 50,
+  "scrape_rows": 100,
   "score_thresholds": {
     "strong": 35,
     "decent": 15

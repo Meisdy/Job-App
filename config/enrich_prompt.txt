@@ -129,7 +129,7 @@ Use this exact schema:
       1. If title contains 'Junior', 'Young Professional', 'Berufseinsteiger', 'Trainee' → junior
       2. If title contains 'Senior', 'Lead', 'Principal', 'Staff', 'Head of', 'Leiter' → senior or lead
       3. If title contains 'Intern', 'Praktikant', 'Werkstudent' → intern
-      4. If title contains 'PhD', 'Doktor' → PhD
+      4. If title contains 'PhD', 'Doktor', 'Doktorand' → PhD
       5. If years_min >= 5 AND no junior signal in title → senior
       6. If years_min >= 8 OR management responsibility mentioned → lead
       7. If years_min <= 2 OR no experience requirement mentioned → junior or mid
