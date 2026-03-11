@@ -1,6 +1,7 @@
 {
   "scrape_queries": ["Embedded Engineer", "Robotics Engineer", "Test Engineer", "Software Engineer", "Mechatronics Engineer"],
   "scrape_rows": 100,
+  "salary_min_threshold": 75000,
   "score_thresholds": {
     "strong": 35,
     "decent": 15

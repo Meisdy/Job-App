@@ -117,6 +117,151 @@ bool skillMatch(const std::string& target, const json& skillList) {
     return false;
 }
 
+
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+
+struct ConfigData {
+    // Scraping
+    std::vector<std::string> scrape_queries;
+    int                      scrape_rows{};
+
+    // Scoring thresholds
+    int score_strong_threshold{};
+    int score_decent_threshold{};
+
+    // Salary
+    int salary_min_threshold{};
+
+    // Hardware proximity scores
+    int hw_high{};
+    int hw_medium{};
+    int hw_low{};
+    int hw_none{};
+
+    // Seniority scores
+    int sen_intern{};
+    int sen_junior{};
+    int sen_mid{};
+    int sen_senior{};
+    int sen_lead{};
+    int sen_phd{};
+    int sen_unspecified{};
+
+    // Category bonus
+    std::vector<std::string> category_list;
+    int category_pts{};
+
+    // Skills
+    struct Skill {
+        std::string name;
+        int         pts;
+    };
+    std::vector<Skill> wanted_skills;
+    std::vector<Skill> penalty_skills;
+
+    // Location
+    int         location_default_pts{};
+    std::string location_default_label;
+
+    struct LocationRule {
+        std::string      match;
+        std::vector<int> values; // range: [min, max], prefix: [value], prefix_list: [v1, v2, ...]
+        int              pts{};
+        std::string      label;
+    };
+    std::vector<LocationRule> location_rules;
+};
+
+void validateConfig(const json& config_data) {
+    auto require = [&](const std::string& key) {
+        if (!config_data.contains(key))
+            throw std::runtime_error("Missing required config key: " + key);
+    };
+    require("scrape_queries");
+    require("score_thresholds");
+    require("salary_min_threshold");
+    require("hardware_proximity_scores");
+    require("seniority_scores");
+    require("category_bonus");
+    require("wanted_skills");
+    require("penalty_skills");
+    require("location_rules");
+    require("location_default");
+}
+
+ConfigData parseConfig(const json& c) {
+    ConfigData cfg;
+
+    // Scraping
+    cfg.scrape_queries = c["scrape_queries"].get<std::vector<std::string>>();
+    cfg.scrape_rows    = c.value("scrape_rows", 50);
+
+    // Thresholds
+    cfg.score_strong_threshold = c["score_thresholds"]["strong"].get<int>();
+    cfg.score_decent_threshold = c["score_thresholds"]["decent"].get<int>();
+    cfg.salary_min_threshold   = c["salary_min_threshold"].get<int>();
+
+    // Hardware proximity
+    cfg.hw_high   = c["hardware_proximity_scores"]["high"].get<int>();
+    cfg.hw_medium = c["hardware_proximity_scores"]["medium"].get<int>();
+    cfg.hw_low    = c["hardware_proximity_scores"]["low"].get<int>();
+    cfg.hw_none   = c["hardware_proximity_scores"]["none"].get<int>();
+
+    // Seniority
+    cfg.sen_intern      = c["seniority_scores"]["intern"].get<int>();
+    cfg.sen_junior      = c["seniority_scores"]["junior"].get<int>();
+    cfg.sen_mid         = c["seniority_scores"]["mid"].get<int>();
+    cfg.sen_senior      = c["seniority_scores"]["senior"].get<int>();
+    cfg.sen_lead        = c["seniority_scores"]["lead"].get<int>();
+    cfg.sen_phd         = c["seniority_scores"]["PhD"].get<int>();
+    cfg.sen_unspecified = c["seniority_scores"]["seniority_unspecified"].get<int>();
+
+    // Category bonus
+    cfg.category_list = c["category_bonus"]["categories"].get<std::vector<std::string>>();
+    cfg.category_pts  = c["category_bonus"]["pts"].get<int>();
+
+    // Wanted skills
+    for (auto& item : c["wanted_skills"])
+        cfg.wanted_skills.push_back({ item["name"].get<std::string>(), item["pts"].get<int>() });
+
+    // Penalty skills
+    for (auto& item : c["penalty_skills"])
+        cfg.penalty_skills.push_back({ item["name"].get<std::string>(), item["pts"].get<int>() });
+
+    // Location default
+    cfg.location_default_pts   = c["location_default"]["pts"].get<int>();
+    cfg.location_default_label = c["location_default"]["label"].get<std::string>();
+
+    // Location rules
+    for (auto& rule : c["location_rules"]) {
+        ConfigData::LocationRule r;
+        r.match = rule["match"].get<std::string>();
+        r.pts   = rule["pts"].get<int>();
+        r.label = rule["label"].get<std::string>();
+
+        if (r.match == "range") {
+            r.values = { rule["min"].get<int>(), rule["max"].get<int>() };
+        } else if (r.match == "prefix") {
+            r.values = { rule["value"].get<int>() };
+        } else if (r.match == "prefix_list") {
+            r.values = rule["values"].get<std::vector<int>>();
+        }
+        cfg.location_rules.push_back(r);
+    }
+
+    return cfg;
+}
+
+ConfigData loadConfig() {
+    std::ifstream file("../config/config.json");
+    if (!file.is_open())
+        throw std::runtime_error("Could not open config.json");
+
+    json c = json::parse(file);
+    validateConfig(c);
+    return parseConfig(c);
+}
+
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 
 int main() {
