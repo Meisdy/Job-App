@@ -124,6 +124,7 @@ struct ConfigData {
     // Scraping
     std::vector<std::string> scrape_queries;
     int                      scrape_rows{};
+    int                      enrich_limit{};
 
     // Scoring thresholds
     int score_strong_threshold{};
@@ -195,6 +196,7 @@ ConfigData parseConfig(const json& c) {
     // Scraping
     cfg.scrape_queries = c["scrape_queries"].get<std::vector<std::string>>();
     cfg.scrape_rows    = c.value("scrape_rows", 50);
+    cfg.enrich_limit   = c.value("enrich_limit", 20);
 
     // Thresholds
     cfg.score_strong_threshold = c["score_thresholds"]["strong"].get<int>();
@@ -276,16 +278,7 @@ int main() {
         std::cerr << "Warning: Could not load api_keys.json" << std::endl;
     }
 
-    // Load scoring config
-    json config;
-    try {
-        std::ifstream f("../config/config.json");
-        config = json::parse(f);
-        std::cout << "Config loaded" << std::endl;
-    } catch (...) {
-        std::cerr << "Warning: Could not load config.json — using defaults" << std::endl;
-        config = json::object();
-    }
+    ConfigData config = loadConfig();
 
     // Open database
     sqlite3* db;
@@ -441,17 +434,16 @@ int main() {
         std::cout << "Scrape started..." << std::endl;
         int inserted = 0;
 
-        auto queries  = config.value("scrape_queries", json::array({"Embedded Engineer", "Robotics Engineer", "Firmware Engineer"}));
-        int  rows     = config.value("scrape_rows", 100);
+        auto queries  = config.scrape_queries;
+        int rows = config.scrape_rows;
 
         for (const auto& q : queries) {
-            std::string query = q.get<std::string>();
             std::string url = "https://job-search-api.jobs.ch/search/semantic?query="
-                + urlEncode(query) + "&rows=" + std::to_string(rows) + "&page=1";
+                + urlEncode(q) + "&rows=" + std::to_string(rows) + "&page=1";
             try {
                 json searchData = json::parse(httpGet(url));
                 auto documents  = searchData["documents"];
-                std::cout << "Query: " << query << " — " << documents.size() << " results" << std::endl;
+                std::cout << "Query: " << q << " - " << documents.size() << " results" << std::endl;
 
                 for (auto& doc : documents) {
                     std::string job_id = doc["id"];
@@ -512,7 +504,7 @@ int main() {
                 )", nullptr, nullptr, nullptr);
 
             } catch (...) {
-                std::cerr << "Failed to parse search results for query: " << query << std::endl;
+                std::cerr << "Failed to parse search results for query: " << q << std::endl;
             }
         }
 
@@ -569,9 +561,9 @@ int main() {
         std::cout << "Jobs to enrich: " << jobs.size() << std::endl;
 
         int enriched = 0, failed = 0;
-        const int enrichLimit       = config.value("enrich_limit", 20);
-        const int templateMaxChars  = config.value("enrich_template_max_chars", 3000);
-        const int enrichMaxTokens   = config.value("enrich_max_tokens", 6000);
+        const int enrichLimit       = config.enrich_limit;
+        const int templateMaxChars  = 3000; // Change this soon
+        const int enrichMaxTokens   = 6000; // Change this soon
 
         for (int i = 0; i < (int)jobs.size() && i < enrichLimit; i++) {
             auto& job = jobs[i];
@@ -648,13 +640,41 @@ int main() {
     server.Post("/api/score", [&db, &config](const httplib::Request&, httplib::Response& res) {
         std::cout << "Scoring started..." << std::endl;
 
-        int strongThreshold = config.value("score_thresholds", json::object()).value("strong", 35);
-        int decentThreshold = config.value("score_thresholds", json::object()).value("decent", 15);
-        auto hwScores      = config.value("hardware_proximity_scores", json::object());
-        auto senScores     = config.value("seniority_scores",          json::object());
-        auto catBonus      = config.value("category_bonus",            json::object());
-        auto wantedSkills  = config.value("wanted_skills",             json::array());
-        auto penaltySkills = config.value("penalty_skills",            json::array());
+        int strongThreshold = config.score_strong_threshold;
+        int decentThreshold = config.score_decent_threshold;
+        auto hwScores = json::object({
+                    {"high", config.hw_high},
+                    {"medium", config.hw_medium},
+                    {"low", config.hw_low},
+                    {"none", config.hw_none}
+                });
+        auto senScores = json::object({
+            {"intern", config.sen_intern},
+            {"junior", config.sen_junior},
+            {"mid", config.sen_mid},
+            {"senior", config.sen_senior},
+            {"lead", config.sen_lead},
+            {"PhD", config.sen_phd},
+            {"seniority_unspecified", config.sen_unspecified}
+        });
+        auto catBonus = json::object({
+            {"categories", config.category_list},
+            {"pts", config.category_pts}
+        });
+        auto wantedSkills = json::array();
+        for (const auto& skill : config.wanted_skills) {
+            wantedSkills.push_back(json::object({
+                {"name", skill.name},
+                {"pts", skill.pts}
+            }));
+        }
+        auto penaltySkills = json::array();
+        for (const auto& skill : config.penalty_skills) {
+            penaltySkills.push_back(json::object({
+                {"name", skill.name},
+                {"pts", skill.pts}
+            }));
+        };
 
         sqlite3_stmt* selectStmt;
         sqlite3_prepare_v2(db, R"(
@@ -741,7 +761,7 @@ int main() {
                 auto salaryObj = llm.value("salary", json::object());
                 int salaryMin = (salaryObj.contains("min") && !salaryObj["min"].is_null() && salaryObj["min"].is_number())
                     ? salaryObj["min"].get<int>() : 0;
-                int salaryMinThreshold = config.value("salary_min_threshold", 78000);
+                int salaryMinThreshold = config.salary_min_threshold;
                 if (salaryMin > 0 && salaryMin < salaryMinThreshold) { score -= 20; reasons.push_back("Salary < " + std::to_string(salaryMinThreshold/1000) + "k (-20)"); }
 
                 // Location
@@ -752,36 +772,39 @@ int main() {
 
                 if (zip > 0) {
                     int p = zip / 100;
-                    auto locRules   = config.value("location_rules",   json::array());
-                    auto locDefault = config.value("location_default",  json::object());
+                    auto& locRules = config.location_rules;
+                    int defaultPts = config.location_default_pts;
+                    std::string defaultLabel = config.location_default_label;
+
 
                     bool matched = false;
                     for (auto& rule : locRules) {
-                        std::string type = rule.value("match", "");
                         bool hit = false;
-                        if (type == "range") {
-                            hit = (zip >= rule.value("min", 0) && zip <= rule.value("max", 0));
-                        } else if (type == "prefix") {
-                            hit = (p == rule.value("value", -1));
-                        } else if (type == "prefix_list") {
-                            for (auto& v : rule.value("values", json::array()))
-                                if (v.get<int>() == p) { hit = true; break; }
+                        if (rule.match == "range") {
+                            hit = (zip >= rule.values[0] && zip <= rule.values[1]);
+                        } else if (rule.match == "prefix") {
+                            hit = (p == rule.values[0]);
+                        } else if (rule.match == "prefix_list") {
+                            for (auto& v : rule.values)
+                                if (v == p) { hit = true; break; }
                         }
                         if (hit) {
-                            int pts      = rule.value("pts", 0);
-                            std::string lbl = rule.value("label", "");
+                            int pts = rule.pts;
+                            std::string lbl = rule.label;
                             score += pts;
                             reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
                             matched = true;
                             break;
                         }
                     }
+
                     if (!matched) {
-                        int pts      = locDefault.value("pts", -5);
-                        std::string lbl = locDefault.value("label", "Unknown Region");
+                        int pts = defaultPts;
+                        std::string lbl = defaultLabel;
                         score += pts;
                         reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
                     }
+
                 }
 
                 std::string label = score >= strongThreshold ? "Strong" : score >= decentThreshold ? "Decent" : "Weak";
