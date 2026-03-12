@@ -280,6 +280,7 @@ int main() {
         std::cerr << "Warning: Could not load api_keys.json" << std::endl;
     }
 
+    // Load config
     ConfigData config = loadConfig();
 
     // Open database

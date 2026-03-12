@@ -3,7 +3,9 @@ project(Job_App)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(Job_App src/main.cpp include/httplib.h src/sqlite3.c include/json.hpp)
+add_executable(Job_App src/main.cpp include/httplib.h src/sqlite3.c include/json.hpp
+        src/db.cpp
+        include/db.h)
 
 target_include_directories(Job_App PRIVATE include/ C:/Dev/cpp_libs/curl/include)
 target_link_libraries(Job_App ws2_32
