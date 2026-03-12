@@ -65,9 +65,11 @@ std::string httpPost(const std::string& url, const std::string& apiKey, const st
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/Dev/cpp_libs/curl/bin/curl-ca-bundle.crt");
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
+        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK)
-            std::cerr << "curl error: " << curl_easy_strerror(res) << std::endl;
+            std::cerr << "[curl error] httpPost failed: " << curl_easy_strerror(res) << std::endl;
         curl_slist_free_all(headers);
         curl_easy_cleanup(curl);
     }
@@ -570,11 +572,22 @@ int main() {
             std::string job_id = job["job_id"];
             std::string title  = job["title"];
             std::string tmpl   = job["template_text"];
+            std::cout << "[DEBUG] Enriching job " << i << ": " << job_id << " - " << job["title"] << std::endl;
 
             // Truncate and sanitize description before sending
-            if ((int)tmpl.size() > templateMaxChars) tmpl = tmpl.substr(0, templateMaxChars);
+            if ((int)tmpl.size() > templateMaxChars) {
+                tmpl = tmpl.substr(0, templateMaxChars);
+                // Walk back to a valid UTF-8 boundary so we don't split a multi-byte character
+                while (!tmpl.empty() && (tmpl.back() & 0xC0) == 0x80)
+                    tmpl.pop_back(); // drop continuation bytes (10xxxxxx)
+                if (!tmpl.empty() && (unsigned char)tmpl.back() >= 0xC0)
+                    tmpl.pop_back(); // drop the orphaned leading byte
+            }
             std::replace(tmpl.begin(), tmpl.end(), '"', '\'');
+            std::cout << "[DEBUG] Template length: " << tmpl.size() << std::endl;
 
+            std::string apiResponse;
+            try {
             std::string userPrompt =
                 "Job ID: "          + job_id + "\n"
                 "Title: "           + title  + "\n"
@@ -596,8 +609,10 @@ int main() {
                 })}
             };
 
-            std::string apiResponse = httpPost(
+            std::cout << "[DEBUG] Sending request to Mistral..." << std::endl;
+            apiResponse = httpPost(
                 "https://api.mistral.ai/v1/chat/completions", mistralApiKey, requestBody.dump());
+            std::cout << "[DEBUG] Got response (" << apiResponse.size() << " bytes)" << std::endl;
 
             try {
                 std::string content = json::parse(apiResponse)["choices"][0]["message"]["content"];
@@ -626,8 +641,16 @@ int main() {
                 std::cout << "Enriched: " << title << std::endl;
 
             } catch (const std::exception& e) {
-                std::cerr << "Failed to enrich: " << title << " — " << e.what() << std::endl;
-                std::cerr << "Raw response: " << apiResponse.substr(0, 500) << std::endl;
+                std::cerr << "[ERROR] Failed to parse response for: " << title << " — " << e.what() << std::endl;
+                std::cerr << "[DEBUG] Raw API response (" << apiResponse.size() << " bytes): "
+                          << (apiResponse.empty() ? "<empty>" : apiResponse.substr(0, 1000)) << std::endl;
+                failed++;
+            }
+
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Failed before/during API call for: " << title << " — " << e.what() << std::endl;
+                std::cerr << "[DEBUG] Raw API response (" << apiResponse.size() << " bytes): "
+                          << (apiResponse.empty() ? "<empty>" : apiResponse.substr(0, 1000)) << std::endl;
                 failed++;
             }
         }
