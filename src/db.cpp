@@ -43,3 +43,8 @@ void delete_job(sqlite3* db, const std::string &job_id) {
     const std::string sql_delete_str = "DELETE FROM jobs WHERE job_id = ?";
     exec_write(db, sql_delete_str, {job_id});
 }
+
+void update_job_field(sqlite3 *db, const std::string &job_id, const std::string& field, const std::string &value) {
+    const std::string sql_update_str = "UPDATE jobs SET " + field + " = ? WHERE job_id = ?";
+    exec_write(db, sql_update_str, {value, job_id});
+}

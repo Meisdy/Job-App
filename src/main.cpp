@@ -396,26 +396,10 @@ int main() {
             json body = json::parse(req.body);
             std::string job_id = body["job_id"];
 
-            auto updateField = [&](const char* field, const std::string& value) {
-                std::string sql = std::string("UPDATE jobs SET ") + field + " = ? WHERE job_id = ?";
-                sqlite3_stmt* stmt;
-                sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
-                sqlite3_bind_text(stmt, 1, value.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 2, job_id.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            };
+            if (body.contains("notes")) update_job_field(db, job_id, "notes", body["notes"]);
+            if (body.contains("user_status")) update_job_field(db, job_id, "user_status", body["user_status"]);
+            if (body.contains("rating")) update_job_field(db, job_id, "rating", std::to_string(body["rating"].get<int>()));
 
-            if (body.contains("notes"))       updateField("notes", body["notes"]);
-            if (body.contains("user_status")) updateField("user_status", body["user_status"]);
-            if (body.contains("rating")) {
-                sqlite3_stmt* stmt;
-                sqlite3_prepare_v2(db, "UPDATE jobs SET rating = ? WHERE job_id = ?", -1, &stmt, nullptr);
-                sqlite3_bind_int (stmt, 1, body["rating"].get<int>());
-                sqlite3_bind_text(stmt, 2, job_id.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-            }
             res.set_content("{\"ok\":true}", "application/json");
         } catch (...) {
             res.status = 400;
