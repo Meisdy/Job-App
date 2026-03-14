@@ -12,10 +12,7 @@
 
 
 
-// Public
-
-
-
-
+// Delete a job entry
+void delete_job(sqlite3* db, const std::string& job_id);
 
 #endif //JOB_APP_DB_H

@@ -1,6 +1,6 @@
 {
-  "scrape_queries": ["Embedded Engineer", "Robotics Engineer", "Test Engineer", "Software Engineer", "Mechatronics Engineer", "Development Engineer", "Test Ingenieur"],
-  "scrape_rows": 100,
+  "scrape_queries": ["Embedded Engineer", "Robotics Engineer", "Test Engineer", "Software Engineer", "Mechatronics Engineer", "Development Engineer"],
+  "scrape_rows": 50,
   "enrich_limit": 100,
   "salary_min_threshold": 75000,
   "score_thresholds": {

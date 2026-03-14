@@ -6,6 +6,8 @@
 #include "httplib.h"
 #include "sqlite3.h"
 #include "json.hpp"
+#include "db.h"
+
 using json = nlohmann::json;
 
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
@@ -421,15 +423,14 @@ int main() {
         }
     });
 
-    // DELETE /api/jobs/:id — permanently delete a job
     server.Delete("/api/jobs/:id", [&db](const httplib::Request& req, httplib::Response& res) {
-        std::string job_id = req.path_params.at("id");
-        sqlite3_stmt* stmt;
-        sqlite3_prepare_v2(db, "DELETE FROM jobs WHERE job_id = ?", -1, &stmt, nullptr);
-        sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
-        sqlite3_step(stmt);
-        sqlite3_finalize(stmt);
-        res.set_content("{\"ok\":true}", "application/json");
+        try {
+            delete_job(db, req.path_params.at("id"));
+            res.set_content("{\"ok\":true}", "application/json");
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content(R"({"error":")" + std::string(e.what()) + "\"}", "application/json");
+        }
     });
 
     // POST /api/scrape — scrape jobs.ch and insert new jobs
