@@ -10,12 +10,32 @@
 
 #include "sqlite3.h"
 
+struct Job {
+    std::string job_id;
+    std::string title;
+    std::string company_name;
+    std::string place;
+    std::string zipcode;
+    std::string canton_code;
+    int         employment_grade;
+    std::string application_url;
+    std::string detail_url;
+    std::string pub_date;
+    std::string end_date;
+    std::string template_text;
+};
 
 
-// Delete a job entry
+// Delete job entry
 void delete_job(sqlite3* db, const std::string& job_id);
 
 // Update job field
 void update_job_field(sqlite3* db, const std::string& job_id, const std::string& field, const std::string& value);
+
+// Insert job
+void insert_job(sqlite3* db, const Job& job);
+
+// Delete expired jobs
+void delete_expired_jobs(sqlite3* db);
 
 #endif //JOB_APP_DB_H

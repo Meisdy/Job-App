@@ -48,3 +48,39 @@ void update_job_field(sqlite3 *db, const std::string &job_id, const std::string&
     const std::string sql_update_str = "UPDATE jobs SET " + field + " = ? WHERE job_id = ?";
     exec_write(db, sql_update_str, {value, job_id});
 }
+
+void insert_job(sqlite3 *db, const Job &job) {
+    const std::string sql_insert_str = R"(
+                            INSERT INTO jobs (job_id, title, company_name, place, zipcode, canton_code,
+                                employment_grade, application_url, detail_url,
+                                initial_publication_date, publication_end_date, template_text,
+                                scraped_at, user_status, availability_status)
+                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),'unseen','active')
+                            ON CONFLICT(job_id) DO UPDATE SET
+                                title          = excluded.title,
+                                company_name   = CASE WHEN excluded.company_name != '' THEN excluded.company_name ELSE company_name END,
+                                scraped_at     = excluded.scraped_at,
+                                availability_status = 'active';
+                        )";
+    exec_write(db, sql_insert_str, {
+        job.job_id,
+        job.title,
+        job.company_name,
+        job.place,
+        job.zipcode,
+        job.canton_code,
+        std::to_string(job.employment_grade),
+        job.application_url,
+        job.detail_url,
+        job.pub_date,
+        job.end_date,
+        job.template_text
+    });
+}
+
+void delete_expired_jobs(sqlite3* db) {
+    exec_write(db, R"(
+        DELETE FROM jobs
+        WHERE publication_end_date != '' AND publication_end_date < date('now')
+    )", {});
+}

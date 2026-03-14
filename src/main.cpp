@@ -438,58 +438,31 @@ int main() {
                     try {
                         json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + job_id));
 
-                        std::string title        = detail.value("title", "");
-                        std::string company_name = detail.contains("company") ? detail["company"].value("name", "") : "";
-                        std::string place        = detail.value("place", "");
-                        std::string zipcode      = detail.value("zipcode", "");
-                        std::string canton_code  = (detail.contains("locations") && detail["locations"].size() > 0)
-                                                   ? detail["locations"][0].value("cantonCode", "N/A") : "N/A";
-                        int employment_grade     = detail.value("employment_grade", 100);
-                        std::string app_url      = detail.value("application_url", "");
-                        std::string detail_url   = (detail.contains("_links") && detail["_links"].contains("detail_de"))
-                                                   ? detail["_links"]["detail_de"].value("href", "") : "";
-                        std::string pub_date     = detail.value("publication_date", "");
-                        std::string end_date     = detail.value("publication_end_date", "");
-                        std::string tmpl         = detail.contains("template_text") ? detail["template_text"].dump() : "";
+                        Job job;
+                        job.job_id           = doc["id"];
+                        job.title            = detail.value("title", "");
+                        job.company_name     = detail.contains("company") ? detail["company"].value("name", "") : "";
+                        job.place            = detail.value("place", "");
+                        job.zipcode          = detail.value("zipcode", "");
+                        job.canton_code      = (detail.contains("locations") && detail["locations"].size() > 0)
+                                               ? detail["locations"][0].value("cantonCode", "N/A") : "N/A";
+                        job.employment_grade = detail.value("employment_grade", 100);
+                        job.application_url  = detail.value("application_url", "");
+                        job.detail_url       = (detail.contains("_links") && detail["_links"].contains("detail_de"))
+                                               ? detail["_links"]["detail_de"].value("href", "") : "";
+                        job.pub_date         = detail.value("publication_date", "");
+                        job.end_date         = detail.value("publication_end_date", "");
+                        job.template_text    = detail.contains("template_text") ? detail["template_text"].dump() : "";
 
-                        sqlite3_stmt* stmt;
-                        sqlite3_prepare_v2(db, R"(
-                            INSERT INTO jobs (job_id, title, company_name, place, zipcode, canton_code,
-                                employment_grade, application_url, detail_url,
-                                initial_publication_date, publication_end_date, template_text,
-                                scraped_at, user_status, availability_status)
-                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'),'unseen','active')
-                            ON CONFLICT(job_id) DO UPDATE SET
-                                title          = excluded.title,
-                                company_name   = CASE WHEN excluded.company_name != '' THEN excluded.company_name ELSE company_name END,
-                                scraped_at     = excluded.scraped_at,
-                                availability_status = 'active';
-                        )", -1, &stmt, nullptr);
-                        sqlite3_bind_text(stmt,  1, job_id.c_str(),       -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  2, title.c_str(),        -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  3, company_name.c_str(), -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  4, place.c_str(),        -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  5, zipcode.c_str(),      -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  6, canton_code.c_str(),  -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_int (stmt,  7, employment_grade);
-                        sqlite3_bind_text(stmt,  8, app_url.c_str(),      -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt,  9, detail_url.c_str(),   -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt, 10, pub_date.c_str(),     -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt, 11, end_date.c_str(),     -1, SQLITE_TRANSIENT);
-                        sqlite3_bind_text(stmt, 12, tmpl.c_str(),         -1, SQLITE_TRANSIENT);
-                        if (sqlite3_step(stmt) == SQLITE_DONE) inserted++;
-                        sqlite3_finalize(stmt);
+                        insert_job(db, job);
+                        inserted++;
 
                     } catch (...) {
                         std::cerr << "Failed to parse detail for job: " << job_id << std::endl;
                     }
                 }
 
-                // Delete jobs whose listing period has ended
-                sqlite3_exec(db, R"(
-                    DELETE FROM jobs
-                    WHERE publication_end_date != '' AND publication_end_date < date('now')
-                )", nullptr, nullptr, nullptr);
+                delete_expired_jobs(db);
 
             } catch (...) {
                 std::cerr << "Failed to parse search results for query: " << q << std::endl;
