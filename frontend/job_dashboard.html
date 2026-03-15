@@ -106,6 +106,17 @@
       background:var(--accent-glow);
     }
     .search-input::placeholder { color:var(--text3); }
+    .search-clear {
+      position:absolute; right:8px; top:50%;
+      transform:translateY(-50%);
+      background:none; border:none;
+      color:var(--text3); font-size:14px;
+      cursor:pointer; padding:2px 4px;
+      line-height:1; display:none;
+      transition:color 0.15s;
+    }
+    .search-clear:hover { color:var(--text2); }
+    .search-wrap:has(.search-clear[style*="block"]) .search-input { padding-right:28px; }
     .search-icon {
       position:absolute; left:10px; top:50%;
       transform:translateY(-50%);
@@ -622,6 +633,119 @@
       border-radius:0 6px 6px 0;
       line-height:1.5;
     }
+
+    /* ── SETTINGS MODAL ── */
+    .modal-overlay {
+      position:fixed; inset:0;
+      background:rgba(0,0,0,0.6);
+      backdrop-filter:blur(4px);
+      z-index:1000;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; pointer-events:none;
+      transition:opacity 0.2s;
+    }
+    .modal-overlay.open { opacity:1; pointer-events:all; }
+    .modal {
+      background:var(--surface);
+      border:1px solid var(--border2);
+      border-radius:12px;
+      width:640px;
+      max-height:80vh;
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+    }
+    .modal-header {
+      padding:16px 20px;
+      border-bottom:1px solid var(--border);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      flex-shrink:0;
+    }
+    .modal-title {
+      font-size:12px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.14em;
+      color:var(--text2);
+    }
+    .modal-close {
+      background:transparent; border:none;
+      color:var(--text3); font-size:18px;
+      cursor:pointer; padding:2px 6px;
+      border-radius:4px; transition:color 0.15s;
+    }
+    .modal-close:hover { color:var(--text); }
+    .modal-body { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:20px; }
+    .modal-footer {
+      padding:14px 20px;
+      border-top:1px solid var(--border);
+      display:flex; justify-content:flex-end; gap:8px;
+      flex-shrink:0;
+    }
+    .cfg-section { display:flex; flex-direction:column; gap:10px; }
+    .cfg-section-title {
+      font-size:9px; font-weight:700;
+      text-transform:uppercase; letter-spacing:0.18em;
+      color:var(--text3);
+      display:flex; align-items:center; gap:10px;
+    }
+    .cfg-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+    .cfg-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .cfg-field { display:flex; flex-direction:column; gap:4px; }
+    .cfg-field.full { grid-column:1/-1; }
+    .cfg-label { font-size:10px; color:var(--text3); font-weight:500; }
+    .cfg-input {
+      background:var(--surface2);
+      border:1px solid var(--border2);
+      color:var(--text);
+      font-family:'JetBrains Mono', monospace;
+      font-size:11px;
+      padding:6px 10px;
+      border-radius:6px;
+      outline:none;
+      transition:border-color 0.15s;
+      width:100%;
+    }
+    .cfg-input:focus { border-color:rgba(96,165,250,0.4); }
+    .cfg-textarea {
+      background:var(--surface2);
+      border:1px solid var(--border2);
+      color:var(--text);
+      font-family:'JetBrains Mono', monospace;
+      font-size:11px;
+      padding:8px 10px;
+      border-radius:6px;
+      outline:none;
+      resize:vertical;
+      min-height:70px;
+      width:100%;
+      transition:border-color 0.15s;
+      line-height:1.6;
+    }
+    .cfg-textarea:focus { border-color:rgba(96,165,250,0.4); }
+    .cfg-hint { font-size:10px; color:var(--text3); font-style:italic; }
+    .modal-save-btn {
+      padding:7px 20px;
+      background:rgba(96,165,250,0.15);
+      border:1px solid rgba(96,165,250,0.4);
+      color:var(--accent);
+      font-family:'Inter', sans-serif;
+      font-size:11px; font-weight:600;
+      cursor:pointer; border-radius:6px;
+      transition:all 0.15s;
+    }
+    .modal-save-btn:hover { background:var(--accent); color:#fff; }
+    .modal-cancel-btn {
+      padding:7px 20px;
+      background:transparent;
+      border:1px solid var(--border2);
+      color:var(--text3);
+      font-family:'Inter', sans-serif;
+      font-size:11px; font-weight:600;
+      cursor:pointer; border-radius:6px;
+      transition:all 0.15s;
+    }
+    .modal-cancel-btn:hover { color:var(--text2); border-color:var(--border2); background:var(--surface2); }
   </style>
 </head>
 <body>
@@ -636,6 +760,7 @@
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
     <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city..." oninput="onSearch()">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
   </div>
   <button class="tool-btn rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
   <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
@@ -648,6 +773,7 @@
     <button class="filter-btn" onclick="setFilter(this,'interested')">Starred</button>
     <button class="filter-btn" onclick="setFilter(this,'applied')">Applied</button>
   </div>
+  <button class="tool-btn settings-btn" id="settings-btn" onclick="openSettings()">⚙ Settings</button>
   <div class="status-dot-wrap">
     <div class="status-dot" id="status-dot"></div>
     <span id="status-label">—</span>
@@ -678,15 +804,33 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="settings-overlay" onclick="closeSettingsOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">⚙ Settings</span>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body" id="settings-body">
+      <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel-btn" onclick="closeSettings()">Cancel</button>
+      <button class="modal-save-btn" onclick="saveSettings()">Save & Reload Config</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-  const GET_URL     = 'http://localhost:8080/api/jobs';
-  const UPDATE_URL  = 'http://localhost:8080/api/jobs/update';
+  const GET_URL    = 'http://localhost:8080/api/jobs';
+  const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
   const RESCORE_URL = 'http://localhost:8080/api/score';
-  const SCRAPE_URL  = 'http://localhost:8080/api/scrape/jobs';
-  const DETAILS_URL = 'http://localhost:8080/api/scrape/details';
+  const SCRAPE_URL   = 'http://localhost:8080/api/scrape/jobs';
+  const DETAILS_URL  = 'http://localhost:8080/api/scrape/details';
   const ENRICH_URL  = 'http://localhost:8080/api/enrich';
+  const CONFIG_GET_URL  = 'http://localhost:8080/api/config';
+  const CONFIG_POST_URL = 'http://localhost:8080/api/config';
 
   // ── PERSONAL SKILL PREFERENCES ──────────────────────────────────────────────
   // Dashed blue — curious / would enjoy learning (no point effect)
@@ -727,6 +871,14 @@
 
   function onSearch() {
     searchQuery = document.getElementById('search-input').value.toLowerCase();
+    document.getElementById('search-clear').style.display = searchQuery ? 'block' : 'none';
+    renderList();
+  }
+
+  function clearSearch() {
+    document.getElementById('search-input').value = '';
+    searchQuery = '';
+    document.getElementById('search-clear').style.display = 'none';
     renderList();
   }
 
@@ -1003,6 +1155,205 @@
     t.classList.add('show');
     setTimeout(()=>t.classList.remove('show'),2000);
   }
+
+  // ── SETTINGS MODAL ─────────────────────────────────────────────────────────
+
+  let _cfgRaw = null;
+
+  async function openSettings() {
+    document.getElementById('settings-overlay').classList.add('open');
+    document.getElementById('settings-body').innerHTML = '<div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>';
+    try {
+      const r = await fetch(CONFIG_GET_URL);
+      _cfgRaw = await r.json();
+      renderSettingsForm(_cfgRaw);
+    } catch(e) {
+      document.getElementById('settings-body').innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load config</div>';
+    }
+  }
+
+  function closeSettings() {
+    document.getElementById('settings-overlay').classList.remove('open');
+  }
+
+  let _modalMousedownTarget = null;
+  document.addEventListener('mousedown', e => { _modalMousedownTarget = e.target; });
+
+  function closeSettingsOnBg(e) {
+    // Only close if both mousedown AND mouseup landed on the overlay itself
+    // This prevents closing when user clicks+drags from inside (e.g. selecting a number)
+    if (e.target === document.getElementById('settings-overlay') &&
+            _modalMousedownTarget === document.getElementById('settings-overlay')) {
+      closeSettings();
+    }
+  }
+
+  function renderSettingsForm(cfg) {
+    const s = cfg.score_thresholds || {};
+    const hw = cfg.hardware_proximity_scores || {};
+    const sen = cfg.seniority_scores || {};
+    const cat = cfg.category_bonus || {};
+    const loc = cfg.location_default || {};
+
+    document.getElementById('settings-body').innerHTML = `
+      <div class="cfg-section">
+        <div class="cfg-section-title">Scraping</div>
+        <div class="cfg-grid">
+          <div class="cfg-field full">
+            <div class="cfg-label">Search Queries (one per line)</div>
+            <textarea class="cfg-textarea" id="cfg-queries">${(cfg.scrape_queries||[]).join('\n')}</textarea>
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label">Rows per Query</div>
+            <input class="cfg-input" id="cfg-rows" type="number" value="${cfg.scrape_rows||50}">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label">Enrich Limit</div>
+            <input class="cfg-input" id="cfg-enrich-limit" type="number" value="${cfg.enrich_limit||20}">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label">Detail Refresh Days</div>
+            <input class="cfg-input" id="cfg-refresh-days" type="number" value="${cfg.detail_refresh_days||7}">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label">Salary Min Threshold</div>
+            <input class="cfg-input" id="cfg-salary-min" type="number" value="${cfg.salary_min_threshold||0}">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Score Thresholds</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label">Strong</div>
+            <input class="cfg-input" id="cfg-strong" type="number" value="${s.strong||40}">
+          </div>
+          <div class="cfg-field">
+            <div class="cfg-label">Decent</div>
+            <input class="cfg-input" id="cfg-decent" type="number" value="${s.decent||20}">
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Hardware Proximity Scores</div>
+        <div class="cfg-grid">
+          <div class="cfg-field"><div class="cfg-label">High</div><input class="cfg-input" id="cfg-hw-high" type="number" value="${hw.high||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Medium</div><input class="cfg-input" id="cfg-hw-medium" type="number" value="${hw.medium||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Low</div><input class="cfg-input" id="cfg-hw-low" type="number" value="${hw.low||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">None</div><input class="cfg-input" id="cfg-hw-none" type="number" value="${hw.none||0}"></div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Seniority Scores</div>
+        <div class="cfg-grid">
+          <div class="cfg-field"><div class="cfg-label">Intern</div><input class="cfg-input" id="cfg-sen-intern" type="number" value="${sen.intern||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Junior</div><input class="cfg-input" id="cfg-sen-junior" type="number" value="${sen.junior||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Mid</div><input class="cfg-input" id="cfg-sen-mid" type="number" value="${sen.mid||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Senior</div><input class="cfg-input" id="cfg-sen-senior" type="number" value="${sen.senior||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Lead</div><input class="cfg-input" id="cfg-sen-lead" type="number" value="${sen.lead||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">PhD</div><input class="cfg-input" id="cfg-sen-phd" type="number" value="${sen.PhD||0}"></div>
+          <div class="cfg-field"><div class="cfg-label">Unspecified</div><input class="cfg-input" id="cfg-sen-unspec" type="number" value="${sen.seniority_unspecified||0}"></div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Category Bonus</div>
+        <div class="cfg-grid">
+          <div class="cfg-field">
+            <div class="cfg-label">Points</div>
+            <input class="cfg-input" id="cfg-cat-pts" type="number" value="${cat.pts||0}">
+          </div>
+          <div class="cfg-field full">
+            <div class="cfg-label">Categories (one per line)</div>
+            <textarea class="cfg-textarea" id="cfg-cat-list">${(cat.categories||[]).join('\n')}</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Wanted Skills</div>
+        <div class="cfg-field full">
+          <div class="cfg-label">Format: skill name, points (one per line)</div>
+          <textarea class="cfg-textarea" id="cfg-wanted-skills" style="min-height:100px">${(cfg.wanted_skills||[]).map(s=>s.name+', '+s.pts).join('\n')}</textarea>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-section-title">Penalty Skills</div>
+        <div class="cfg-field full">
+          <div class="cfg-label">Format: skill name, points (one per line, points should be negative)</div>
+          <textarea class="cfg-textarea" id="cfg-penalty-skills" style="min-height:80px">${(cfg.penalty_skills||[]).map(s=>s.name+', '+s.pts).join('\n')}</textarea>
+        </div>
+      </div>
+    `;
+  }
+
+  function parseSkillLines(text) {
+    return text.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
+      const lastComma = l.lastIndexOf(',');
+      return { name: l.substring(0, lastComma).trim(), pts: parseInt(l.substring(lastComma+1).trim()) || 0 };
+    });
+  }
+
+  async function saveSettings() {
+    if (!_cfgRaw) return;
+    try {
+      // Build updated config by merging changes into original (preserves location_rules etc.)
+      const updated = JSON.parse(JSON.stringify(_cfgRaw));
+      updated.scrape_queries    = document.getElementById('cfg-queries').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      updated.scrape_rows       = parseInt(document.getElementById('cfg-rows').value);
+      updated.enrich_limit      = parseInt(document.getElementById('cfg-enrich-limit').value);
+      updated.detail_refresh_days = parseInt(document.getElementById('cfg-refresh-days').value);
+      updated.salary_min_threshold = parseInt(document.getElementById('cfg-salary-min').value);
+      updated.score_thresholds  = { strong: parseInt(document.getElementById('cfg-strong').value), decent: parseInt(document.getElementById('cfg-decent').value) };
+      updated.hardware_proximity_scores = {
+        high: parseInt(document.getElementById('cfg-hw-high').value),
+        medium: parseInt(document.getElementById('cfg-hw-medium').value),
+        low: parseInt(document.getElementById('cfg-hw-low').value),
+        none: parseInt(document.getElementById('cfg-hw-none').value),
+      };
+      updated.seniority_scores = {
+        intern: parseInt(document.getElementById('cfg-sen-intern').value),
+        junior: parseInt(document.getElementById('cfg-sen-junior').value),
+        mid: parseInt(document.getElementById('cfg-sen-mid').value),
+        senior: parseInt(document.getElementById('cfg-sen-senior').value),
+        lead: parseInt(document.getElementById('cfg-sen-lead').value),
+        PhD: parseInt(document.getElementById('cfg-sen-phd').value),
+        seniority_unspecified: parseInt(document.getElementById('cfg-sen-unspec').value),
+      };
+      updated.category_bonus = {
+        pts: parseInt(document.getElementById('cfg-cat-pts').value),
+        categories: document.getElementById('cfg-cat-list').value.split('\n').map(s=>s.trim()).filter(Boolean),
+      };
+      updated.wanted_skills  = parseSkillLines(document.getElementById('cfg-wanted-skills').value);
+      updated.penalty_skills = parseSkillLines(document.getElementById('cfg-penalty-skills').value);
+
+      const r = await fetch(CONFIG_POST_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(updated) });
+      const data = await r.json();
+      if (r.ok) {
+        showToast('Config saved & reloaded');
+        closeSettings();
+      } else {
+        showToast('Error: ' + (data.error || 'unknown'), true);
+      }
+    } catch(e) {
+      showToast('Save failed', true);
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeSettings();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('search-input').focus();
+      document.getElementById('search-input').select();
+    }
+  });
 
   init();
 

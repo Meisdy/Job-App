@@ -10,6 +10,8 @@
 
 using json = nlohmann::json;
 
+static const std::string CONFIG_PATH = "../config/config.json";
+
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
 static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
@@ -255,7 +257,7 @@ ConfigData parseConfig(const json& c) {
 }
 
 ConfigData loadConfig() {
-    std::ifstream file("../config/config.json");
+    std::ifstream file(CONFIG_PATH);
     if (!file.is_open())
         throw std::runtime_error("Could not open config.json");
 
@@ -865,6 +867,43 @@ int main() {
 
         std::cout << "Scoring done. Scored: " << scored << std::endl;
         res.set_content(json{{"ok", true}, {"scored", scored}}.dump(), "application/json");
+    });
+
+    // GET /api/config — return current config.json contents
+    server.Get("/api/config", [](const httplib::Request&, httplib::Response& res) {
+        try {
+            std::ifstream f(CONFIG_PATH);
+            if (!f.is_open()) throw std::runtime_error("Could not open config.json");
+            std::string body((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+            res.set_content(body, "application/json");
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content("{\"error\":\"" + std::string(e.what()) + "}", "application/json");
+        }
+    });
+
+    // POST /api/config — save new config and hot-reload
+    server.Post("/api/config", [&config](const httplib::Request& req, httplib::Response& res) {
+        try {
+            // Validate before writing
+            json incoming = json::parse(req.body);
+            validateConfig(incoming);
+
+            // Write to disk
+            std::ofstream f(CONFIG_PATH);
+            if (!f.is_open()) throw std::runtime_error("Could not write config.json");
+            f << incoming.dump(2);
+            f.close();
+
+            // Hot-reload
+            config = loadConfig();
+            std::cout << "Config reloaded" << std::endl;
+            res.set_content("{\"ok\":true}", "application/json");
+        } catch (const std::exception& e) {
+            res.status = 400;
+            res.set_content("{\"error\":\"" + std::string(e.what()) + "\"}", "application/json");
+
+        }
     });
 
     // POST /api/debug/query — run arbitrary SQL and return plain text result
