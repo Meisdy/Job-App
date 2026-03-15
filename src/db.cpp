@@ -84,3 +84,43 @@ void delete_expired_jobs(sqlite3* db) {
         WHERE publication_end_date != '' AND publication_end_date < date('now')
     )", {});
 }
+
+void db_init(sqlite3 *db) {
+    // Enable parallel read and write
+    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+
+    // Create db if it doesnt exist
+    char* errMsg = nullptr;
+    int rc = sqlite3_exec(db, R"(
+        CREATE TABLE IF NOT EXISTS jobs (
+            job_id                   TEXT PRIMARY KEY,
+            title                    TEXT,
+            company_name             TEXT,
+            place                    TEXT,
+            zipcode                  TEXT,
+            canton_code              TEXT,
+            employment_grade         INTEGER,
+            application_url          TEXT,
+            detail_url               TEXT,
+            initial_publication_date TEXT,
+            publication_end_date     TEXT,
+            template_text            TEXT,
+            scraped_at               TEXT,
+            enriched_data            TEXT,
+            score                    INTEGER,
+            score_label              TEXT,
+            score_reasons            TEXT,
+            processed_at             TEXT,
+            user_status              TEXT,
+            rating                   INTEGER,
+            notes                    TEXT,
+            matched_skills           TEXT,
+            penalized_skills         TEXT,
+            availability_status      TEXT
+        );
+    )", nullptr, nullptr, &errMsg);
+    if (rc != SQLITE_OK) {
+        throw std::runtime_error("create db failed");
+    }
+
+}

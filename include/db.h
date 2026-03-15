@@ -25,6 +25,8 @@ struct Job {
     std::string template_text;
 };
 
+// Init db
+void db_init(sqlite3* db);
 
 // Delete job entry
 void delete_job(sqlite3* db, const std::string& job_id);

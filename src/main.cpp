@@ -292,43 +292,8 @@ int main() {
         return 1;
     }
     std::cout << "Database opened" << std::endl;
-    sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nullptr, nullptr, nullptr);
+    db_init(db);
 
-    // Create table
-    char* errMsg = nullptr;
-    int rc = sqlite3_exec(db, R"(
-        CREATE TABLE IF NOT EXISTS jobs (
-            job_id                   TEXT PRIMARY KEY,
-            title                    TEXT,
-            company_name             TEXT,
-            place                    TEXT,
-            zipcode                  TEXT,
-            canton_code              TEXT,
-            employment_grade         INTEGER,
-            application_url          TEXT,
-            detail_url               TEXT,
-            initial_publication_date TEXT,
-            publication_end_date     TEXT,
-            template_text            TEXT,
-            scraped_at               TEXT,
-            enriched_data            TEXT,
-            score                    INTEGER,
-            score_label              TEXT,
-            score_reasons            TEXT,
-            processed_at             TEXT,
-            user_status              TEXT,
-            rating                   INTEGER,
-            notes                    TEXT,
-            matched_skills           TEXT,
-            penalized_skills         TEXT,
-            availability_status      TEXT
-        );
-    )", nullptr, nullptr, &errMsg);
-    if (rc != SQLITE_OK) {
-        std::cerr << "Cannot create table: " << errMsg << std::endl;
-        sqlite3_free(errMsg);
-        return 1;
-    }
 
     // ── SERVER ───────────────────────────────────────────────────────────────
 
