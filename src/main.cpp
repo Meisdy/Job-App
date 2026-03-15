@@ -15,7 +15,7 @@ static const std::string CONFIG_PATH = "../config/config.json";
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
 static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::string* output) {
-    output->append((char*)contents, size * nmemb);
+    output->append(static_cast<char *>(contents), size * nmemb);
     return size * nmemb;
 }
 
@@ -337,8 +337,7 @@ int main() {
             job["availability_status"] = col(stmt, 17);
             job["detail_url"]          = col(stmt, 18);
 
-            const char* raw = (const char*)sqlite3_column_text(stmt, 16);
-            if (raw) {
+            if (const char* raw = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 16))) {
                 try {
                     json outer = json::parse(std::string(raw));
                     job["enriched_data"] = outer.is_string()
@@ -574,7 +573,7 @@ int main() {
         const int templateMaxChars  = 3000; // Change this soon
         const int enrichMaxTokens   = 6000; // Change this soon
 
-        for (int i = 0; i < (int)jobs.size() && i < enrichLimit; i++) {
+        for (int i = 0; i < static_cast<int>(jobs.size()) && i < enrichLimit; i++) {
             auto& job = jobs[i];
             std::string job_id = job["job_id"];
             std::string title  = job["title"];
@@ -582,12 +581,12 @@ int main() {
             std::cout << "[DEBUG] Enriching job " << i << ": " << job_id << " - " << job["title"] << std::endl;
 
             // Truncate and sanitize description before sending
-            if ((int)tmpl.size() > templateMaxChars) {
+            if (static_cast<int>(tmpl.size()) > templateMaxChars) {
                 tmpl = tmpl.substr(0, templateMaxChars);
-                // Walk back to a valid UTF-8 boundary so we don't split a multi-byte character
+                // Walk back to a valid UTF-8 boundary so we don't split a multibyte character
                 while (!tmpl.empty() && (tmpl.back() & 0xC0) == 0x80)
                     tmpl.pop_back(); // drop continuation bytes (10xxxxxx)
-                if (!tmpl.empty() && (unsigned char)tmpl.back() >= 0xC0)
+                if (!tmpl.empty() && static_cast<unsigned char>(tmpl.back()) >= 0xC0)
                     tmpl.pop_back(); // drop the orphaned leading byte
             }
             std::replace(tmpl.begin(), tmpl.end(), '"', '\'');
@@ -598,11 +597,11 @@ int main() {
             std::string userPrompt =
                 "Job ID: "          + job_id + "\n"
                 "Title: "           + title  + "\n"
-                "Company: "         + (std::string)job["company_name"] + "\n"
-                "Location: "        + (std::string)job["place"] + ", " + (std::string)job["zipcode"] + "\n"
-                "Employment Grade: "+ std::to_string((int)job["employment_grade"]) + "%\n"
-                "Published: "       + (std::string)job["initial_publication_date"] + "\n"
-                "End Date: "        + (std::string)job["publication_end_date"] + "\n\n"
+                "Company: "         + static_cast<std::string>(job["company_name"]) + "\n"
+                "Location: "        + static_cast<std::string>(job["place"]) + ", " + static_cast<std::string>(job["zipcode"]) + "\n"
+                "Employment Grade: "+ std::to_string(static_cast<int>(job["employment_grade"])) + "%\n"
+                "Published: "       + static_cast<std::string>(job["initial_publication_date"]) + "\n"
+                "End Date: "        + static_cast<std::string>(job["publication_end_date"]) + "\n\n"
                 "Job Description:\n"+ tmpl;
 
             json requestBody = {
@@ -920,7 +919,7 @@ int main() {
         while (sqlite3_step(stmt) == SQLITE_ROW) {
             for (int i = 0; i < cols; i++) {
                 if (i) out += " | ";
-                const char* v = (const char*)sqlite3_column_text(stmt, i);
+                const char* v = reinterpret_cast<const char *>(sqlite3_column_text(stmt, i));
                 out += v ? v : "NULL";
             }
             out += "\n";
