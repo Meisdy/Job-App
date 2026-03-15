@@ -3,6 +3,7 @@
   "scrape_rows": 50,
   "enrich_limit": 100,
   "salary_min_threshold": 75000,
+  "detail_refresh_days": 21, 
   "score_thresholds": {
     "strong": 35,
     "decent": 15

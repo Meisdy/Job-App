@@ -124,3 +124,38 @@ void db_init(sqlite3 *db) {
     }
 
 }
+
+void update_job_details(sqlite3* db, const Job& job) {
+    exec_write(db,
+        "UPDATE jobs SET title = ?, company_name = ?, place = ?, zipcode = ?, canton_code = ?, detail_url = ?, initial_publication_date = ?, publication_end_date = ?, template_text = ?, scraped_at = datetime('now') WHERE job_id = ?",
+        {
+            job.title,
+            job.company_name,
+            job.place,
+            job.zipcode,
+            job.canton_code,
+            job.detail_url,
+            job.pub_date,
+            job.end_date,
+            job.template_text,
+            job.job_id
+        }
+    );
+}
+
+std::vector<std::string> get_jobs_needing_details(sqlite3* db, const int& refresh_days) {
+    std::vector<std::string> ids;
+    exec_query(db, "SELECT job_id FROM jobs WHERE template_text IS NULL OR template_text = '' OR scraped_at < datetime('now', '-' || ? || ' days')",
+        [&](sqlite3_stmt* stmt) {
+            ids.push_back(col(stmt, 0));
+        },
+        {std::to_string(refresh_days)}
+    );
+    return ids;
+}
+
+// db.cpp — the implementation
+std::string col(sqlite3_stmt* s, int i) {
+    const char* v = (const char*)sqlite3_column_text(s, i);
+    return v ? v : "";
+}

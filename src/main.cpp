@@ -78,13 +78,6 @@ std::string httpPost(const std::string& url, const std::string& apiKey, const st
     return response;
 }
 
-// ── DB HELPER ────────────────────────────────────────────────────────────────
-
-// Safely read a TEXT column, returning empty string if NULL
-std::string col(sqlite3_stmt* s, int i) {
-    const char* v = (const char*)sqlite3_column_text(s, i);
-    return v ? v : "";
-}
 
 // ── SCORING HELPER ───────────────────────────────────────────────────────────
 
@@ -129,6 +122,7 @@ struct ConfigData {
     std::vector<std::string> scrape_queries;
     int                      scrape_rows{};
     int                      enrich_limit{};
+    int                      detail_refresh_days{};
 
     // Scoring thresholds
     int score_strong_threshold{};
@@ -192,6 +186,7 @@ void validateConfig(const json& config_data) {
     require("penalty_skills");
     require("location_rules");
     require("location_default");
+    require("detail_refresh_days");
 }
 
 ConfigData parseConfig(const json& c) {
@@ -201,6 +196,7 @@ ConfigData parseConfig(const json& c) {
     cfg.scrape_queries = c["scrape_queries"].get<std::vector<std::string>>();
     cfg.scrape_rows    = c.value("scrape_rows", 50);
     cfg.enrich_limit   = c.value("enrich_limit", 20);
+    cfg.detail_refresh_days = c["detail_refresh_days"].get<int>();
 
     // Thresholds
     cfg.score_strong_threshold = c["score_thresholds"]["strong"].get<int>();
@@ -372,6 +368,7 @@ int main() {
         }
     });
 
+    // Delete /api/jobs/:id - deletes a job
     server.Delete("/api/jobs/:id", [&db](const httplib::Request& req, httplib::Response& res) {
         try {
             delete_job(db, req.path_params.at("id"));
@@ -386,7 +383,6 @@ int main() {
     server.Post("/api/scrape", [&db, &config](const httplib::Request&, httplib::Response& res) {
         std::cout << "Scrape started..." << std::endl;
         int inserted = 0;
-
         auto queries  = config.scrape_queries;
         int rows = config.scrape_rows;
 
@@ -436,6 +432,91 @@ int main() {
 
         std::cout << "Scrape done. Inserted/updated: " << inserted << std::endl;
         res.set_content(json{{"ok", true}, {"count", inserted}}.dump(), "application/json");
+    });
+
+    // POST /api/scrape/jobs NEW
+    server.Post("/api/scrape/jobs", [&db, &config](const httplib::Request&, httplib::Response& res) {
+        std::cout << "Scrape started" << std::endl;
+        std::vector<std::string> scrape_queries = config.scrape_queries;
+        const int rows = config.scrape_rows;
+        int inserted = 0;
+
+        for (const auto& q : scrape_queries) {
+            std::string url = "https://job-search-api.jobs.ch/search/semantic?query=" + urlEncode(q) + "&rows=" + std::to_string(rows) + "&page=1";
+
+            try {
+                json searchData = json::parse(httpGet(url));
+                auto documents  = searchData["documents"];
+                std::cout << "Query: " << q << " - " << documents.size() << " results" << std::endl;
+
+                for (auto& doc : documents) {
+
+                    Job job;
+                    job.job_id           = doc["id"];
+                    job.title            = doc.value("title", "");
+                    job.company_name     = doc.contains("company") ? doc["company"].value("name", "") : "";
+                    job.place            = doc.value("place", "");
+                    job.zipcode          = doc.value("zipcode", "");
+                    job.canton_code      = (doc.contains("locations") && doc["locations"].size() > 0)
+                                           ? doc["locations"][0].value("cantonCode", "N/A") : "N/A";
+                    job.employment_grade = doc.value("employment_grade", 100);
+                    job.application_url  = doc.value("application_url", "");
+                    job.detail_url       = (doc.contains("_links") && doc["_links"].contains("detail_de"))
+                                           ? doc["_links"]["detail_de"].value("href", "") : "";
+                    job.pub_date         = doc.value("publication_date", "");
+                    job.end_date         = doc.value("publication_end_date", "");
+
+                    insert_job(db, job);
+                    inserted++;
+
+                }
+
+                delete_expired_jobs(db);
+
+            } catch (...) {
+                std::cerr << "Failed to parse search results for query: " << q << std::endl;
+            }
+
+        }
+
+        std::cout << "Scrape done. Inserted/updated: " << inserted << std::endl;
+        res.set_content(json{{"ok", true}, {"count", inserted}}.dump(), "application/json");
+    });
+
+    server.Post("/api/scrape/details", [&db, &config](const httplib::Request&, httplib::Response& res) {
+        std::vector<std::string> ids = get_jobs_needing_details(db, config.detail_refresh_days);
+        std::cout << "Jobs needing details: " << ids.size() << std::endl;
+
+        int updated = 0, failed = 0;
+        for (const auto& job_id : ids) {
+            try {
+                json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + job_id));
+
+                Job job;
+                job.job_id           = job_id;
+                job.title            = detail.value("title", "");
+                job.company_name     = detail.contains("company") ? detail["company"].value("name", "") : "";
+                job.place            = detail.value("place", "");
+                job.zipcode          = detail.value("zipcode", "");
+                job.canton_code      = (detail.contains("locations") && detail["locations"].size() > 0)
+                                       ? detail["locations"][0].value("cantonCode", "N/A") : "N/A";
+                job.detail_url       = (detail.contains("_links") && detail["_links"].contains("detail_de"))
+                                       ? detail["_links"]["detail_de"].value("href", "") : "";
+                job.pub_date         = detail.value("publication_date", "");
+                job.end_date         = detail.value("publication_end_date", "");
+                job.template_text    = detail.contains("template_text") ? detail["template_text"].dump() : "";
+
+                update_job_details(db, job);
+                updated++;
+
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to fetch details for job: " << job_id << " - " << e.what() << std::endl;
+                failed++;
+            }
+        }
+
+        std::cout << "Detail fetch done. Updated: " << updated << " Failed: " << failed << std::endl;
+        res.set_content(json{{"ok", true}, {"updated", updated}, {"failed", failed}}.dump(), "application/json");
     });
 
     // POST /api/enrich — send unenriched jobs to Mistral for data extraction

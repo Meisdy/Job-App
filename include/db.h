@@ -17,7 +17,7 @@ struct Job {
     std::string place;
     std::string zipcode;
     std::string canton_code;
-    int         employment_grade;
+    int         employment_grade {};  // explicitly 0
     std::string application_url;
     std::string detail_url;
     std::string pub_date;
@@ -39,5 +39,18 @@ void insert_job(sqlite3* db, const Job& job);
 
 // Delete expired jobs
 void delete_expired_jobs(sqlite3* db);
+
+// Get the jobs who need details
+std::vector<std::string> get_jobs_needing_details(sqlite3* db, const int& refresh_days);
+
+// Update job details
+void update_job_details(sqlite3* db, const Job& job);
+
+
+
+// ── DB HELPER ────────────────────────────────────────────────────────────────
+
+// db.h — just the signature
+std::string col(sqlite3_stmt* s, int i);
 
 #endif //JOB_APP_DB_H

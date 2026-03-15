@@ -527,9 +527,10 @@
     .tool-btn .spin { display:inline-block; animation:spin 0.9s linear infinite; }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
-    .rescore-btn:hover, .rescore-btn.running { border-color:rgba(251,191,36,0.45); color:var(--yellow); background:var(--yellow-dim); }
-    .scrape-btn:hover,  .scrape-btn.running  { border-color:rgba(52,211,153,0.45);  color:var(--green);  background:var(--green-dim); }
-    .enrich-btn:hover,  .enrich-btn.running  { border-color:rgba(139,92,246,0.45);  color:#a78bfa;       background:rgba(139,92,246,0.08); }
+    .rescore-btn:hover,  .rescore-btn.running  { border-color:rgba(251,191,36,0.45);  color:var(--yellow); background:var(--yellow-dim); }
+    .scrape-btn:hover,   .scrape-btn.running   { border-color:rgba(52,211,153,0.45);   color:var(--green);  background:var(--green-dim); }
+    .details-btn:hover,  .details-btn.running  { border-color:rgba(96,165,250,0.45);   color:var(--accent); background:var(--accent-glow); }
+    .enrich-btn:hover,   .enrich-btn.running   { border-color:rgba(139,92,246,0.45);   color:#a78bfa;       background:rgba(139,92,246,0.08); }
 
 
 
@@ -638,6 +639,7 @@
   </div>
   <button class="tool-btn rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
   <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
+  <button class="tool-btn details-btn" id="details-btn" onclick="fetchDetails()">⇩ Fetch Details</button>
   <button class="tool-btn enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
   <div class="filters">
     <button class="filter-btn active" onclick="setFilter(this,'all')">All</button>
@@ -679,10 +681,11 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const GET_URL    = 'http://localhost:8080/api/jobs';
-  const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
+  const GET_URL     = 'http://localhost:8080/api/jobs';
+  const UPDATE_URL  = 'http://localhost:8080/api/jobs/update';
   const RESCORE_URL = 'http://localhost:8080/api/score';
-  const SCRAPE_URL  = 'http://localhost:8080/api/scrape';
+  const SCRAPE_URL  = 'http://localhost:8080/api/scrape/jobs';
+  const DETAILS_URL = 'http://localhost:8080/api/scrape/details';
   const ENRICH_URL  = 'http://localhost:8080/api/enrich';
 
   // ── PERSONAL SKILL PREFERENCES ──────────────────────────────────────────────
@@ -1040,6 +1043,24 @@
       showToast('Scrape failed');
       btn.classList.remove('running');
       btn.innerHTML='⊕ Scrape Jobs';
+    }
+  }
+  async function fetchDetails(){
+    const btn=document.getElementById('details-btn');
+    if(btn.classList.contains('running')) return;
+    btn.classList.add('running');
+    btn.innerHTML='<span class="spin">⟳</span> Fetching...';
+    try {
+      const r=await fetch(DETAILS_URL,{method:'POST'});
+      const data=await r.json();
+      if(r.ok){
+        showToast('Fetched details for '+data.updated+' jobs — reloading...');
+        setTimeout(()=>{ btn.classList.remove('running'); btn.innerHTML='⇩ Fetch Details'; init(); },2000);
+      } else { throw new Error('Non-OK response'); }
+    } catch(e){
+      showToast('Fetch details failed');
+      btn.classList.remove('running');
+      btn.innerHTML='⇩ Fetch Details';
     }
   }
   async function enrichJobs(){
