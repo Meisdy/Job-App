@@ -459,7 +459,6 @@ int main() {
         res.set_content(json{{"ok", true}, {"updated", updated}, {"failed", failed}}.dump(), "application/json");
     });
 
-    // POST /api/enrich — send unenriched jobs to Mistral for data extraction
     server.Post("/api/enrich", [&db, &mistralApiKey, &config](const httplib::Request&, httplib::Response& res) {
         if (mistralApiKey.empty()) {
             res.status = 500;
@@ -467,7 +466,6 @@ int main() {
             return;
         }
 
-        // Load system prompt once
         std::string systemPrompt;
         try {
             std::ifstream f("../config/enrich_prompt.txt");
@@ -480,120 +478,84 @@ int main() {
 
         std::cout << "Enrichment started..." << std::endl;
 
-        // Fetch unenriched jobs
-        sqlite3_stmt* selectStmt;
-        sqlite3_prepare_v2(db, R"(
-            SELECT job_id, title, company_name, place, zipcode, employment_grade,
-                   initial_publication_date, publication_end_date, template_text
-            FROM jobs
-            WHERE enriched_data IS NULL OR enriched_data = ''
-            ORDER BY initial_publication_date DESC
-        )", -1, &selectStmt, nullptr);
-
-        std::vector<json> jobs;
-        while (sqlite3_step(selectStmt) == SQLITE_ROW) {
-            jobs.push_back({
-                {"job_id",                   col(selectStmt, 0)},
-                {"title",                    col(selectStmt, 1)},
-                {"company_name",             col(selectStmt, 2)},
-                {"place",                    col(selectStmt, 3)},
-                {"zipcode",                  col(selectStmt, 4)},
-                {"employment_grade",         sqlite3_column_int(selectStmt, 5)},
-                {"initial_publication_date", col(selectStmt, 6)},
-                {"publication_end_date",     col(selectStmt, 7)},
-                {"template_text",            col(selectStmt, 8)}
-            });
-        }
-        sqlite3_finalize(selectStmt);
+        std::vector<Job> jobs = get_unenriched_jobs(db);
         std::cout << "Jobs to enrich: " << jobs.size() << std::endl;
 
         int enriched = 0, failed = 0;
-        const int enrichLimit       = config.enrich_limit;
-        const int templateMaxChars  = 3000; // Change this soon
-        const int enrichMaxTokens   = 6000; // Change this soon
+        const int enrichLimit      = config.enrich_limit;
+        constexpr int templateMaxChars = 3000;
 
         for (int i = 0; i < static_cast<int>(jobs.size()) && i < enrichLimit; i++) {
-            auto& job = jobs[i];
-            std::string job_id = job["job_id"];
-            std::string title  = job["title"];
-            std::string tmpl   = job["template_text"];
-            std::cout << "[DEBUG] Enriching job " << i << ": " << job_id << " - " << job["title"] << std::endl;
+            const Job& job = jobs[i];
+            std::string tmpl = job.template_text;
+            std::cout << "[DEBUG] Enriching job " << i << ": " << job.job_id << " - " << job.title << std::endl;
 
             // Truncate and sanitize description before sending
             if (static_cast<int>(tmpl.size()) > templateMaxChars) {
                 tmpl = tmpl.substr(0, templateMaxChars);
                 // Walk back to a valid UTF-8 boundary so we don't split a multibyte character
                 while (!tmpl.empty() && (tmpl.back() & 0xC0) == 0x80)
-                    tmpl.pop_back(); // drop continuation bytes (10xxxxxx)
+                    tmpl.pop_back();
                 if (!tmpl.empty() && static_cast<unsigned char>(tmpl.back()) >= 0xC0)
-                    tmpl.pop_back(); // drop the orphaned leading byte
+                    tmpl.pop_back();
             }
             std::replace(tmpl.begin(), tmpl.end(), '"', '\'');
             std::cout << "[DEBUG] Template length: " << tmpl.size() << std::endl;
 
             std::string apiResponse;
             try {
-            std::string userPrompt =
-                "Job ID: "          + job_id + "\n"
-                "Title: "           + title  + "\n"
-                "Company: "         + static_cast<std::string>(job["company_name"]) + "\n"
-                "Location: "        + static_cast<std::string>(job["place"]) + ", " + static_cast<std::string>(job["zipcode"]) + "\n"
-                "Employment Grade: "+ std::to_string(static_cast<int>(job["employment_grade"])) + "%\n"
-                "Published: "       + static_cast<std::string>(job["initial_publication_date"]) + "\n"
-                "End Date: "        + static_cast<std::string>(job["publication_end_date"]) + "\n\n"
-                "Job Description:\n"+ tmpl;
+                const int enrichMaxTokens  = 6000;
+                std::string userPrompt =
+                    "Job ID: "           + job.job_id       + "\n"
+                    "Title: "            + job.title         + "\n"
+                    "Company: "          + job.company_name  + "\n"
+                    "Location: "         + job.place + ", "  + job.zipcode + "\n"
+                    "Employment Grade: " + std::to_string(job.employment_grade) + "%\n"
+                    "Published: "        + job.pub_date      + "\n"
+                    "End Date: "         + job.end_date       + "\n\n"
+                    "Job Description:\n" + tmpl;
 
-            json requestBody = {
-                {"model",           "mistral-small-latest"},
-                {"temperature",     0.1},
-                {"max_tokens",      enrichMaxTokens},
-                {"response_format", {{"type", "json_object"}}},
-                {"messages", json::array({
-                    {{"role", "system"}, {"content", systemPrompt}},
-                    {{"role", "user"},   {"content", userPrompt}}
-                })}
-            };
+                json requestBody = {
+                    {"model",           "mistral-small-latest"},
+                    {"temperature",     0.1},
+                    {"max_tokens",      enrichMaxTokens},
+                    {"response_format", {{"type", "json_object"}}},
+                    {"messages", json::array({
+                        {{"role", "system"}, {"content", systemPrompt}},
+                        {{"role", "user"},   {"content", userPrompt}}
+                    })}
+                };
 
-            std::cout << "[DEBUG] Sending request to Mistral..." << std::endl;
-            apiResponse = httpPost(
-                "https://api.mistral.ai/v1/chat/completions", mistralApiKey, requestBody.dump());
-            std::cout << "[DEBUG] Got response (" << apiResponse.size() << " bytes)" << std::endl;
+                apiResponse = httpPost("https://api.mistral.ai/v1/chat/completions", mistralApiKey, requestBody.dump());
+                std::cout << "[DEBUG] Got response (" << apiResponse.size() << " bytes)" << std::endl;
 
-            try {
-                std::string content = json::parse(apiResponse)["choices"][0]["message"]["content"];
+                try {
+                    std::string content = json::parse(apiResponse)["choices"][0]["message"]["content"];
 
-                // Strip markdown fences if present
-                if (content.size() >= 7 && content.substr(0, 7) == "```json") {
-                    content = content.substr(7);
-                    size_t end = content.rfind("```");
-                    if (end != std::string::npos) content = content.substr(0, end);
+                    // Strip markdown fences if present
+                    if (content.size() >= 7 && content.substr(0, 7) == "```json") {
+                        content = content.substr(7);
+                        size_t end = content.rfind("```");
+                        if (end != std::string::npos) content = content.substr(0, end);
+                    }
+                    while (!content.empty() && std::isspace(content.front())) content.erase(content.begin());
+                    while (!content.empty() && std::isspace(content.back()))  content.pop_back();
+
+                    json validated = json::parse(content); // throws if invalid
+
+                    save_enriched_data(db, job.job_id, content);
+                    enriched++;
+                    std::cout << "Enriched: " << job.title << std::endl;
+
+                } catch (const std::exception& e) {
+                    std::cerr << "[ERROR] Failed to parse response for: " << job.title << " — " << e.what() << std::endl;
+                    std::cerr << "[DEBUG] Raw API response (" << apiResponse.size() << " bytes): "
+                              << (apiResponse.empty() ? "<empty>" : apiResponse.substr(0, 1000)) << std::endl;
+                    failed++;
                 }
-                while (!content.empty() && std::isspace(content.front())) content.erase(content.begin());
-                while (!content.empty() && std::isspace(content.back()))  content.pop_back();
-
-                json parsedContent = json::parse(content); // throws if invalid
-
-                sqlite3_stmt* stmt;
-                sqlite3_prepare_v2(db,
-                    "UPDATE jobs SET enriched_data = ?, processed_at = datetime('now') WHERE job_id = ?",
-                    -1, &stmt, nullptr);
-                sqlite3_bind_text(stmt, 1, content.c_str(), -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 2, job_id.c_str(),  -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
-
-                enriched++;
-                std::cout << "Enriched: " << title << std::endl;
 
             } catch (const std::exception& e) {
-                std::cerr << "[ERROR] Failed to parse response for: " << title << " — " << e.what() << std::endl;
-                std::cerr << "[DEBUG] Raw API response (" << apiResponse.size() << " bytes): "
-                          << (apiResponse.empty() ? "<empty>" : apiResponse.substr(0, 1000)) << std::endl;
-                failed++;
-            }
-
-            } catch (const std::exception& e) {
-                std::cerr << "[ERROR] Failed before/during API call for: " << title << " — " << e.what() << std::endl;
+                std::cerr << "[ERROR] Failed before/during API call for: " << job.title << " — " << e.what() << std::endl;
                 std::cerr << "[DEBUG] Raw API response (" << apiResponse.size() << " bytes): "
                           << (apiResponse.empty() ? "<empty>" : apiResponse.substr(0, 1000)) << std::endl;
                 failed++;
@@ -687,7 +649,7 @@ int main() {
                 int years = (expObj.contains("years_min") && !expObj["years_min"].is_null())
                     ? expObj["years_min"].get<int>() : 0;
                 if      (years >= 5) { score -= 20; reasons.push_back(std::to_string(years) + "y Exp Required (-20)"); }
-                else if (years >= 3) { score -= 10; reasons.push_back("2y+ Exp Required (-10)"); }
+                else if (years >= 3) { score -= 10; reasons.emplace_back("2y+ Exp Required (-10)"); }
 
                 // Required skills
                 json requiredSkills = (llm.contains("required_skills") && llm["required_skills"].is_array())
@@ -816,7 +778,7 @@ int main() {
             res.set_content(body, "application/json");
         } catch (const std::exception& e) {
             res.status = 500;
-            res.set_content("{\"error\":\"" + std::string(e.what()) + "}", "application/json");
+            res.set_content(R"({"error":")" + std::string(e.what()) + "}", "application/json");
         }
     });
 

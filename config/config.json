@@ -10,7 +10,7 @@
     "pts": 8
   },
   "detail_refresh_days": 21,
-  "enrich_limit": 50,
+  "enrich_limit": 10,
   "hardware_proximity_scores": {
     "high": 15,
     "low": -8,
@@ -358,7 +358,7 @@
     "Mechatronics Engineer",
     "Development Engineer"
   ],
-  "scrape_rows": 200,
+  "scrape_rows": 50,
   "seniority_scores": {
     "PhD": -20,
     "intern": -20,

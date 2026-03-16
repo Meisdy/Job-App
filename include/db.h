@@ -62,6 +62,12 @@ void update_job_details(sqlite3* db, const Job& job);
 // Get all jobs
 std::vector<JobRecord> get_all_jobs(sqlite3* db);
 
+// Get jobs that have not been enriched yet
+std::vector<Job> get_unenriched_jobs(sqlite3* db);
+
+// Save enriched data for a job
+void save_enriched_data(sqlite3* db, const std::string& job_id, const std::string& enriched_data);
+
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 
 // db.h — just the signature

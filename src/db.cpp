@@ -193,3 +193,34 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
     });
     return jobs;
 }
+
+std::vector<Job> get_unenriched_jobs(sqlite3* db) {
+    std::vector<Job> jobs;
+    exec_query(db, R"(
+        SELECT job_id, title, company_name, place, zipcode, employment_grade,
+               initial_publication_date, publication_end_date, template_text
+        FROM jobs
+        WHERE enriched_data IS NULL OR enriched_data = ''
+        ORDER BY initial_publication_date DESC
+    )", [&](sqlite3_stmt* stmt) {
+        Job job;
+        job.job_id           = col(stmt, 0);
+        job.title            = col(stmt, 1);
+        job.company_name     = col(stmt, 2);
+        job.place            = col(stmt, 3);
+        job.zipcode          = col(stmt, 4);
+        job.employment_grade = sqlite3_column_int(stmt, 5);
+        job.pub_date         = col(stmt, 6);
+        job.end_date         = col(stmt, 7);
+        job.template_text    = col(stmt, 8);
+        jobs.push_back(job);
+    });
+    return jobs;
+}
+
+void save_enriched_data(sqlite3* db, const std::string& job_id, const std::string& enriched_data) {
+    exec_write(db,
+        "UPDATE jobs SET enriched_data = ?, processed_at = datetime('now') WHERE job_id = ?",
+        {enriched_data, job_id}
+    );
+}
