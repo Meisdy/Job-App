@@ -224,3 +224,22 @@ void save_enriched_data(sqlite3* db, const std::string& job_id, const std::strin
         {enriched_data, job_id}
     );
 }
+
+std::vector<EnrichedJob> get_enriched_jobs(sqlite3* db) {
+    std::vector<EnrichedJob> jobs;
+    exec_query(db, "SELECT job_id, zipcode, enriched_data FROM jobs WHERE enriched_data IS NOT NULL",
+        [&](sqlite3_stmt* stmt) {
+            jobs.push_back({col(stmt, 0), col(stmt, 1), col(stmt, 2)});
+        }
+    );
+    return jobs;
+}
+
+void save_job_score(sqlite3* db, const std::string& job_id, int score, const std::string& label,
+                    const std::string& reasons, const std::string& matched_skills,
+                    const std::string& penalized_skills) {
+    exec_write(db, R"(
+        UPDATE jobs SET score=?, score_label=?, score_reasons=?, matched_skills=?, penalized_skills=?
+        WHERE job_id=?
+    )", {std::to_string(score), label, reasons, matched_skills, penalized_skills, job_id});
+}

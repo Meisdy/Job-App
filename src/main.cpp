@@ -504,7 +504,7 @@ int main() {
 
             std::string apiResponse;
             try {
-                const int enrichMaxTokens  = 6000;
+                constexpr int enrichMaxTokens  = 6000;
                 std::string userPrompt =
                     "Job ID: "           + job.job_id       + "\n"
                     "Title: "            + job.title         + "\n"
@@ -573,18 +573,13 @@ int main() {
         int strongThreshold = config.score_strong_threshold;
         int decentThreshold = config.score_decent_threshold;
         auto hwScores = json::object({
-                    {"high", config.hw_high},
-                    {"medium", config.hw_medium},
-                    {"low", config.hw_low},
-                    {"none", config.hw_none}
-                });
+            {"high", config.hw_high}, {"medium", config.hw_medium},
+            {"low", config.hw_low},   {"none", config.hw_none}
+        });
         auto senScores = json::object({
-            {"intern", config.sen_intern},
-            {"junior", config.sen_junior},
-            {"mid", config.sen_mid},
-            {"senior", config.sen_senior},
-            {"lead", config.sen_lead},
-            {"PhD", config.sen_phd},
+            {"intern", config.sen_intern}, {"junior", config.sen_junior},
+            {"mid", config.sen_mid},       {"senior", config.sen_senior},
+            {"lead", config.sen_lead},     {"PhD", config.sen_phd},
             {"seniority_unspecified", config.sen_unspecified}
         });
         auto catBonus = json::object({
@@ -592,36 +587,20 @@ int main() {
             {"pts", config.category_pts}
         });
         auto wantedSkills = json::array();
-        for (const auto& skill : config.wanted_skills) {
-            wantedSkills.push_back(json::object({
-                {"name", skill.name},
-                {"pts", skill.pts}
-            }));
-        }
+        for (const auto& skill : config.wanted_skills)
+            wantedSkills.push_back({{"name", skill.name}, {"pts", skill.pts}});
+
         auto penaltySkills = json::array();
-        for (const auto& skill : config.penalty_skills) {
-            penaltySkills.push_back(json::object({
-                {"name", skill.name},
-                {"pts", skill.pts}
-            }));
-        };
+        for (const auto& skill : config.penalty_skills)
+            penaltySkills.push_back({{"name", skill.name}, {"pts", skill.pts}});
 
-        sqlite3_stmt* selectStmt;
-        sqlite3_prepare_v2(db, R"(
-            SELECT job_id, zipcode, enriched_data FROM jobs WHERE enriched_data IS NOT NULL
-        )", -1, &selectStmt, nullptr);
-
-        struct JobRow { std::string job_id, zipcode, enriched_raw; };
-        std::vector<JobRow> jobs;
-        while (sqlite3_step(selectStmt) == SQLITE_ROW)
-            jobs.push_back({col(selectStmt, 0), col(selectStmt, 1), col(selectStmt, 2)});
-        sqlite3_finalize(selectStmt);
+        std::vector<EnrichedJob> jobs = get_enriched_jobs(db);
         std::cout << "Jobs to score: " << jobs.size() << std::endl;
 
         int scored = 0;
         for (auto& row : jobs) {
             try {
-                json outer = json::parse(row.enriched_raw);
+                json outer = json::parse(row.enriched_data);
                 json llm   = outer.is_string() ? json::parse(outer.get<std::string>()) : outer;
 
                 int score = 0;
@@ -691,8 +670,8 @@ int main() {
                 auto salaryObj = llm.value("salary", json::object());
                 int salaryMin = (salaryObj.contains("min") && !salaryObj["min"].is_null() && salaryObj["min"].is_number())
                     ? salaryObj["min"].get<int>() : 0;
-                int salaryMinThreshold = config.salary_min_threshold;
-                if (salaryMin > 0 && salaryMin < salaryMinThreshold) { score -= 20; reasons.push_back("Salary < " + std::to_string(salaryMinThreshold/1000) + "k (-20)"); }
+                if (salaryMin > 0 && salaryMin < config.salary_min_threshold)
+                    { score -= 20; reasons.push_back("Salary < " + std::to_string(config.salary_min_threshold/1000) + "k (-20)"); }
 
                 // Location
                 std::string zipStr = row.zipcode;
@@ -702,39 +681,23 @@ int main() {
 
                 if (zip > 0) {
                     int p = zip / 100;
-                    auto& locRules = config.location_rules;
-                    int defaultPts = config.location_default_pts;
-                    std::string defaultLabel = config.location_default_label;
-
-
                     bool matched = false;
-                    for (auto& rule : locRules) {
+                    for (auto& rule : config.location_rules) {
                         bool hit = false;
-                        if (rule.match == "range") {
-                            hit = (zip >= rule.values[0] && zip <= rule.values[1]);
-                        } else if (rule.match == "prefix") {
-                            hit = (p == rule.values[0]);
-                        } else if (rule.match == "prefix_list") {
-                            for (auto& v : rule.values)
-                                if (v == p) { hit = true; break; }
-                        }
+                        if      (rule.match == "range")       hit = (zip >= rule.values[0] && zip <= rule.values[1]);
+                        else if (rule.match == "prefix")      hit = (p == rule.values[0]);
+                        else if (rule.match == "prefix_list") { for (auto& v : rule.values) if (v == p) { hit = true; break; } }
                         if (hit) {
-                            int pts = rule.pts;
-                            std::string lbl = rule.label;
-                            score += pts;
-                            reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
+                            score += rule.pts;
+                            reasons.push_back(rule.label + " (" + (rule.pts>=0?"+":"") + std::to_string(rule.pts) + ")");
                             matched = true;
                             break;
                         }
                     }
-
                     if (!matched) {
-                        int pts = defaultPts;
-                        std::string lbl = defaultLabel;
-                        score += pts;
-                        reasons.push_back(lbl + " (" + (pts>=0?"+":"") + std::to_string(pts) + ")");
+                        score += config.location_default_pts;
+                        reasons.push_back(config.location_default_label + " (" + (config.location_default_pts>=0?"+":"") + std::to_string(config.location_default_pts) + ")");
                     }
-
                 }
 
                 std::string label = score >= strongThreshold ? "Strong" : score >= decentThreshold ? "Decent" : "Weak";
@@ -743,19 +706,7 @@ int main() {
                 for (size_t i = 0; i < matchedSkills.size();   i++) { if(i>0) matchedStr   += "|"; matchedStr   += matchedSkills[i]; }
                 for (size_t i = 0; i < penalizedSkills.size(); i++) { if(i>0) penalizedStr += "|"; penalizedStr += penalizedSkills[i]; }
 
-                sqlite3_stmt* stmt;
-                sqlite3_prepare_v2(db, R"(
-                    UPDATE jobs SET score=?, score_label=?, score_reasons=?, matched_skills=?, penalized_skills=?
-                    WHERE job_id=?
-                )", -1, &stmt, nullptr);
-                sqlite3_bind_int (stmt, 1, score);
-                sqlite3_bind_text(stmt, 2, label.c_str(),                      -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 3, json(reasons).dump().c_str(),        -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 4, matchedStr.c_str(),                  -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 5, penalizedStr.c_str(),                -1, SQLITE_TRANSIENT);
-                sqlite3_bind_text(stmt, 6, row.job_id.c_str(),                  -1, SQLITE_TRANSIENT);
-                sqlite3_step(stmt);
-                sqlite3_finalize(stmt);
+                save_job_score(db, row.job_id, score, label, json(reasons).dump(), matchedStr, penalizedStr);
                 scored++;
 
             } catch (const std::exception& e) {
@@ -801,7 +752,7 @@ int main() {
             res.set_content("{\"ok\":true}", "application/json");
         } catch (const std::exception& e) {
             res.status = 400;
-            res.set_content("{\"error\":\"" + std::string(e.what()) + "\"}", "application/json");
+            res.set_content(R"({"error":")" + std::string(e.what()) + "\"}", "application/json");
 
         }
     });

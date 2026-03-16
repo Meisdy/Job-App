@@ -68,6 +68,17 @@ std::vector<Job> get_unenriched_jobs(sqlite3* db);
 // Save enriched data for a job
 void save_enriched_data(sqlite3* db, const std::string& job_id, const std::string& enriched_data);
 
+struct EnrichedJob {
+    std::string job_id;
+    std::string zipcode;
+    std::string enriched_data;
+};
+
+std::vector<EnrichedJob> get_enriched_jobs(sqlite3* db);
+void save_job_score(sqlite3* db, const std::string& job_id, int score, const std::string& label,
+                    const std::string& reasons, const std::string& matched_skills,
+                    const std::string& penalized_skills);
+
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 
 // db.h — just the signature
