@@ -25,6 +25,19 @@ struct Job {
     std::string template_text;
 };
 
+struct JobRecord : Job {
+    int         score {};
+    std::string score_label;
+    std::string score_reasons;
+    std::string user_status;
+    int         rating {};
+    std::string notes;
+    std::string matched_skills;
+    std::string penalized_skills;
+    std::string enriched_data;
+    std::string availability_status;
+};
+
 // Init db
 void db_init(sqlite3* db);
 
@@ -46,7 +59,8 @@ std::vector<std::string> get_jobs_needing_details(sqlite3* db, const int& refres
 // Update job details
 void update_job_details(sqlite3* db, const Job& job);
 
-
+// Get all jobs
+std::vector<JobRecord> get_all_jobs(sqlite3* db);
 
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 

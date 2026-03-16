@@ -117,6 +117,44 @@ bool skillMatch(const std::string& target, const json& skillList) {
 }
 
 
+
+// Helper for JSON conversion
+json job_record_to_json(const JobRecord& job) {
+    json job_json;
+    job_json["job_id"]              = job.job_id;
+    job_json["title"]               = job.title;
+    job_json["company_name"]        = job.company_name;
+    job_json["place"]               = job.place;
+    job_json["zipcode"]             = job.zipcode;
+    job_json["canton_code"]         = job.canton_code;
+    job_json["employment_grade"]    = job.employment_grade;
+    job_json["application_url"]     = job.application_url;
+    job_json["score"]               = job.score;
+    job_json["score_label"]         = job.score_label;
+    job_json["score_reasons"]       = job.score_reasons;
+    job_json["user_status"]         = job.user_status;
+    job_json["rating"]              = job.rating;
+    job_json["notes"]               = job.notes;
+    job_json["matched_skills"]      = job.matched_skills;
+    job_json["penalized_skills"]    = job.penalized_skills;
+    job_json["availability_status"] = job.availability_status;
+    job_json["detail_url"]          = job.detail_url;
+
+    // enriched_data may be double-encoded JSON or empty
+    if (!job.enriched_data.empty()) {
+        try {
+            json outer = json::parse(job.enriched_data);
+            job_json["enriched_data"] = outer.is_string()
+                ? json::parse(outer.get<std::string>()) : outer;
+        } catch (...) { job_json["enriched_data"] = nullptr; }
+    } else {
+        job_json["enriched_data"] = nullptr;
+    }
+
+    return job_json;
+}
+
+
 // ── CONFIG ───────────────────────────────────────────────────────────────────
 
 struct ConfigData {
@@ -304,51 +342,16 @@ int main() {
                                      std::istreambuf_iterator<char>()), "text/html");
     });
 
-    // GET /api/jobs — return all jobs
+    // GET /api/jobs — return all jobs NEW
     server.Get("/api/jobs", [&db](const httplib::Request&, httplib::Response& res) {
-        sqlite3_stmt* stmt;
-        sqlite3_prepare_v2(db, R"(
-            SELECT job_id, title, company_name, place, zipcode, canton_code,
-                   employment_grade, application_url, score, score_label,
-                   score_reasons, user_status, rating, notes, matched_skills,
-                   penalized_skills, enriched_data, availability_status, detail_url
-            FROM jobs
-        )", -1, &stmt, nullptr);
 
         json result = json::array();
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            json job;
-            job["job_id"]              = col(stmt, 0);
-            job["title"]               = col(stmt, 1);
-            job["company_name"]        = col(stmt, 2);
-            job["place"]               = col(stmt, 3);
-            job["zipcode"]             = col(stmt, 4);
-            job["canton_code"]         = col(stmt, 5);
-            job["employment_grade"]    = sqlite3_column_int(stmt, 6);
-            job["application_url"]     = col(stmt, 7);
-            job["score"]               = sqlite3_column_int(stmt, 8);
-            job["score_label"]         = col(stmt, 9);
-            job["score_reasons"]       = col(stmt, 10);
-            job["user_status"]         = col(stmt, 11);
-            job["rating"]              = sqlite3_column_int(stmt, 12);
-            job["notes"]               = col(stmt, 13);
-            job["matched_skills"]      = col(stmt, 14);
-            job["penalized_skills"]    = col(stmt, 15);
-            job["availability_status"] = col(stmt, 17);
-            job["detail_url"]          = col(stmt, 18);
+        const std::vector<JobRecord> jobs_data = get_all_jobs(db);
 
-            if (const char* raw = reinterpret_cast<const char *>(sqlite3_column_text(stmt, 16))) {
-                try {
-                    json outer = json::parse(std::string(raw));
-                    job["enriched_data"] = outer.is_string()
-                        ? json::parse(outer.get<std::string>()) : outer;
-                } catch (...) { job["enriched_data"] = nullptr; }
-            } else {
-                job["enriched_data"] = nullptr;
-            }
-            result.push_back(job);
+        for (const auto& job: jobs_data) {
+            result.push_back(job_record_to_json(job));
         }
-        sqlite3_finalize(stmt);
+
         res.set_content(result.dump(), "application/json");
     });
 
@@ -365,7 +368,7 @@ int main() {
             res.set_content("{\"ok\":true}", "application/json");
         } catch (...) {
             res.status = 400;
-            res.set_content("{\"error\":\"bad request\"}", "application/json");
+            res.set_content(R"({"error":"bad request"})", "application/json");
         }
     });
 

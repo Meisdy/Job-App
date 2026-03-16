@@ -154,8 +154,42 @@ std::vector<std::string> get_jobs_needing_details(sqlite3* db, const int& refres
     return ids;
 }
 
-// db.cpp — the implementation
 std::string col(sqlite3_stmt* s, int i) {
     const char* v = (const char*)sqlite3_column_text(s, i);
     return v ? v : "";
+}
+
+std::vector<JobRecord> get_all_jobs(sqlite3* db) {
+    std::vector<JobRecord> jobs;
+    const std::string sql = R"(
+        SELECT job_id, title, company_name, place, zipcode, canton_code,
+               employment_grade, application_url, score, score_label,
+               score_reasons, user_status, rating, notes, matched_skills,
+               penalized_skills, enriched_data, availability_status, detail_url
+        FROM jobs
+    )";
+    exec_query(db, sql, [&](sqlite3_stmt* stmt) {
+        JobRecord job;
+        job.job_id              = col(stmt, 0);
+        job.title               = col(stmt, 1);
+        job.company_name        = col(stmt, 2);
+        job.place               = col(stmt, 3);
+        job.zipcode             = col(stmt, 4);
+        job.canton_code         = col(stmt, 5);
+        job.employment_grade    = sqlite3_column_int(stmt, 6);
+        job.application_url     = col(stmt, 7);
+        job.score               = sqlite3_column_int(stmt, 8);
+        job.score_label         = col(stmt, 9);
+        job.score_reasons       = col(stmt, 10);
+        job.user_status         = col(stmt, 11);
+        job.rating              = sqlite3_column_int(stmt, 12);
+        job.notes               = col(stmt, 13);
+        job.matched_skills      = col(stmt, 14);
+        job.penalized_skills    = col(stmt, 15);
+        job.enriched_data       = col(stmt, 16);
+        job.availability_status = col(stmt, 17);
+        job.detail_url          = col(stmt, 18);
+        jobs.push_back(job);
+    });
+    return jobs;
 }
