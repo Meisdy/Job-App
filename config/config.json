@@ -360,12 +360,14 @@
   ],
   "scrape_rows": 50,
   "seniority_scores": {
-    "PhD": -20,
+    "PhD": -40,
     "intern": -20,
     "junior": 15,
     "lead": -20,
     "mid": 5,
     "senior": -15,
+    "apprentice": -100,
+    "vocational": -40,
     "seniority_unspecified": 0
   },
   "wanted_skills": [

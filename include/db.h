@@ -70,6 +70,7 @@ void save_enriched_data(sqlite3* db, const std::string& job_id, const std::strin
 
 struct EnrichedJob {
     std::string job_id;
+    std::string title;
     std::string zipcode;
     std::string enriched_data;
 };

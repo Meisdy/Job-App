@@ -104,12 +104,14 @@ struct ConfigData {
     int hw_none{};
 
     // Seniority scores
+    int sen_apprentice{};   // hard-disqualifier: Lehrling / apprentice
+    int sen_vocational{};   // hard-disqualifier: EFZ trade-level (overqualified as MSc)
     int sen_intern{};
     int sen_junior{};
     int sen_mid{};
     int sen_senior{};
     int sen_lead{};
-    int sen_phd{};
+    int sen_phd{};          // hard-disqualifier: PhD required
     int sen_unspecified{};
 
     // Category bonus
@@ -172,12 +174,14 @@ ConfigData parseConfig(const json& c) {
     cfg.hw_low    = c["hardware_proximity_scores"]["low"].get<int>();
     cfg.hw_none   = c["hardware_proximity_scores"]["none"].get<int>();
 
+    cfg.sen_apprentice  = c["seniority_scores"].value("apprentice",  -100);
+    cfg.sen_vocational  = c["seniority_scores"].value("vocational",   -40);
     cfg.sen_intern      = c["seniority_scores"]["intern"].get<int>();
     cfg.sen_junior      = c["seniority_scores"]["junior"].get<int>();
     cfg.sen_mid         = c["seniority_scores"]["mid"].get<int>();
     cfg.sen_senior      = c["seniority_scores"]["senior"].get<int>();
     cfg.sen_lead        = c["seniority_scores"]["lead"].get<int>();
-    cfg.sen_phd         = c["seniority_scores"]["PhD"].get<int>();
+    cfg.sen_phd         = c["seniority_scores"].value("PhD", -20);
     cfg.sen_unspecified = c["seniority_scores"]["seniority_unspecified"].get<int>();
 
     cfg.category_list = c["category_bonus"]["categories"].get<std::vector<std::string>>();
@@ -321,7 +325,7 @@ struct ScoreResult {
     std::string penalized_skills; // pipe-separated
 };
 
-ScoreResult score_job(const std::string& enriched_data, const std::string& zipcode, const ConfigData& config) {
+ScoreResult score_job(const std::string& enriched_data, const std::string& zipcode, const std::string& title, const ConfigData& config) {
     json outer = json::parse(enriched_data);
     json llm   = outer.is_string() ? json::parse(outer.get<std::string>()) : outer;
 
@@ -345,14 +349,59 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
     auto expObj = llm.value("experience", json::object());
     std::string seniority = (expObj.contains("seniority") && !expObj["seniority"].is_null())
         ? expObj["seniority"].get<std::string>() : "";
-    if (!seniority.empty()) {
+
+    std::string titleLower = title;
+    std::transform(titleLower.begin(), titleLower.end(), titleLower.begin(), ::tolower);
+
+    bool isHardDisqualified = false;
+
+    // Apprentice/Lehrling — title scan is primary since LLM may mis-classify as "junior"
+    const bool isApprentice =
+        seniority == "apprentice" || seniority == "lehrling" ||
+        titleLower.find("lehrling")         != std::string::npos ||
+        titleLower.find("lehrstelle")       != std::string::npos ||
+        titleLower.find("apprentice")       != std::string::npos ||
+        titleLower.find("ausbildungsplatz") != std::string::npos;
+
+    // Vocational / EFZ trade-level — master's student is overqualified and too expensive.
+    // " efz" is the most reliable suffix; common trade titles are listed as a fallback.
+    const bool isVocational =
+        !isApprentice && (
+        seniority == "vocational" ||
+        titleLower.find(" efz")          != std::string::npos ||
+        titleLower.find("automatiker")   != std::string::npos ||
+        titleLower.find("polymechaniker")!= std::string::npos ||
+        titleLower.find("elektroniker")  != std::string::npos ||
+        titleLower.find("mechatroniker") != std::string::npos ||
+        titleLower.find("elektroinstallateur") != std::string::npos);
+
+    // PhD — also a hard disqualifier
+    const bool isPhD =
+        !isApprentice && !isVocational && (
+        seniority == "PhD" ||
+        titleLower.find("phd")       != std::string::npos ||
+        titleLower.find("doktorand") != std::string::npos);
+
+    if (isApprentice) {
+        isHardDisqualified = true;
+        score += config.sen_apprentice;
+        reasons.push_back("DISQUALIFIED: Apprentice/Lehrling (" + std::to_string(config.sen_apprentice) + ")");
+    } else if (isVocational) {
+        isHardDisqualified = true;
+        score += config.sen_vocational;
+        reasons.push_back("DISQUALIFIED: Vocational/EFZ — overqualified (" + std::to_string(config.sen_vocational) + ")");
+    } else if (isPhD) {
+        isHardDisqualified = true;
+        const int pts = std::min(config.sen_phd, -20); // guarantee penalty even if config left at 0
+        score += pts;
+        reasons.push_back("DISQUALIFIED: PhD required (" + std::to_string(pts) + ")");
+    } else if (!seniority.empty()) {
         int pts = 0;
         if      (seniority == "intern")                pts = config.sen_intern;
         else if (seniority == "junior")                pts = config.sen_junior;
         else if (seniority == "mid")                   pts = config.sen_mid;
         else if (seniority == "senior")                pts = config.sen_senior;
         else if (seniority == "lead")                  pts = config.sen_lead;
-        else if (seniority == "PhD")                   pts = config.sen_phd;
         else if (seniority == "seniority_unspecified") pts = config.sen_unspecified;
         if (pts != 0) { score += pts; reasons.push_back("Seniority: " + seniority + " (" + (pts>0?"+":"") + std::to_string(pts) + ")"); }
     }
@@ -438,7 +487,8 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
         }
     }
 
-    std::string label = score >= config.score_strong_threshold ? "Strong"
+    std::string label = isHardDisqualified ? "Weak"
+                      : score >= config.score_strong_threshold ? "Strong"
                       : score >= config.score_decent_threshold ? "Decent" : "Weak";
 
     std::string matchedStr, penalizedStr;
@@ -684,7 +734,7 @@ int main() {
         int scored = 0;
         for (const auto& job : jobs) {
             try {
-                ScoreResult result = score_job(job.enriched_data, job.zipcode, config);
+                ScoreResult result = score_job(job.enriched_data, job.zipcode, job.title, config);
                 save_job_score(db, job.job_id, result.score, result.label, result.reasons_json, result.matched_skills, result.penalized_skills);
                 scored++;
             } catch (const std::exception& e) {

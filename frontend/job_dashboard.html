@@ -1248,13 +1248,16 @@
 
       <div class="cfg-section">
         <div class="cfg-section-title">Seniority Scores</div>
+        <div class="cfg-hint" style="margin-bottom:8px">⚠ Apprentice, Vocational/EFZ, and PhD are <b>hard disqualifiers</b> — label is always forced to Weak. Use large negatives (e.g. −100, −40, −20).</div>
         <div class="cfg-grid">
+          <div class="cfg-field"><div class="cfg-label">🚫 Apprentice / Lehrling</div><input class="cfg-input" id="cfg-sen-apprentice" type="number" value="${sen.apprentice??-100}"></div>
+          <div class="cfg-field"><div class="cfg-label">🚫 Vocational / EFZ</div><input class="cfg-input" id="cfg-sen-vocational" type="number" value="${sen.vocational??-40}"></div>
+          <div class="cfg-field"><div class="cfg-label">🚫 PhD</div><input class="cfg-input" id="cfg-sen-phd" type="number" value="${sen.PhD??-20}"></div>
           <div class="cfg-field"><div class="cfg-label">Intern</div><input class="cfg-input" id="cfg-sen-intern" type="number" value="${sen.intern||0}"></div>
           <div class="cfg-field"><div class="cfg-label">Junior</div><input class="cfg-input" id="cfg-sen-junior" type="number" value="${sen.junior||0}"></div>
           <div class="cfg-field"><div class="cfg-label">Mid</div><input class="cfg-input" id="cfg-sen-mid" type="number" value="${sen.mid||0}"></div>
           <div class="cfg-field"><div class="cfg-label">Senior</div><input class="cfg-input" id="cfg-sen-senior" type="number" value="${sen.senior||0}"></div>
           <div class="cfg-field"><div class="cfg-label">Lead</div><input class="cfg-input" id="cfg-sen-lead" type="number" value="${sen.lead||0}"></div>
-          <div class="cfg-field"><div class="cfg-label">PhD</div><input class="cfg-input" id="cfg-sen-phd" type="number" value="${sen.PhD||0}"></div>
           <div class="cfg-field"><div class="cfg-label">Unspecified</div><input class="cfg-input" id="cfg-sen-unspec" type="number" value="${sen.seniority_unspecified||0}"></div>
         </div>
       </div>
@@ -1316,6 +1319,8 @@
         none: parseInt(document.getElementById('cfg-hw-none').value),
       };
       updated.seniority_scores = {
+        apprentice: parseInt(document.getElementById('cfg-sen-apprentice').value),
+        vocational: parseInt(document.getElementById('cfg-sen-vocational').value),
         intern: parseInt(document.getElementById('cfg-sen-intern').value),
         junior: parseInt(document.getElementById('cfg-sen-junior').value),
         mid: parseInt(document.getElementById('cfg-sen-mid').value),

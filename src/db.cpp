@@ -127,10 +127,10 @@ void db_init(sqlite3 *db) {
 
 void update_job_details(sqlite3* db, const Job& job) {
     exec_write(db,
-        "UPDATE jobs SET title = ?, company_name = ?, place = ?, zipcode = ?, canton_code = ?, detail_url = ?, initial_publication_date = ?, publication_end_date = ?, template_text = ?, scraped_at = datetime('now') WHERE job_id = ?",
+        "UPDATE jobs SET title = ?, company_name = CASE WHEN ? != '' THEN ? ELSE company_name END, place = ?, zipcode = ?, canton_code = ?, detail_url = ?, initial_publication_date = ?, publication_end_date = ?, template_text = ?, scraped_at = datetime('now') WHERE job_id = ?",
         {
             job.title,
-            job.company_name,
+            job.company_name, job.company_name,  // two binds for the CASE WHEN
             job.place,
             job.zipcode,
             job.canton_code,
@@ -227,9 +227,9 @@ void save_enriched_data(sqlite3* db, const std::string& job_id, const std::strin
 
 std::vector<EnrichedJob> get_enriched_jobs(sqlite3* db) {
     std::vector<EnrichedJob> jobs;
-    exec_query(db, "SELECT job_id, zipcode, enriched_data FROM jobs WHERE enriched_data IS NOT NULL",
+    exec_query(db, "SELECT job_id, title, zipcode, enriched_data FROM jobs WHERE enriched_data IS NOT NULL",
         [&](sqlite3_stmt* stmt) {
-            jobs.push_back({col(stmt, 0), col(stmt, 1), col(stmt, 2)});
+            jobs.push_back({col(stmt, 0), col(stmt, 1), col(stmt, 2), col(stmt, 3)});
         }
     );
     return jobs;
