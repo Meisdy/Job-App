@@ -675,7 +675,7 @@ int main() {
                     "Job Description:\n" + tmpl;
 
                 json requestBody = {
-                    {"model",           "mistral-small-latest"},
+                    {"model",           "mistral-medium-2508"},
                     {"temperature",     0.1},
                     {"max_tokens",      enrichMaxTokens},
                     {"response_format", {{"type", "json_object"}}},

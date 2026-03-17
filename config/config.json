@@ -344,31 +344,29 @@
   ],
   "salary_min_threshold": 75000,
   "score_thresholds": {
-    "decent": 15,
+    "decent": 20,
     "strong": 40
   },
   "scrape_queries": [
     "Embedded Software Engineer",
-    "Embedded Software Ingenieur",
     "Robotics Engineer",
     "Robotik Ingenieur",
     "Test Engineer",
-    "Test Ingenieur",
     "Software Engineer",
     "Mechatronics Engineer",
     "Development Engineer"
   ],
-  "scrape_rows": 50,
+  "scrape_rows": 100,
   "seniority_scores": {
     "PhD": -40,
+    "apprentice": -100,
     "intern": -20,
     "junior": 15,
-    "lead": -20,
-    "mid": 5,
+    "lead": -25,
+    "mid": 0,
     "senior": -15,
-    "apprentice": -100,
-    "vocational": -40,
-    "seniority_unspecified": 0
+    "seniority_unspecified": 0,
+    "vocational": -40
   },
   "wanted_skills": [
     {

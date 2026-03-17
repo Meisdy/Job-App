@@ -8,35 +8,35 @@ Here is the CV of the candidate you shall work for. The CV is in German. Use it 
 CV:
 AUSBILDUNG
 09.2024 – 06.2026 University West (HV) MSc Robotics and Automation
- Projekte zu ABB-Robotern, Simulation in RobotStudio / ROS2 und Python
+ Projekte zu ABB-Robotern, Simulation in RobotStudio / ROS2 und Python
 basierten Vision Systemen (OpenCV, PyTorch)
- Masterarbeit: Modularer Speech-to-Cobot Code Generator
- Abschluss erwartet Juni 2026, überwiegend Note A (ECTS System A-F),
+ Masterarbeit: Modularer Speech-to-Cobot Code Generator
+ Abschluss erwartet Juni 2026, überwiegend Note A (ECTS System A-F),
 09.2021 – 07.2024 Technikum Winterthur (ZHAW) BSc Systemtechnik
- Vertiefung in Robotik & Mechatronik, Note 5.2
- Projekte zu Embedded Systemen und Robotik
- Fundierte Ausbildung in Elektrotechnik, Mechanik und Informatik
- Bachelorarbeit: Weiterentwicklung eines 5-achsigen 3D-Druckers, Note 5.5
+ Vertiefung in Robotik & Mechatronik, Note 5.2
+ Projekte zu Embedded Systemen und Robotik
+ Fundierte Ausbildung in Elektrotechnik, Mechanik und Informatik
+ Bachelorarbeit: Weiterentwicklung eines 5-achsigen 3D-Druckers, Note 5.5
 BERUFSERFAHRUNG
 07.2020 – 04.2021 Schweizer Armee, Fliegersoldat und Luftfunkaufklärer, RS + Durchdiener
- Unterstützung bei der Identifikation der Luftlage zugunsten der
+ Unterstützung bei der Identifikation der Luftlage zugunsten der
 Einsatzzentrale Luftwaffe (EZ SIGINT)
- Erhebung und Auswertung von Sensordaten sowie Funksprüchen
+ Erhebung und Auswertung von Sensordaten sowie Funksprüchen
 08.2016 – 07.2020 Syntegon Packaging Systems AG, Automatiker Lehre EFZ
- Planung der Elektrokonstruktion für komplette Verpackungsstrassen
- Installation und Inbetriebnahme von Verpackungsmaschinen
- Mechanische Grundausbildung in der Werkstatt
- Abschluss mit Auszeichnung, Note 5.7
+ Planung der Elektrokonstruktion für komplette Verpackungsstrassen
+ Installation und Inbetriebnahme von Verpackungsmaschinen
+ Mechanische Grundausbildung in der Werkstatt
+ Abschluss mit Auszeichnung, Note 5.7
 AUSGEWÄHLTE PROJEKTE
 01.2026 – 06.2026 Masterarbeit, Modularer Speech-to-Cobot Code Generator
 (Aktuell in Bearbeitung)
- Speech-to-Code Pipeline für Franka/UR Cobots (ohne Vision, strukturierte
+ Speech-to-Code Pipeline für Franka/UR Cobots (ohne Vision, strukturierte
 Arbeitsräume)
- Modulare Architektur: Erweiterbar auf weitere Cobot-Plattformen
+ Modulare Architektur: Erweiterbar auf weitere Cobot-Plattformen
 09.2025 – 01.2026 ABB-Roboter mit Vision-ML-basierter Qualitätsinspektion [GitHub]
- Basler-Kamera + PyTorch-Klassifizierer für GOOD/BAD-Teileinspektion
- TCP/IP-Kommunikation zwischen Python-Server und ABB RAPID
- Echtzeit-Qualitätskontrolle mit trainiertem ML-Modell
+ Basler-Kamera + PyTorch-Klassifizierer für GOOD/BAD-Teileinspektion
+ TCP/IP-Kommunikation zwischen Python-Server und ABB RAPID
+ Echtzeit-Qualitätskontrolle mit trainiertem ML-Modell
 FÄHIGKEITEN UND INTERESSEN
 Sprachkenntnisse Deutsch (Muttersprache), Englisch (fliessend), Französisch (Grundlagen)
 Schwedisch (Grundlagen), Spanisch (Grundlagen)
@@ -51,7 +51,7 @@ Use this exact schema:
   "industry_type": "one of: automotive | medtech | industrial-automation | robotics | defense | consumer-electronics | energy | logistics | finance | software-services | research | other",
 
   "fit_assessment": {
-    "positives": ["reasons this is a good fit based on the candidate's background and the role. Do not mention the word candidate in reasons. "],
+    "positives": ["reasons this is a good fit based on the candidate's background and the role. Do not mention the word candidate in reasons."],
     "negatives": ["mismatches between the candidate's profile and the role's requirements. Do not mention the word candidate in reasons."]
   },
 
@@ -123,18 +123,35 @@ Use this exact schema:
   },
 
   "experience": {
-    "years_min": "number | null",
-    "years_max": "number | null",
-    "seniority": "— follow this priority order exactly:
+    "years_min": "number | null — extract the minimum years of professional experience explicitly
+      stated OR clearly implied anywhere in the job text. Parse German phrasing carefully:
+        'mind. 3 Jahre Berufserfahrung' → 3
+        '5 Jahre Erfahrung' → 5
+        'mindestens 3 Jahre' → 3
+        'mehrjährige Berufserfahrung' or 'mehrjährige Erfahrung' → 3
+        'mehrere Jahre Erfahrung' → 3
+        'langjährige Erfahrung' or 'fundierte Berufserfahrung' → 5
+        'erste Berufserfahrung' or '1-2 Jahre' → 1
+        'Berufseinsteiger' or 'Einsteiger' → 0
+      Search the ENTIRE job text including the responsibilities and requirements sections,
+      not just a dedicated experience field. Return null ONLY if experience is genuinely
+      not mentioned anywhere in the posting.",
+
+    "years_max": "number | null — upper bound if a range is stated (e.g. '3-5 Jahre' → 5), else null",
+
+    "seniority": "— follow this priority order exactly, use the FIRST matching rule:
       1. If title contains 'Junior', 'Young Professional', 'Berufseinsteiger', 'Trainee' → junior
-      2. If title contains 'Senior', 'Lead', 'Principal', 'Staff', 'Head of', 'Leiter' → senior or lead
-      3. If title contains 'Intern', 'Praktikant', 'Werkstudent' → intern
-      4. If title contains 'PhD', 'Doktor', 'Doktorand' → PhD
-      5. If years_min >= 5 AND no junior signal in title → senior
-      6. If years_min >= 8 OR management responsibility mentioned → lead
-      7. If years_min <= 2 OR no experience requirement mentioned → junior or mid
-      8. Default → seniority_unspecified
-      Use the FIRST matching rule. Also, keywords like 'mehrjährig' or mehrere Jahre' from the template text need to be included aswell."
+      2. If title contains 'Senior', 'Principal', 'Staff', 'Head of' → senior
+      3. If title contains 'Lead', 'Leiter', 'Manager' → lead
+      4. If title contains 'Intern', 'Praktikant', 'Werkstudent' → intern
+      5. If title contains 'PhD', 'Doktor', 'Doktorand' → PhD
+      6. If title contains 'Lehrling', 'Lehrstelle', 'Apprentice', 'Ausbildung EFZ' → apprentice
+      7. If years_min >= 8 OR management/team-lead responsibility explicitly mentioned → lead
+      8. If years_min >= 5 → senior
+      9. If years_min >= 3 → mid
+      10. If years_min <= 2 OR no experience requirement found → junior
+      11. Default → seniority_unspecified
+      NOTE: 'mehrjährig' / 'mehrere Jahre' implies years_min = 3, apply rules 7-9 accordingly."
   },
 
   "employment_grade": "number | null — extract percentage, e.g. '80-100%' → 100",
