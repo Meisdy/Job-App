@@ -248,6 +248,8 @@ json job_record_to_json(const JobRecord& job) {
     job_json["penalized_skills"]    = job.penalized_skills;
     job_json["availability_status"] = job.availability_status;
     job_json["detail_url"]          = job.detail_url;
+    job_json["pub_date"]            = job.pub_date;
+    job_json["end_date"]            = job.end_date;
 
     // enriched_data may be double-encoded JSON or empty
     if (!job.enriched_data.empty()) {

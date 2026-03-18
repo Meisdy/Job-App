@@ -356,7 +356,7 @@
     "Mechatronics Engineer",
     "Development Engineer"
   ],
-  "scrape_rows": 100,
+  "scrape_rows": 150,
   "seniority_scores": {
     "PhD": -40,
     "apprentice": -100,

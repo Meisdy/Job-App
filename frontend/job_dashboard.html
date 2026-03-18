@@ -784,7 +784,10 @@
   <div class="sidebar">
     <div class="sb-header">
       <span class="sb-label">Positions</span>
-      <span class="sb-count" id="list-count">—</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="sort-btn" onclick="toggleSort()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
+        <span class="sb-count" id="list-count">—</span>
+      </div>
     </div>
     <div class="sb-scroll" id="job-list">
       <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>
@@ -845,7 +848,7 @@
   ];
   // ────────────────────────────────────────────────────────────────────────────
 
-  let allJobs=[],currentFilter='all',currentJob=null,searchQuery='';
+  let allJobs=[],currentFilter='all',currentJob=null,searchQuery='',sortMode='score';
 
   function setConnectionStatus(state) {
     const dot=document.getElementById('status-dot');
@@ -894,6 +897,22 @@
     btn.classList.add('active'); renderList();
   }
 
+  function toggleSort(){
+    sortMode = sortMode === 'score' ? 'date' : 'score';
+    const btn = document.getElementById('sort-btn');
+    btn.textContent = sortMode === 'date' ? '⇅ DATE' : '⇅ SCORE';
+    btn.style.color = sortMode === 'date' ? 'var(--accent)' : 'var(--text3)';
+    btn.style.borderColor = sortMode === 'date' ? 'rgba(96,165,250,0.4)' : 'var(--border2)';
+    renderList();
+  }
+
+  function fmtDate(d){
+    if(!d) return '';
+    const dt = new Date(d);
+    if(isNaN(dt)) return '';
+    return dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  }
+
   function sicon(s){
     if(s==='interested') return '<span style="color:var(--green);font-size:11px">✦</span>';
     if(s==='applied')    return '<span style="color:var(--yellow);font-size:11px">✓</span>';
@@ -916,6 +935,11 @@
       return matchFilter && matchSearch;
     });
     document.getElementById('list-count').textContent=f.length;
+    if(sortMode === 'date'){
+      f.sort((a,b)=> (b.pub_date||'').localeCompare(a.pub_date||''));
+    } else {
+      f.sort((a,b)=>(b.score||0)-(a.score||0));
+    }
     if(!f.length){el.innerHTML='<div class="ldw">No results</div>';return;}
     el.innerHTML=f.map(job=>{
       const e=parse(job); const city=e.location?.city||job.place||'—';
@@ -926,7 +950,7 @@
       <div class="ji-foot">
         <span class="stag ${job.score_label||'Weak'}">${job.score||0} pts</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${city.toUpperCase()}</span>
+          ${job.pub_date?`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtDate(job.pub_date)}</span>`:`<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${city.toUpperCase()}</span>`}
           ${sicon(st)}
         </div>
       </div>
@@ -1051,6 +1075,7 @@
           <span style="color:var(--border2)">·</span>
           <a href="${mapsUrl}" target="_blank">${zip} ${city} ↗</a>
           ${salLabel?`<span style="color:var(--border2)">·</span><span style="color:var(--green);font-weight:600">💰 ${salLabel}</span>`:''}
+          ${job.pub_date?`<span style="color:var(--border2)">·</span><span style="color:var(--text3)">Posted ${fmtDate(job.pub_date)}${job.end_date?` — Expires ${fmtDate(job.end_date)}`:''}</span>`:''}
         </div>
         <div class="hero-chips">
           ${seniority?`<span class="chip">${seniority}</span>`:''}
