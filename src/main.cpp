@@ -531,8 +531,8 @@ int main() {
         std::ifstream f("../config/api_keys.json");
         mistralApiKey = json::parse(f)["mistral_api_key"];
         std::cout << "API keys loaded" << std::endl;
-    } catch (...) {
-        std::cerr << "Warning: Could not load api_keys.json" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[WARN] Could not load API keys: " << e.what() << std::endl;
     }
 
     ConfigData config = loadConfig();
@@ -573,9 +573,9 @@ int main() {
             if (body.contains("rating"))      update_job_field(db, job_id, "rating", std::to_string(body["rating"].get<int>()));
 
             res.set_content("{\"ok\":true}", "application/json");
-        } catch (...) {
+        } catch (const std::exception& e) {
             res.status = 400;
-            res.set_content(R"({"error":"bad request"})", "application/json");
+            res.set_content(R"({"error":"bad request","detail":")" + std::string(e.what()) + R"("})", "application/json");
         }
     });
 
@@ -585,7 +585,7 @@ int main() {
             res.set_content("{\"ok\":true}", "application/json");
         } catch (const std::exception& e) {
             res.status = 500;
-            res.set_content(R"({"error":")" + std::string(e.what()) + "\"}", "application/json");
+            res.set_content(R"({"error":"database error","detail":")" + std::string(e.what()) + R"("})", "application/json");
         }
     });
 
@@ -761,9 +761,9 @@ int main() {
                 save_job_score(db, job.job_id, result.score, result.label, result.reasons_json, result.matched_skills, result.penalized_skills);
                 scored++;
             } catch (const std::exception& e) {
-                std::cerr << "Failed to score job: " << job.job_id << " — " << e.what() << std::endl;
+                std::cerr << "[ERROR] Failed to score job " << job.job_id << " — " << e.what() << std::endl;
             } catch (...) {
-                std::cerr << "Failed to score job: " << job.job_id << " — unknown error" << std::endl;
+                std::cerr << "[ERROR] Failed to score job " << job.job_id << " — unknown error" << std::endl;
             }
         }
 
@@ -798,7 +798,7 @@ int main() {
             res.set_content("{\"ok\":true}", "application/json");
         } catch (const std::exception& e) {
             res.status = 400;
-            res.set_content(R"({"error":")" + std::string(e.what()) + "\"}", "application/json");
+            res.set_content(R"({"error":"config error","detail":")" + std::string(e.what()) + R"("})", "application/json");
         }
     });
 
