@@ -28,56 +28,57 @@ std::string urlEncode(const std::string& str) {
     return encoded;
 }
 
-std::string httpGet(const std::string& url) {
+std::string httpRequest(const std::string& url, const std::string& method, 
+                       const std::vector<std::string>& headers = {}, 
+                       const std::string& postData = "") {
     CURL* curl = curl_easy_init();
     std::string response;
     if (curl) {
-        struct curl_slist* headers = nullptr;
-        headers = curl_slist_append(headers, "Accept: application/json");
-        headers = curl_slist_append(headers, "Origin: https://www.jobs.ch");
-        headers = curl_slist_append(headers, "Referer: https://www.jobs.ch/");
-        headers = curl_slist_append(headers, "X-Node-Request: false");
-        headers = curl_slist_append(headers, "X-Source: jobs_ch_desktop");
+        struct curl_slist* headerList = nullptr;
+        for (const auto& header : headers) {
+            headerList = curl_slist_append(headerList, header.c_str());
+        }
+        
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/Dev/cpp_libs/curl/bin/curl-ca-bundle.crt");
+        // Use system CA bundle for Linux/WSL
+        // curl_easy_setopt(curl, CURLOPT_CAINFO, "/etc/ssl/certs/ca-certificates.crt");
+        
+        if (method == "POST") {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+        }
+        
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK)
-            std::cerr << "curl error: " << curl_easy_strerror(res) << std::endl;
-        curl_slist_free_all(headers);
+            std::cerr << "curl error for " << url << ": " << curl_easy_strerror(res) << std::endl;
+        
+        curl_slist_free_all(headerList);
         curl_easy_cleanup(curl);
     }
     return response;
 }
 
+std::string httpGet(const std::string& url) {
+    return httpRequest(url, "GET", {
+        "Accept: application/json",
+        "Origin: https://www.jobs.ch",
+        "Referer: https://www.jobs.ch/",
+        "X-Node-Request: false",
+        "X-Source: jobs_ch_desktop"
+    });
+}
+
 std::string httpPost(const std::string& url, const std::string& apiKey, const std::string& body) {
-    CURL* curl = curl_easy_init();
-    std::string response;
-    if (curl) {
-        std::string authHeader = "Authorization: Bearer " + apiKey;
-        struct curl_slist* headers = nullptr;
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        headers = curl_slist_append(headers, authHeader.c_str());
-        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
-        curl_easy_setopt(curl, CURLOPT_CAINFO, "C:/Dev/cpp_libs/curl/bin/curl-ca-bundle.crt");
-        curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
-        curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
-        CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
-            std::cerr << "[curl error] httpPost failed: " << curl_easy_strerror(res) << std::endl;
-        curl_slist_free_all(headers);
-        curl_easy_cleanup(curl);
-    }
-    return response;
+    return httpRequest(url, "POST", {
+        "Content-Type: application/json",
+        "Authorization: Bearer " + apiKey
+    }, body);
 }
 
 
@@ -285,6 +286,25 @@ Job job_from_json(const json& data) {
 }
 
 
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+
+// Validate Swiss ZIP code (4 digits, range 1000-9999)
+bool is_valid_swiss_zip(const std::string& zipcode) {
+    std::string zipStr = zipcode;
+    zipStr.erase(std::remove_if(zipStr.begin(), zipStr.end(), [](char c){ return !std::isdigit(c); }), zipStr.end());
+    if (zipStr.size() > 4) zipStr = zipStr.substr(0, 4);
+    
+    if (zipStr.length() == 4) {
+        try {
+            int zip = std::stoi(zipStr);
+            return zip >= 1000 && zip <= 9999;
+        } catch (...) {
+            return false;
+        }
+    }
+    return false;
+}
+
 // ── SCORING ──────────────────────────────────────────────────────────────────
 
 // Returns true if `target` skill matches any entry in `skillList`.
@@ -463,12 +483,11 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
         { score -= 20; reasons.push_back("Salary < " + std::to_string(config.salary_min_threshold/1000) + "k (-20)"); }
 
     // Location
-    std::string zipStr = zipcode;
-    zipStr.erase(std::remove_if(zipStr.begin(), zipStr.end(), [](char c){ return !std::isdigit(c); }), zipStr.end());
-    if (zipStr.size() > 4) zipStr = zipStr.substr(0, 4);
-    int zip = zipStr.empty() ? 0 : std::stoi(zipStr);
-
-    if (zip > 0) {
+    if (is_valid_swiss_zip(zipcode)) {
+        std::string zipStr = zipcode;
+        zipStr.erase(std::remove_if(zipStr.begin(), zipStr.end(), [](char c){ return !std::isdigit(c); }), zipStr.end());
+        if (zipStr.size() > 4) zipStr = zipStr.substr(0, 4);
+        int zip = std::stoi(zipStr);
         int p = zip / 100;
         bool locationMatched = false;
         for (const auto& rule : config.location_rules) {
@@ -483,11 +502,11 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
                 break;
             }
         }
-        if (!locationMatched) {
-            score += config.location_default_pts;
-            reasons.push_back(config.location_default_label + " (" + (config.location_default_pts>=0?"+":"") + std::to_string(config.location_default_pts) + ")");
+            if (!locationMatched) {
+                score += config.location_default_pts;
+                reasons.push_back(config.location_default_label + " (" + (config.location_default_pts>=0?"+":"") + std::to_string(config.location_default_pts) + ")");
+            }
         }
-    }
 
     std::string label = isHardDisqualified ? "Weak"
                       : score >= config.score_strong_threshold ? "Strong"
@@ -504,6 +523,8 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 
 int main() {
+    // Initialize curl globalization
+    curl_global_init(CURL_GLOBAL_ALL);
 
     std::string mistralApiKey;
     try {
@@ -581,7 +602,7 @@ int main() {
                 std::cout << "Query: " << q << " - " << documents.size() << " results" << std::endl;
 
                 for (auto& doc : documents) {
-                    insert_job(db, job_from_json(doc));
+                    insert_or_update_job(db, job_from_json(doc));
                     inserted++;
                 }
                 delete_expired_jobs(db);
@@ -596,22 +617,22 @@ int main() {
     });
 
     server.Post("/api/scrape/details", [&db, &config](const httplib::Request&, httplib::Response& res) {
-        std::vector<std::string> ids = get_jobs_needing_details(db, config.detail_refresh_days);
-        std::cout << "Jobs needing details: " << ids.size() << std::endl;
+        std::vector<Job> jobs_needing_details = get_jobs_needing_details(db, config.detail_refresh_days);
+        std::cout << "Jobs needing details: " << jobs_needing_details.size() << std::endl;
 
         int updated = 0, failed = 0;
-        for (const auto& job_id : ids) {
+         for (const auto& job : jobs_needing_details) {
             try {
-                json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + job_id));
+                json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + job.job_id));
 
-                Job job = job_from_json(detail);
-                job.job_id = job_id; // job details do not include job id
+                Job updated_job = job_from_json(detail);
+                updated_job.job_id = job.job_id;
 
-                update_job_details(db, job);
+                update_job_details(db, updated_job);
                 updated++;
 
             } catch (const std::exception& e) {
-                std::cerr << "Failed to fetch details for job: " << job_id << " - " << e.what() << std::endl;
+                std::cerr << "Failed to fetch details for job: " << job.job_id << " - " << e.what() << std::endl;
                 failed++;
             }
         }
@@ -645,7 +666,6 @@ int main() {
         int enriched = 0, failed = 0;
         const int enrichLimit          = config.enrich_limit;
         constexpr int templateMaxChars = 3000;
-        constexpr int enrichMaxTokens  = 6000;
 
         for (int i = 0; i < static_cast<int>(jobs.size()) && i < enrichLimit; i++) {
             const Job& job = jobs[i];
@@ -666,6 +686,7 @@ int main() {
 
             std::string apiResponse;
             try {
+                constexpr int enrichMaxTokens  = 6000;
                 std::string userPrompt =
                     "Job ID: "           + job.job_id      + "\n"
                     "Title: "            + job.title        + "\n"
@@ -807,5 +828,9 @@ int main() {
     std::cout << "Server running on http://localhost:8080" << std::endl;
     server.listen("localhost", 8080);
     sqlite3_close(db);
+    
+    // Cleanup curl globalization
+    curl_global_cleanup();
+    
     return 0;
 }

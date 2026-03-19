@@ -38,36 +38,7 @@ struct JobRecord : Job {
     std::string availability_status;
 };
 
-// Init db
-void db_init(sqlite3* db);
-
-// Delete job entry
-void delete_job(sqlite3* db, const std::string& job_id);
-
-// Update job field
-void update_job_field(sqlite3* db, const std::string& job_id, const std::string& field, const std::string& value);
-
-// Insert job
-void insert_job(sqlite3* db, const Job& job);
-
-// Delete expired jobs
-void delete_expired_jobs(sqlite3* db);
-
-// Get the jobs who need details
-std::vector<std::string> get_jobs_needing_details(sqlite3* db, const int& refresh_days);
-
-// Update job details
-void update_job_details(sqlite3* db, const Job& job);
-
-// Get all jobs
-std::vector<JobRecord> get_all_jobs(sqlite3* db);
-
-// Get jobs that have not been enriched yet
-std::vector<Job> get_unenriched_jobs(sqlite3* db);
-
-// Save enriched data for a job
-void save_enriched_data(sqlite3* db, const std::string& job_id, const std::string& enriched_data);
-
+// Data structures
 struct EnrichedJob {
     std::string job_id;
     std::string title;
@@ -75,10 +46,28 @@ struct EnrichedJob {
     std::string enriched_data;
 };
 
+// Database initialization
+void db_init(sqlite3* db);
+
+// Job CRUD operations
+void insert_or_update_job(sqlite3* db, const Job& job);
+void delete_job(sqlite3* db, const std::string& job_id);
+void delete_expired_jobs(sqlite3* db);
+
+// Job queries
+std::vector<JobRecord> get_all_jobs(sqlite3* db);
+std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days);
+std::vector<Job> get_unenriched_jobs(sqlite3* db);
 std::vector<EnrichedJob> get_enriched_jobs(sqlite3* db);
+
+// Job updates
+void update_job_details(sqlite3* db, const Job& job);
+void update_job_field(sqlite3* db, const std::string& job_id, const std::string& field, const std::string& value);
+void save_enriched_data(sqlite3* db, const std::string& job_id, const std::string& enriched_data);
 void save_job_score(sqlite3* db, const std::string& job_id, int score, const std::string& label,
                     const std::string& reasons, const std::string& matched_skills,
                     const std::string& penalized_skills);
+
 
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 

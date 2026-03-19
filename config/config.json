@@ -354,9 +354,10 @@
     "Test Engineer",
     "Software Engineer",
     "Mechatronics Engineer",
-    "Development Engineer"
+    "Development Engineer",
+    "Embedded Linux"
   ],
-  "scrape_rows": 150,
+  "scrape_rows": 50,
   "seniority_scores": {
     "PhD": -40,
     "apprentice": -100,
