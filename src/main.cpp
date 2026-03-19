@@ -590,7 +590,7 @@ int main() {
     });
 
     server.Post("/api/scrape/jobs", [&db, &config](const httplib::Request&, httplib::Response& res) {
-        std::cout << "Scrape started" << std::endl;
+        std::cout << "[INFO] Starting job scrape operation" << std::endl;
         int inserted = 0;
 
         for (const auto& q : config.scrape_queries) {
@@ -612,13 +612,13 @@ int main() {
             }
         }
 
-        std::cout << "Scrape done. Inserted/updated: " << inserted << std::endl;
+        std::cout << "[INFO] Scrape completed: " << inserted << " jobs processed" << std::endl;
         res.set_content(json{{"ok", true}, {"count", inserted}}.dump(), "application/json");
     });
 
     server.Post("/api/scrape/details", [&db, &config](const httplib::Request&, httplib::Response& res) {
         std::vector<Job> jobs_needing_details = get_jobs_needing_details(db, config.detail_refresh_days);
-        std::cout << "Jobs needing details: " << jobs_needing_details.size() << std::endl;
+        std::cout << "[INFO] Fetching details for " << jobs_needing_details.size() << " jobs" << std::endl;
 
         int updated = 0, failed = 0;
          for (const auto& job : jobs_needing_details) {
@@ -637,7 +637,7 @@ int main() {
             }
         }
 
-        std::cout << "Detail fetch done. Updated: " << updated << " Failed: " << failed << std::endl;
+        std::cout << "[INFO] Details fetch completed: " << updated << " updated, " << failed << " failed" << std::endl;
         res.set_content(json{{"ok", true}, {"updated", updated}, {"failed", failed}}.dump(), "application/json");
     });
 
@@ -658,7 +658,7 @@ int main() {
             return;
         }
 
-        std::cout << "Enrichment started..." << std::endl;
+        std::cout << "[INFO] Starting job enrichment" << std::endl;
 
         std::vector<Job> jobs = get_unenriched_jobs(db);
         std::cout << "Jobs to enrich: " << jobs.size() << std::endl;
@@ -744,12 +744,12 @@ int main() {
             }
         }
 
-        std::cout << "Enrichment done. Enriched: " << enriched << " Failed: " << failed << std::endl;
+        std::cout << "[INFO] Enrichment completed: " << enriched << " succeeded, " << failed << " failed" << std::endl;
         res.set_content(json{{"ok", true}, {"enriched", enriched}, {"failed", failed}}.dump(), "application/json");
     });
 
     server.Post("/api/score", [&db, &config](const httplib::Request&, httplib::Response& res) {
-        std::cout << "Scoring started..." << std::endl;
+        std::cout << "[INFO] Starting job scoring" << std::endl;
 
         std::vector<EnrichedJob> jobs = get_enriched_jobs(db);
         std::cout << "Jobs to score: " << jobs.size() << std::endl;
@@ -767,7 +767,7 @@ int main() {
             }
         }
 
-        std::cout << "Scoring done. Scored: " << scored << std::endl;
+        std::cout << "[INFO] Scoring completed: " << scored << " jobs scored" << std::endl;
         res.set_content(json{{"ok", true}, {"scored", scored}}.dump(), "application/json");
     });
 
