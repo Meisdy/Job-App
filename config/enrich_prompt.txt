@@ -178,6 +178,7 @@ Subcategory options (return as flat array, pick only relevant ones):
 General rules:
 - Never omit any schema field — use null for unknown strings/numbers, [] for unknown arrays
 - Do not invent data not present in the job posting
+- Try to find out if this job requires a degree or not. Match this with the CV.
 - The job text may be in German — parse it fully, output values in English where the schema uses fixed enums
 - For work_split: all four percentages must add up to 100. Estimate based on responsibilities listed.
   A pure coding role = ~70/0/20/10. An embedded role with lab work = ~40/30/20/10. A lead role = ~30/0/50/20.

@@ -357,7 +357,7 @@
     "Development Engineer",
     "Embedded Linux"
   ],
-  "scrape_rows": 50,
+  "scrape_rows": 150,
   "seniority_scores": {
     "PhD": -40,
     "apprentice": -100,
