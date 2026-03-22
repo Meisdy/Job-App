@@ -2,6 +2,124 @@
 
 This document provides build, test, and code style guidelines for agentic coding in the Job-App repository.
 
+## 📁 Frontend Structure
+
+### Directory Layout
+```
+frontend/
+├── index.html              # Main entry point (active)
+├── job_dashboard_backup.html # Backup of original (2026-03-22)
+├── css/                    # Modular CSS files
+│   ├── main.css            # Core styles and variables
+│   └── components/         # Component-specific CSS
+│       ├── header.css
+│       ├── sidebar.css
+│       ├── detail-panel.css
+│       └── modal.css
+├── js/                     # Modular JavaScript
+│   ├── main.js             # Core application logic
+│   ├── api.js              # API endpoints and utilities
+│   └── components/         # Component-specific JS
+│       ├── header.js
+│       ├── job-list.js
+│       ├── job-detail.js
+│       └── modal.js
+└── components/             # HTML component templates
+    ├── header.html
+    ├── sidebar.html
+    ├── detail-panel.html
+    └── modal.html
+```
+
+### Component Architecture
+- **CSS Components**: Organized by feature area with clear separation of concerns
+- **JS Modules**: Separated by functionality with minimal dependencies
+- **HTML Components**: Reusable templates using custom `<include>` tags
+- **Dynamic Loading**: Components are loaded asynchronously at runtime
+
+### Serving Configuration
+The backend serves `index.html` as the main entry point. The file structure allows for:
+- Independent caching of CSS/JS components
+- Easy component-based development
+- Improved maintainability and scalability
+
+## 🚀 Serving the Application
+
+### Development Server
+```bash
+# Serve from frontend directory
+cd frontend && python3 -m http.server 8000
+# Access at http://localhost:8000
+```
+
+### Production Deployment
+```bash
+# Build and copy frontend assets
+mkdir -p dist && cp -r frontend/* dist/
+```
+
+### Backend Configuration
+The C++ backend (src/main.cpp:554) serves the frontend:
+```cpp
+server.Get("/", [](const httplib::Request&, httplib::Response& res) {
+    std::ifstream file("../frontend/index.html");
+    res.set_content(std::string((std::istreambuf_iterator<char>(file)),
+                                 std::istreambuf_iterator<char>()), "text/html");
+});
+```
+
+### Nginx Configuration Example
+```nginx
+server {
+    listen 80;
+    server_name yourdomain.com;
+    root /path/to/Job-App/frontend;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Component and asset routes
+    location /components/ { try_files $uri =404; }
+    location /css/ { try_files $uri =404; }
+    location /js/ { try_files $uri =404; }
+
+    # API proxy to backend
+    location /api/ {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+## 🎨 Frontend Development
+
+### Component Creation
+1. Create new component HTML in `frontend/components/`
+2. Add component-specific CSS in `frontend/css/components/`
+3. Add component logic in `frontend/js/components/`
+4. Include component in main HTML using `<include src="/components/your-component.html">`
+
+### CSS Architecture
+- **Global styles**: `main.css` (CSS variables, base styles, utilities)
+- **Component styles**: Separate files in `css/components/`
+- **Naming**: Use component-specific class prefixes (e.g., `.header-`, `.job-item-`)
+- **Variables**: All colors and spacing defined in `:root` for easy theming
+
+### JavaScript Modules
+- **API layer**: `js/api.js` (endpoints, constants, utility functions)
+- **Component logic**: Separate files in `js/components/`
+- **Main app**: `js/main.js` (initialization, routing, state management)
+- **Dynamic loading**: CSS files loaded via `loadCSS()` function
+
+### Build Process
+No build step required for development. For production:
+1. Minify CSS and JavaScript files
+2. Optimize component loading
+3. Set up proper cache headers
+
 ## 🔧 Build System
 
 ### Build Commands

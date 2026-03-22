@@ -1,0 +1,10 @@
+/* ── RED FLAGS ── */
+.redflag-list { display:flex; flex-direction:column; gap:5px; }
+.redflag-item {
+  font-size:12px; color:#fca5a5;
+  padding:7px 12px 7px 14px;
+  border-left:2px solid rgba(248,113,113,0.5);
+  background:var(--red-dim);
+  border-radius:0 6px 6px 0;
+  line-height:1.5;
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Radar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- CSS Variables & Base -->
+  <link rel="stylesheet" href="/css/variables.css">
+  <link rel="stylesheet" href="/css/base.css">
+  
+  <!-- Layout -->
+  <link rel="stylesheet" href="/css/layouts/main.css">
+  
+  <!-- Component Styles -->
+  <link rel="stylesheet" href="/css/components/header.css">
+  <link rel="stylesheet" href="/css/components/sidebar.css">
+  <link rel="stylesheet" href="/css/components/detail-panel.css">
+  <link rel="stylesheet" href="/css/components/action-bar.css">
+  <link rel="stylesheet" href="/css/components/modal.css">
+  <link rel="stylesheet" href="/css/components/utilities.css">
+  
+  <!-- Feature Styles -->
+  <link rel="stylesheet" href="/css/features/fit-assessment.css">
+  <link rel="stylesheet" href="/css/features/work-split.css">
+  <link rel="stylesheet" href="/css/features/red-flags.css">
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>Job Radar</div>
+  <div class="hstats">
+    <div class="spill">Total <b id="s-total">—</b></div>
+    <div class="spill sg">Strong <b id="s-strong">—</b></div>
+    <div class="spill sa">Starred <b id="s-interest">—</b></div>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city..." oninput="onSearch()">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+  </div>
+  <button class="tool-btn rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
+  <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
+  <button class="tool-btn details-btn" id="details-btn" onclick="fetchDetails()">⇩ Fetch Details</button>
+  <button class="tool-btn enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
+  <div class="filters">
+    <button class="filter-btn active" onclick="setFilter(this,'all')">All</button>
+    <button class="filter-btn" onclick="setFilter(this,'Strong')">Strong</button>
+    <button class="filter-btn" onclick="setFilter(this,'unseen')">New</button>
+    <button class="filter-btn" onclick="setFilter(this,'interested')">Starred</button>
+    <button class="filter-btn" onclick="setFilter(this,'applied')">Applied</button>
+  </div>
+  <button class="tool-btn settings-btn" id="settings-btn" onclick="openSettings()">⚙ Settings</button>
+  <div class="status-dot-wrap">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-label">—</span>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sb-header">
+      <span class="sb-label">Positions</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="sort-btn" onclick="toggleSort()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
+        <span class="sb-count" id="list-count">—</span>
+      </div>
+    </div>
+    <div class="sb-scroll" id="job-list">
+      <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>
+    </div>
+  </div>
+
+  <div class="detail-panel">
+    <div class="detail-scroll" id="detail-scroll">
+      <div class="empty"><div class="empty-i">⌖</div><div class="empty-t">Select a position</div></div>
+    </div>
+    <div class="action-bar" id="action-bar" style="display:none">
+      <button class="ab ai" id="btn-i" onclick="setStatus('interested')">✦ Star</button>
+      <button class="ab aa" id="btn-a" onclick="setStatus('applied')">✓ Applied</button>
+      <button class="ab as" id="btn-s" onclick="setStatus('skipped')">✕ Skip</button>
+      <button class="ab ae" id="btn-e" onclick="setExpired()">🗑️ Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settings-overlay" onclick="closeSettingsOnBg(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">⚙ Settings</span>
+      <button class="modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="modal-body" id="settings-body">
+      <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel-btn" onclick="closeSettings()">Cancel</button>
+      <button class="modal-save-btn" onclick="saveSettings()">Save & Reload Config</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- JavaScript Modules -->
+<script type="module" src="/js/main.js"></script>
+
+</body>
+</html>
