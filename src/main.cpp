@@ -2,6 +2,9 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <chrono>
+#include <thread>
+#include <random>
 #include <curl/curl.h>
 #include "httplib.h"
 #include "sqlite3.h"
@@ -26,6 +29,12 @@ std::string urlEncode(const std::string& str) {
         else encoded += c;
     }
     return encoded;
+}
+
+void rateLimitSleep() {
+    static std::mt19937 rng(std::random_device{}());
+    static std::uniform_int_distribution<int> dist(800, 1499);
+    std::this_thread::sleep_for(std::chrono::milliseconds(dist(rng)));
 }
 
 std::string httpRequest(const std::string& url, const std::string& method, 
@@ -597,6 +606,7 @@ int main() {
         int inserted = 0;
 
         for (const auto& q : config.scrape_queries) {
+            rateLimitSleep();
             std::string url = "https://job-search-api.jobs.ch/search/semantic?query="
                 + urlEncode(q) + "&rows=" + std::to_string(config.scrape_rows) + "&page=1";
             try {
@@ -627,6 +637,7 @@ int main() {
          for (const auto& job : jobs_needing_details) {
             try {
                 json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + job.job_id));
+                rateLimitSleep();
 
                 Job updated_job = job_from_json(detail);
                 updated_job.job_id = job.job_id;
@@ -701,7 +712,7 @@ int main() {
                     "Job Description:\n" + tmpl;
 
                 json requestBody = {
-                    {"model",           "mistral-medium-2508"},
+                    {"model",           "mistral-small-latest"},
                     {"temperature",     0.1},
                     {"max_tokens",      enrichMaxTokens},
                     {"response_format", {{"type", "json_object"}}},
