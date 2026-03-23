@@ -54,6 +54,7 @@ window.setExpired = setExpired;
 window.saveNotes = saveNotes;
 window.openSettings = openSettings;
 window.closeSettingsOnBg = closeSettingsOnBg;
+window.closeSettings = closeSettings;
 window.saveSettings = saveSettings;
 window.rescoreAll = rescoreAll;
 window.scrapeJobs = scrapeJobs;
