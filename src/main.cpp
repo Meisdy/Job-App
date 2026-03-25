@@ -5,6 +5,8 @@
 #include <chrono>
 #include <thread>
 #include <random>
+#include <mutex>
+#include <shared_mutex>
 #include <curl/curl.h>
 #include "httplib.h"
 #include "sqlite3.h"
@@ -24,16 +26,25 @@ static size_t writeCallback(void* contents, size_t size, size_t nmemb, std::stri
 
 std::string urlEncode(const std::string& str) {
     std::string encoded;
-    for (char c : str) {
-        if (c == ' ') encoded += "%20";
-        else encoded += c;
+    for (unsigned char c : str) {
+        // RFC 3986: Unreserved characters: A-Z a-z 0-9 - _ . ~
+        if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || 
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || 
+            c == '.' || c == '~') {
+            encoded += c;
+        } else {
+            // Percent-encode all other characters
+            char hex[4];
+            snprintf(hex, sizeof(hex), "%%%02X", c);
+            encoded += hex;
+        }
     }
     return encoded;
 }
 
 void rateLimitSleep() {
-    static std::mt19937 rng(std::random_device{}());
-    static std::uniform_int_distribution<int> dist(800, 1499);
+    thread_local std::mt19937 rng(std::random_device{}());
+    thread_local std::uniform_int_distribution<int> dist(800, 1499);
     std::this_thread::sleep_for(std::chrono::milliseconds(dist(rng)));
 }
 
@@ -267,7 +278,11 @@ json job_record_to_json(const JobRecord& job) {
             json outer = json::parse(job.enriched_data);
             job_json["enriched_data"] = outer.is_string()
                 ? json::parse(outer.get<std::string>()) : outer;
-        } catch (...) { job_json["enriched_data"] = nullptr; }
+        } catch (const std::exception& e) { 
+            std::cerr << "[WARN] Failed to parse enriched_data for job " << job.job_id 
+                      << ": " << e.what() << std::endl;
+            job_json["enriched_data"] = nullptr; 
+        }
     } else {
         job_json["enriched_data"] = nullptr;
     }
@@ -545,6 +560,7 @@ int main() {
     }
 
     ConfigData config = loadConfig();
+    std::shared_mutex config_mutex;
 
     sqlite3* db;
     if (sqlite3_open("../data/jobs.db", &db) != SQLITE_OK) {
@@ -553,6 +569,7 @@ int main() {
     }
     std::cout << "Database opened" << std::endl;
     db_init(db);
+    std::mutex db_write_mutex;
 
 
     // ── SERVER ───────────────────────────────────────────────────────────────
@@ -575,11 +592,12 @@ int main() {
         res.set_content(result.dump(), "application/json");
     });
 
-    server.Post("/api/jobs/update", [&db](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/jobs/update", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             std::string job_id = body["job_id"];
 
+            std::lock_guard<std::mutex> lock(db_write_mutex);
             if (body.contains("notes"))       update_job_field(db, job_id, "notes", body["notes"]);
             if (body.contains("user_status")) update_job_field(db, job_id, "user_status", body["user_status"]);
             if (body.contains("rating"))      update_job_field(db, job_id, "rating", std::to_string(body["rating"].get<int>()));
@@ -591,8 +609,9 @@ int main() {
         }
     });
 
-    server.Delete("/api/jobs/:id", [&db](const httplib::Request& req, httplib::Response& res) {
+    server.Delete("/api/jobs/:id", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
         try {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
             delete_job(db, req.path_params.at("id"));
             res.set_content("{\"ok\":true}", "application/json");
         } catch (const std::exception& e) {
@@ -601,27 +620,42 @@ int main() {
         }
     });
 
-    server.Post("/api/scrape/jobs", [&db, &config](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/scrape/jobs", [&db, &config, &config_mutex, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
         std::cout << "[INFO] Starting job scrape operation" << std::endl;
         int inserted = 0;
 
-        for (const auto& q : config.scrape_queries) {
+        std::vector<std::string> queries;
+        int rows;
+        {
+            std::shared_lock<std::shared_mutex> lock(config_mutex);
+            queries = config.scrape_queries;
+            rows = config.scrape_rows;
+        }
+
+        for (const auto& q : queries) {
             rateLimitSleep();
             std::string url = "https://job-search-api.jobs.ch/search/semantic?query="
-                + urlEncode(q) + "&rows=" + std::to_string(config.scrape_rows) + "&page=1";
+                + urlEncode(q) + "&rows=" + std::to_string(rows) + "&page=1";
             try {
                 json searchData = json::parse(httpGet(url));
                 auto documents  = searchData["documents"];
                 std::cout << "Query: " << q << " - " << documents.size() << " results" << std::endl;
 
                 for (auto& doc : documents) {
+                    std::lock_guard<std::mutex> lock(db_write_mutex);
                     insert_or_update_job(db, job_from_json(doc));
                     inserted++;
                 }
-                delete_expired_jobs(db);
+                {
+                    std::lock_guard<std::mutex> lock(db_write_mutex);
+                    delete_expired_jobs(db);
+                }
 
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Failed to process search results for query '" << q 
+                          << "': " << e.what() << std::endl;
             } catch (...) {
-                std::cerr << "Failed to parse search results for query: " << q << std::endl;
+                std::cerr << "[ERROR] Unknown error processing query: " << q << std::endl;
             }
         }
 
@@ -629,8 +663,14 @@ int main() {
         res.set_content(json{{"ok", true}, {"count", inserted}}.dump(), "application/json");
     });
 
-    server.Post("/api/scrape/details", [&db, &config](const httplib::Request&, httplib::Response& res) {
-        std::vector<Job> jobs_needing_details = get_jobs_needing_details(db, config.detail_refresh_days);
+    server.Post("/api/scrape/details", [&db, &config, &config_mutex, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        int refresh_days;
+        {
+            std::shared_lock<std::shared_mutex> lock(config_mutex);
+            refresh_days = config.detail_refresh_days;
+        }
+        
+        std::vector<Job> jobs_needing_details = get_jobs_needing_details(db, refresh_days);
         std::cout << "[INFO] Fetching details for " << jobs_needing_details.size() << " jobs" << std::endl;
 
         int updated = 0, failed = 0;
@@ -642,8 +682,12 @@ int main() {
                 Job updated_job = job_from_json(detail);
                 updated_job.job_id = job.job_id;
 
-                update_job_details(db, updated_job);
+                {
+                    std::lock_guard<std::mutex> lock(db_write_mutex);
+                    update_job_details(db, updated_job);
+                }
                 updated++;
+                std::cout << "[DEBUG] Fetched details for job: " << job.job_id << std::endl;
 
             } catch (const std::exception& e) {
                 std::cerr << "Failed to fetch details for job: " << job.job_id << " - " << e.what() << std::endl;
@@ -655,7 +699,7 @@ int main() {
         res.set_content(json{{"ok", true}, {"updated", updated}, {"failed", failed}}.dump(), "application/json");
     });
 
-    server.Post("/api/enrich", [&db, &mistralApiKey, &config](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/enrich", [&db, &mistralApiKey, &config, &config_mutex, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
         if (mistralApiKey.empty()) {
             res.status = 500;
             res.set_content(R"({"error":"No API key configured"})", "application/json");
@@ -666,7 +710,8 @@ int main() {
         try {
             std::ifstream f("../config/enrich_prompt.txt");
             systemPrompt = std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-        } catch (...) {
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Could not load enrich_prompt.txt: " << e.what() << std::endl;
             res.status = 500;
             res.set_content(R"({"error":"Could not load enrich_prompt.txt"})", "application/json");
             return;
@@ -677,8 +722,13 @@ int main() {
         std::vector<Job> jobs = get_unenriched_jobs(db);
         std::cout << "Jobs to enrich: " << jobs.size() << std::endl;
 
+        int enrichLimit;
+        {
+            std::shared_lock<std::shared_mutex> lock(config_mutex);
+            enrichLimit = config.enrich_limit;
+        }
+        
         int enriched = 0, failed = 0;
-        const int enrichLimit          = config.enrich_limit;
         constexpr int templateMaxChars = 3000;
 
         for (int i = 0; i < static_cast<int>(jobs.size()) && i < enrichLimit; i++) {
@@ -739,7 +789,10 @@ int main() {
 
                     json validated = json::parse(content); // throws if invalid
 
-                    save_enriched_data(db, job.job_id, content);
+                    {
+                        std::lock_guard<std::mutex> lock(db_write_mutex);
+                        save_enriched_data(db, job.job_id, content);
+                    }
                     enriched++;
                     std::cout << "Enriched: " << job.title << std::endl;
 
@@ -762,7 +815,7 @@ int main() {
         res.set_content(json{{"ok", true}, {"enriched", enriched}, {"failed", failed}}.dump(), "application/json");
     });
 
-    server.Post("/api/score", [&db, &config](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/score", [&db, &config, &config_mutex, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
         std::cout << "[INFO] Starting job scoring" << std::endl;
 
         std::vector<EnrichedJob> jobs = get_enriched_jobs(db);
@@ -771,8 +824,18 @@ int main() {
         int scored = 0;
         for (const auto& job : jobs) {
             try {
-                ScoreResult result = score_job(job.enriched_data, job.zipcode, job.title, config);
-                save_job_score(db, job.job_id, result.score, result.label, result.reasons_json, result.matched_skills, result.penalized_skills);
+                ConfigData config_copy;
+                {
+                    std::shared_lock<std::shared_mutex> lock(config_mutex);
+                    config_copy = config;
+                }
+                
+                ScoreResult result = score_job(job.enriched_data, job.zipcode, job.title, config_copy);
+                
+                {
+                    std::lock_guard<std::mutex> lock(db_write_mutex);
+                    save_job_score(db, job.job_id, result.score, result.label, result.reasons_json, result.matched_skills, result.penalized_skills);
+                }
                 scored++;
             } catch (const std::exception& e) {
                 std::cerr << "[ERROR] Failed to score job " << job.job_id << " — " << e.what() << std::endl;
@@ -797,7 +860,7 @@ int main() {
         }
     });
 
-    server.Post("/api/config", [&config](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/config", [&config, &config_mutex](const httplib::Request& req, httplib::Response& res) {
         try {
             json incoming = json::parse(req.body);
             validateConfig(incoming);
@@ -807,7 +870,10 @@ int main() {
             f << incoming.dump(2);
             f.close();
 
-            config = loadConfig();
+            {
+                std::unique_lock<std::shared_mutex> lock(config_mutex);
+                config = loadConfig();
+            }
             std::cout << "Config reloaded" << std::endl;
             res.set_content("{\"ok\":true}", "application/json");
         } catch (const std::exception& e) {
@@ -816,6 +882,7 @@ int main() {
         }
     });
 
+#ifdef DEBUG_MODE
     // POST /api/debug/query — run arbitrary SQL and return plain text result
     server.Post("/api/debug/query", [&db](const httplib::Request& req, httplib::Response& res) {
         sqlite3_stmt* stmt;
@@ -838,6 +905,7 @@ int main() {
         sqlite3_finalize(stmt);
         res.set_content(out, "text/plain");
     });
+#endif
 
     std::cout << "Server running on http://localhost:8080" << std::endl;
     server.listen("localhost", 8080);

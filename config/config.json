@@ -355,9 +355,10 @@
     "Software Engineer",
     "Mechatronics Engineer",
     "Development Engineer",
-    "Embedded Linux"
+    "Embedded Linux",
+    "R&D Engineer"
   ],
-  "scrape_rows": 150,
+  "scrape_rows": 200,
   "seniority_scores": {
     "PhD": -40,
     "apprentice": -100,
