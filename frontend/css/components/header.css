@@ -27,21 +27,6 @@ header {
   box-shadow:0 0 8px var(--accent);
 }
 
-.hstats { display:flex; gap:4px; }
-.spill {
-  font-family:'JetBrains Mono', monospace;
-  font-size:10px;
-  color:var(--text3);
-  padding:2px 10px;
-  border:1px solid var(--border);
-  border-radius:99px;
-  background:transparent;
-  letter-spacing:0.04em;
-}
-.spill b { color:var(--text2); font-weight:500; }
-.spill.sg b { color:var(--green); }
-.spill.sa b { color:var(--accent); }
-
 .search-wrap { flex:1; max-width:280px; position:relative; margin:0 auto; }
 .search-input {
   width:100%;

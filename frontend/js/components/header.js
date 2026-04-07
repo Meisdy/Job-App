@@ -23,9 +23,17 @@ function clearSearch() {
 }
 
 function updateStats() {
-  document.getElementById('s-total').textContent = state.allJobs.length;
-  document.getElementById('s-strong').textContent = state.allJobs.filter(j => j.score_label === 'Strong').length;
-  document.getElementById('s-interest').textContent = state.allJobs.filter(j => j.user_status === 'interested').length;
+  const total = state.allJobs.length;
+  const strong = state.allJobs.filter(j => j.score_label === 'Strong').length;
+  const unseen = state.allJobs.filter(j => j.user_status === null || j.user_status === '').length;
+  const interested = state.allJobs.filter(j => j.user_status === 'interested').length;
+  const applied = state.allJobs.filter(j => j.user_status === 'applied').length;
+
+  document.getElementById('filter-all').textContent = `All (${total})`;
+  document.getElementById('filter-strong').textContent = `Strong (${strong})`;
+  document.getElementById('filter-unseen').textContent = `New (${unseen})`;
+  document.getElementById('filter-interested').textContent = `Starred (${interested})`;
+  document.getElementById('filter-applied').textContent = `Applied (${applied})`;
 }
 
 function setFilter(btn, f) {

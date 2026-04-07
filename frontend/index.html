@@ -30,10 +30,12 @@
 
 <header>
   <div class="logo"><div class="logo-dot"></div>Job Radar</div>
-  <div class="hstats">
-    <div class="spill">Total <b id="s-total">—</b></div>
-    <div class="spill sg">Strong <b id="s-strong">—</b></div>
-    <div class="spill sa">Starred <b id="s-interest">—</b></div>
+  <div class="filters">
+    <button class="filter-btn active" id="filter-all" onclick="setFilter(this,'all')">All</button>
+    <button class="filter-btn" id="filter-strong" onclick="setFilter(this,'Strong')">Strong</button>
+    <button class="filter-btn" id="filter-unseen" onclick="setFilter(this,'unseen')">New</button>
+    <button class="filter-btn" id="filter-interested" onclick="setFilter(this,'interested')">Starred</button>
+    <button class="filter-btn" id="filter-applied" onclick="setFilter(this,'applied')">Applied</button>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
@@ -44,13 +46,6 @@
   <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
   <button class="tool-btn details-btn" id="details-btn" onclick="fetchDetails()">⇩ Fetch Details</button>
   <button class="tool-btn enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
-  <div class="filters">
-    <button class="filter-btn active" onclick="setFilter(this,'all')">All</button>
-    <button class="filter-btn" onclick="setFilter(this,'Strong')">Strong</button>
-    <button class="filter-btn" onclick="setFilter(this,'unseen')">New</button>
-    <button class="filter-btn" onclick="setFilter(this,'interested')">Starred</button>
-    <button class="filter-btn" onclick="setFilter(this,'applied')">Applied</button>
-  </div>
   <button class="tool-btn settings-btn" id="settings-btn" onclick="openSettings()">⚙ Settings</button>
   <div class="status-dot-wrap">
     <div class="status-dot" id="status-dot"></div>
