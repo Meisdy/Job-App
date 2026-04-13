@@ -7,35 +7,54 @@ This document provides build, test, and code style guidelines for agentic coding
 ### Directory Layout
 ```
 frontend/
-├── index.html              # Main entry point (active)
-├── job_dashboard_backup.html # Backup of original (2026-03-22)
-├── css/                    # Modular CSS files
-│   ├── main.css            # Core styles and variables
-│   └── components/         # Component-specific CSS
-│       ├── header.css
-│       ├── sidebar.css
-│       ├── detail-panel.css
-│       └── modal.css
-├── js/                     # Modular JavaScript
-│   ├── main.js             # Core application logic
-│   ├── api.js              # API endpoints and utilities
-│   └── components/         # Component-specific JS
-│       ├── header.js
-│       ├── job-list.js
-│       ├── job-detail.js
-│       └── modal.js
-└── components/             # HTML component templates
-    ├── header.html
-    ├── sidebar.html
-    ├── detail-panel.html
-    └── modal.html
+├── index.html                    # Main entry point (single-page app)
+├── job_dashboard.html            # Original backup (monolithic, 1,467 lines)
+├── css/                          # Modular CSS files
+│   ├── variables.css             # CSS custom properties (theme/colors)
+│   ├── base.css                  # Global reset & body styles
+│   ├── layouts/
+│   │   └── main.css              # Main flex layout structure
+│   ├── components/               # UI component styles
+│   │   ├── header.css            # Header, search, filters, status
+│   │   ├── sidebar.css           # Job list sidebar
+│   │   ├── detail-panel.css      # Job detail view
+│   │   ├── action-bar.css        # Action buttons
+│   │   ├── modal.css             # Settings modal
+│   │   └── utilities.css         # Loaders, toast, empty states
+│   └── features/                 # Feature-specific styles
+│       ├── fit-assessment.css    # Fit assessment grid
+│       ├── work-split.css        # Work distribution chart
+│       └── red-flags.css         # Warning indicators
+├── js/                           # ES6 Modular JavaScript
+│   ├── main.js                   # Entry point & initialization
+│   ├── api.js                    # API endpoints & skill constants
+│   ├── state.js                  # Global application state
+│   ├── utils/                    # Utility functions
+│   │   ├── formatting.js         # Date & icon formatting
+│   │   └── validation.js         # Skill matching validation
+│   └── components/               # UI component logic
+│       ├── header.js             # Search, filters, stats
+│       ├── job-list.js           # List rendering & selection
+│       ├── detail.js             # Job detail rendering
+│       ├── actions.js            # User actions & API operations
+│       └── modal.js              # Settings modal functionality
+└── components/                   # (Empty - HTML is inline in index.html)
 ```
 
 ### Component Architecture
 - **CSS Components**: Organized by feature area with clear separation of concerns
-- **JS Modules**: Separated by functionality with minimal dependencies
-- **HTML Components**: Reusable templates using custom `<include>` tags
-- **Dynamic Loading**: Components are loaded asynchronously at runtime
+  - `variables.css`: Centralized theme colors and CSS custom properties
+  - `base.css`: Global reset, typography, and base styles
+  - `layouts/`: Page-level structural CSS
+  - `components/`: Individual UI component styles
+  - `features/`: Feature-specific styling (fit assessment, work split, red flags)
+- **JS Modules**: ES6 modules with clear dependencies
+  - `state.js`: Centralized reactive state (single source of truth)
+  - `api.js`: API endpoint URLs and skill preference constants
+  - `utils/`: Pure utility functions (formatting, validation)
+  - `components/`: UI logic separated by functional area
+- **HTML**: Inline in `index.html` (no custom loader needed, event handlers work reliably)
+- **No Build Step**: Native ES6 modules, no bundler required
 
 ### Serving Configuration
 The backend serves `index.html` as the main entry point. The file structure allows for:
@@ -103,16 +122,19 @@ server {
 4. Include component in main HTML using `<include src="/components/your-component.html">`
 
 ### CSS Architecture
-- **Global styles**: `main.css` (CSS variables, base styles, utilities)
-- **Component styles**: Separate files in `css/components/`
-- **Naming**: Use component-specific class prefixes (e.g., `.header-`, `.job-item-`)
-- **Variables**: All colors and spacing defined in `:root` for easy theming
+- **CSS Variables**: All colors, spacing, and theme values in `variables.css` `:root`
+- **Base styles**: Global reset, typography, and base styles in `base.css`
+- **Layouts**: Page-level structural CSS in `layouts/main.css`
+- **Component styles**: Separate files in `css/components/` with clear naming
+- **Feature styles**: Specific features (fit assessment, work split, red flags) in `css/features/`
+- **Naming**: Use component-specific class prefixes (e.g., `.header-`, `.job-item-`, `.detail-`)
 
 ### JavaScript Modules
-- **API layer**: `js/api.js` (endpoints, constants, utility functions)
-- **Component logic**: Separate files in `js/components/`
-- **Main app**: `js/main.js` (initialization, routing, state management)
-- **Dynamic loading**: CSS files loaded via `loadCSS()` function
+- **State**: Centralized reactive state in `state.js`
+- **API layer**: `js/api.js` (endpoints, constants, CURIOUS_SKILLS/AVOID_SKILLS)
+- **Utilities**: Pure functions in `js/utils/` (formatting, validation)
+- **Component logic**: UI logic in `js/components/` by functional area
+- **Main app**: `js/main.js` (entry point, initialization, keyboard shortcuts)
 
 ### Build Process
 No build step required for development. For production:
@@ -210,11 +232,25 @@ int main() {
 ### File Organization
 
 ```
-include/  - Header files (.h)
-src/     - Implementation files (.cpp)
-tests/   - Test files (create this directory)
-config/  - Configuration files
-frontend/- Web interface files
+include/        - Header files (.h)
+  ├── db.h      - Database interface and structures
+  ├── httplib.h - HTTP server library
+  ├── sqlite3.h - SQLite database library
+  └── json.hpp  - JSON parsing library
+src/            - Implementation files (.cpp)
+  ├── main.cpp  - Application entry point and server
+  └── db.cpp    - Database operations implementation
+tests/          - Test files (create this directory)
+config/         - Configuration files
+  ├── config.json        - Scoring thresholds and rules
+  ├── api_keys.json      - API keys (gitignored)
+  └── enrich_prompt.txt  - LLM enrichment prompt
+data/           - Data storage (not in git)
+frontend/       - Web interface files
+  ├── index.html         - Main SPA entry point
+  ├── job_dashboard.html - Original monolithic backup
+  ├── css/               - Stylesheets
+  └── js/                - JavaScript modules
 ```
 
 ### Naming Conventions
@@ -636,5 +672,5 @@ Add ZIP code validation for Swiss postal codes
 
 ---
 
-*Last updated: 2024-03-19*
+*Last updated: 2026-04-13*
 *Maintainer: Job-App Development Team*
