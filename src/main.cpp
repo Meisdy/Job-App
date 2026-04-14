@@ -705,14 +705,13 @@ int main() {
 
     httplib::Server server;
 
-    server.Get("/", [](const httplib::Request&, httplib::Response& res) {
-        std::ifstream file("../frontend/index.html");
-        res.set_content(std::string((std::istreambuf_iterator<char>(file)),
-                                     std::istreambuf_iterator<char>()), "text/html");
-    });
-
     // Serve static files (CSS, JS)
     server.set_mount_point("/", "../frontend");
+    
+    // Serve index.html for root path
+    server.Get("/", [](const httplib::Request&, httplib::Response& res) {
+        res.set_redirect("/index.html");
+    });
 
     server.Get("/api/jobs", [&db](const httplib::Request&, httplib::Response& res) {
         json result = json::array();
