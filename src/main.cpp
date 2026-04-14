@@ -364,7 +364,7 @@ Job job_from_json(const json& data) {
                            ? data["_links"]["detail_de"].value("href", "") : "";
     job.pub_date         = data.value("publication_date", "");
     job.end_date         = data.value("publication_end_date", "");
-    job.template_text    = data.contains("template_text") ? data["template_text"].dump() : "";
+    job.template_text    = data.value("template_text", "");
     return job;
 }
 
