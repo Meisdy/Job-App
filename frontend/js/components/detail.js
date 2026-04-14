@@ -41,7 +41,7 @@ function renderDetail() {
         : null;
 
   const starsHTML = [1, 2, 3, 4, 5].map(n =>
-    `<span class="star${n <= rating ? ' filled' : ''}" onclick="window.setRating(${n})" onmouseover="window.hoverStar(${n})" onmouseout="window.unhoverStar()">★</span>`
+    `<span class="star${n <= rating ? ' filled' : ''}" data-rating="${n}">★</span>`
   ).join('');
 
   const rHTML = reasons.map(r => {
@@ -151,7 +151,7 @@ function renderDetail() {
           <div class="section">
             <div class="st">Notes</div>
             <textarea class="notes-ta" id="notes-input" placeholder="Your private notes...">${job.notes || ''}</textarea>
-            <button class="save-b" onclick="window.saveNotes()">Save Notes</button>
+            <button class="save-b" id="save-notes-btn">Save Notes</button>
           </div>
         </div>
         <div>

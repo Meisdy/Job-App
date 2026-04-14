@@ -4,7 +4,6 @@ const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
 const RESCORE_URL = 'http://localhost:8080/api/score';
 const SCRAPE_URL = 'http://localhost:8080/api/scrape/jobs';
 const DETAILS_URL = 'http://localhost:8080/api/scrape/details';
-const ENRICH_URL = 'http://localhost:8080/api/enrich';
 const CONFIG_GET_URL = 'http://localhost:8080/api/config';
 const CONFIG_POST_URL = 'http://localhost:8080/api/config';
 
@@ -34,7 +33,6 @@ export {
   RESCORE_URL,
   SCRAPE_URL,
   DETAILS_URL,
-  ENRICH_URL,
   CONFIG_GET_URL,
   CONFIG_POST_URL,
   CURIOUS_SKILLS,

@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, RESCORE_URL, SCRAPE_URL, DETAILS_URL, ENRICH_URL, FITCHECK_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, RESCORE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -184,42 +184,6 @@ async function fetchDetails() {
   }
 }
 
-async function enrichJobs() {
-  const btn = document.getElementById('enrich-btn');
-  if (btn.classList.contains('running')) return;
-  btn.classList.add('running');
-  btn.innerHTML = '<span class="spin">⟳</span> Enriching...';
-  try {
-    const r = await fetch(ENRICH_URL, {method: 'POST'});
-    const data = await r.json();
-    if (r.ok) {
-      showToast('Enriched ' + data.enriched + ' jobs — reloading...');
-      setTimeout(async () => {
-        btn.classList.remove('running');
-        btn.innerHTML = '✦ Enrich Jobs';
-        // Reload jobs
-        setConnectionStatus('loading');
-        try {
-          const response = await fetch(GET_URL);
-          state.allJobs = await response.json();
-          state.allJobs.sort((a, b) => (b.score || 0) - (a.score || 0));
-          setConnectionStatus('connected');
-          updateStats();
-          renderList();
-        } catch (e) {
-          setConnectionStatus('error');
-        }
-      }, 2000);
-    } else {
-      throw new Error('Non-OK response');
-    }
-  } catch (e) {
-    showToast('Enrichment failed');
-    btn.classList.remove('running');
-    btn.innerHTML = '✦ Enrich Jobs';
-  }
-}
-
 async function triggerFitCheck() {
   const btn = document.getElementById('fitcheck-btn');
   if (btn.classList.contains('running')) return;
@@ -276,7 +240,7 @@ export {
   rescoreAll,
   scrapeJobs,
   fetchDetails,
-  enrichJobs,
   triggerFitCheck,
   openProfile
 };
+

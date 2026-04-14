@@ -32,27 +32,26 @@
 <header>
   <div class="logo"><div class="logo-dot"></div>Job Radar</div>
   <div class="filters">
-    <button class="filter-btn active" id="filter-all" onclick="setFilter(this,'all')">All</button>
-    <button class="filter-btn" id="filter-strong" onclick="setFilter(this,'Strong')">Strong</button>
-    <button class="filter-btn" id="filter-decent" onclick="setFilter(this,'decent')">Decent</button>
-    <button class="filter-btn" id="filter-experimental" onclick="setFilter(this,'experimental')">Experimental</button>
-    <button class="filter-btn" id="filter-weak" onclick="setFilter(this,'weak')">Weak</button>
-    <button class="filter-btn" id="filter-unseen" onclick="setFilter(this,'unseen')">New</button>
-    <button class="filter-btn" id="filter-interested" onclick="setFilter(this,'interested')">Starred</button>
-    <button class="filter-btn" id="filter-applied" onclick="setFilter(this,'applied')">Applied</button>
+    <button class="filter-btn active" id="filter-all" data-filter="all">All</button>
+    <button class="filter-btn" id="filter-strong" data-filter="Strong">Strong</button>
+    <button class="filter-btn" id="filter-decent" data-filter="decent">Decent</button>
+    <button class="filter-btn" id="filter-experimental" data-filter="experimental">Experimental</button>
+    <button class="filter-btn" id="filter-weak" data-filter="weak">Weak</button>
+    <button class="filter-btn" id="filter-unseen" data-filter="unseen">New</button>
+    <button class="filter-btn" id="filter-interested" data-filter="interested">Starred</button>
+    <button class="filter-btn" id="filter-applied" data-filter="applied">Applied</button>
   </div>
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
-    <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city..." oninput="onSearch()">
-    <button class="search-clear" id="search-clear" onclick="clearSearch()">✕</button>
+    <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city...">
+    <button class="search-clear" id="search-clear">✕</button>
   </div>
-  <button class="tool-btn rescore-btn" id="rescore-btn" onclick="rescoreAll()">⟳ Rescore All</button>
-  <button class="tool-btn scrape-btn" id="scrape-btn" onclick="scrapeJobs()">⊕ Scrape Jobs</button>
-  <button class="tool-btn details-btn" id="details-btn" onclick="fetchDetails()">⇩ Fetch Details</button>
-  <button class="tool-btn enrich-btn" id="enrich-btn" onclick="enrichJobs()">✦ Enrich Jobs</button>
-  <button class="tool-btn profile-btn" id="profile-btn" onclick="openProfile()">👤 Profile</button>
-  <button class="tool-btn fitcheck-btn" id="fitcheck-btn" onclick="triggerFitCheck()">🤖 Fit-Check</button>
-  <button class="tool-btn settings-btn" id="settings-btn" onclick="openSettings()">⚙ Settings</button>
+  <button class="tool-btn rescore-btn" id="rescore-btn">⟳ Rescore All</button>
+  <button class="tool-btn scrape-btn" id="scrape-btn">⊕ Scrape Jobs</button>
+  <button class="tool-btn details-btn" id="details-btn">⇩ Fetch Details</button>
+  <button class="tool-btn profile-btn" id="profile-btn">👤 Profile</button>
+  <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
+  <button class="tool-btn settings-btn" id="settings-btn">⚙ Settings</button>
   <div class="status-dot-wrap">
     <div class="status-dot" id="status-dot"></div>
     <span id="status-label">—</span>
@@ -64,7 +63,7 @@
     <div class="sb-header">
       <span class="sb-label">Positions</span>
       <div style="display:flex;align-items:center;gap:8px">
-        <button id="sort-btn" onclick="toggleSort()" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
+        <button id="sort-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
         <span class="sb-count" id="list-count">—</span>
       </div>
     </div>
@@ -78,26 +77,26 @@
       <div class="empty"><div class="empty-i">⌖</div><div class="empty-t">Select a position</div></div>
     </div>
     <div class="action-bar" id="action-bar" style="display:none">
-      <button class="ab ai" id="btn-i" onclick="setStatus('interested')">✦ Star</button>
-      <button class="ab aa" id="btn-a" onclick="setStatus('applied')">✓ Applied</button>
-      <button class="ab as" id="btn-s" onclick="setStatus('skipped')">✕ Skip</button>
-      <button class="ab ae" id="btn-e" onclick="setExpired()">🗑️ Delete</button>
+      <button class="ab ai" id="btn-i" data-status="interested">✦ Star</button>
+      <button class="ab aa" id="btn-a" data-status="applied">✓ Applied</button>
+      <button class="ab as" id="btn-s" data-status="skipped">✕ Skip</button>
+      <button class="ab ae" id="btn-e">🗑️ Delete</button>
     </div>
   </div>
 </div>
 
-<div class="modal-overlay" id="settings-overlay" onclick="closeSettingsOnBg(event)">
+<div class="modal-overlay" id="settings-overlay">
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">⚙ Settings</span>
-      <button class="modal-close" onclick="closeSettings()">✕</button>
+      <button class="modal-close" id="modal-close">✕</button>
     </div>
     <div class="modal-body" id="settings-body">
       <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>
     </div>
     <div class="modal-footer">
-      <button class="modal-cancel-btn" onclick="closeSettings()">Cancel</button>
-      <button class="modal-save-btn" onclick="saveSettings()">Save & Reload Config</button>
+      <button class="modal-cancel-btn" id="modal-cancel-btn">Cancel</button>
+      <button class="modal-save-btn" id="modal-save-btn">Save & Reload Config</button>
     </div>
   </div>
 </div>

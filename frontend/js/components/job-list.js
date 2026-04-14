@@ -54,7 +54,7 @@ function renderList() {
     const displayLabel = job.fit_label || job.score_label || 'Weak';
     const fitClass = displayLabel.toLowerCase().replace(' ', '');
     
-    return `<div class="job-item${state.currentJob?.job_id === job.job_id ? ' active' : ''} status-${st}" onclick="window.selectJob('${job.job_id}')">
+    return `<div class="job-item${state.currentJob?.job_id === job.job_id ? ' active' : ''} status-${st}" data-id="${job.job_id}">
       <div class="ji-title">${job.title || 'Unknown'}</div>
       <div class="ji-co">${job.company_name || '—'}</div>
       <div class="ji-foot">

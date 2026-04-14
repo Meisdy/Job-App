@@ -358,7 +358,7 @@
     "Embedded Linux",
     "R&D Engineer"
   ],
-  "scrape_rows": 200,
+  "scrape_rows": 50,
   "seniority_scores": {
     "PhD": -40,
     "apprentice": -100,
