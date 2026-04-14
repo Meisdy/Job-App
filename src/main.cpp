@@ -258,7 +258,6 @@ struct ConfigV2 {
     int                      fitcheck_limit{};
     std::string              ollama_model{};
     std::string              ollama_base_url{};
-    std::string              ollama_api_key{};
     int                      ollama_max_tokens{};
     double                   ollama_temperature{};
     double                   ollama_top_p{};
@@ -288,7 +287,6 @@ ConfigV2 loadConfigV2() {
         cfg.fitcheck_limit = c["fitcheck"]["limit"].get<int>();
         cfg.ollama_model = c["fitcheck"]["model"].get<std::string>();
         cfg.ollama_base_url = c["fitcheck"]["base_url"].get<std::string>();
-        cfg.ollama_api_key = c["fitcheck"]["api_key"].get<std::string>();
         cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
         cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
         cfg.ollama_top_p = c["fitcheck"].value("top_p", 0.95);
@@ -683,9 +681,12 @@ int main() {
     curl_global_init(CURL_GLOBAL_ALL);
 
     std::string mistralApiKey;
+    std::string ollamaCloudApiKey;
     try {
         std::ifstream f("../config/api_keys.json");
-        mistralApiKey = json::parse(f)["mistral_api_key"];
+        json keys = json::parse(f);
+        mistralApiKey = keys.value("mistral_api_key", "");
+        ollamaCloudApiKey = keys.value("ollama_cloud_api_key", "");
         std::cout << "API keys loaded" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[WARN] Could not load API keys: " << e.what() << std::endl;
@@ -1093,7 +1094,7 @@ int main() {
         }
     });
 
-    server.Post("/api/fitcheck", [&db, &config_v2, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/fitcheck", [&db, &config_v2, &ollamaCloudApiKey, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
         UserProfile profile = get_profile_v2(db);
         if (!profile_exists_v2(db)) {
             res.status = 400;
@@ -1101,7 +1102,7 @@ int main() {
             return;
         }
 
-        if (config_v2.ollama_api_key.empty()) {
+        if (ollamaCloudApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -1154,7 +1155,7 @@ Respond in JSON:
                 };
 
                 std::string response = httpPost(config_v2.ollama_base_url + "/chat/completions",
-                                                config_v2.ollama_api_key, request.dump());
+                                                ollamaCloudApiKey, request.dump());
 
                 json resp_json = json::parse(response);
                 std::string content = resp_json["choices"][0]["message"]["content"];
