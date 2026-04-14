@@ -1053,10 +1053,30 @@ int main() {
             update_session_v2(db, session);
 
             if (session.current_question >= 9) {
-                // Generate profile from answers
+                // Generate profile from answers - store the actual answers
                 UserProfile profile;
-                profile.cv_text = "";
-                profile.narrative = "Profile generated from onboarding";
+                
+                // Format the 9 answers into a structured profile
+                std::string narrative = "Profile generated from onboarding interview:\n\n";
+                const char* questionLabels[] = {
+                    "Background",
+                    "Peak Experience", 
+                    "Exit Triggers",
+                    "Revealed Preferences",
+                    "Priority Stack",
+                    "Intrinsic Pulls", 
+                    "Deal-breakers",
+                    "Vision of Good",
+                    "External Perspective"
+                };
+                
+                json answersJson = json::parse(session.answers_json);
+                for (size_t i = 0; i < answersJson.size() && i < 9; i++) {
+                    narrative += std::string(questionLabels[i]) + ": " + answersJson[i].get<std::string>() + "\n\n";
+                }
+                
+                profile.cv_text = answersJson.dump();
+                profile.narrative = narrative;
                 profile.markdown_path = "../config/user_profile.md";
                 profile.version_hash = std::to_string(time(0));
                 save_profile_v2(db, profile);
