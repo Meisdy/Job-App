@@ -261,6 +261,8 @@ struct ConfigV2 {
     std::string              ollama_api_key{};
     int                      ollama_max_tokens{};
     double                   ollama_temperature{};
+    double                   ollama_top_p{};
+    int                      ollama_top_k{};
 
     // Details
     int                      detail_refresh_days{};
@@ -288,7 +290,9 @@ ConfigV2 loadConfigV2() {
         cfg.ollama_base_url = c["fitcheck"]["base_url"].get<std::string>();
         cfg.ollama_api_key = c["fitcheck"]["api_key"].get<std::string>();
         cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
-        cfg.ollama_temperature = c["fitcheck"].value("temperature", 0.3);
+        cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
+        cfg.ollama_top_p = c["fitcheck"].value("top_p", 0.95);
+        cfg.ollama_top_k = c["fitcheck"].value("top_k", 64);
     }
 
     if (c.contains("details")) {
@@ -1144,6 +1148,8 @@ Respond in JSON:
                     {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
                     {"max_tokens", config_v2.ollama_max_tokens},
                     {"temperature", config_v2.ollama_temperature},
+                    {"top_p", config_v2.ollama_top_p},
+                    {"top_k", config_v2.ollama_top_k},
                     {"response_format", {{"type", "json_object"}}}
                 };
 
