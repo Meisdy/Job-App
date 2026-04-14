@@ -11,9 +11,17 @@ function renderList() {
   const el = document.getElementById('job-list');
   const f = state.allJobs.filter(j => {
     if (state.currentFilter === 'all' && !state.searchQuery) return true;
+    
+    // New fit verdict filters
+    const fitLabel = (j.fit_label || j.score_label || '').toLowerCase();
     const matchFilter = state.currentFilter === 'all' ? true :
       state.currentFilter === 'unseen' ? (!j.user_status || j.user_status === 'unseen') :
-        j.score_label === state.currentFilter || j.user_status === state.currentFilter;
+      state.currentFilter === 'strong' ? fitLabel === 'strong' :
+      state.currentFilter === 'decent' ? fitLabel === 'decent' :
+      state.currentFilter === 'experimental' ? fitLabel === 'experimental' :
+      state.currentFilter === 'weak' ? (fitLabel === 'weak' || fitLabel === 'no go') :
+      j.score_label === state.currentFilter || j.user_status === state.currentFilter;
+      
     const q = state.searchQuery;
     const matchSearch = !q ||
       (j.title || '').toLowerCase().includes(q) ||
@@ -25,7 +33,12 @@ function renderList() {
   if (state.sortMode === 'date') {
     f.sort((a, b) => (b.pub_date || '').localeCompare(a.pub_date || ''));
   } else {
-    f.sort((a, b) => (b.score || 0) - (a.score || 0));
+    // Sort by fit_score if available, otherwise fall back to score
+    f.sort((a, b) => {
+      const scoreA = a.fit_score !== undefined ? a.fit_score : (a.score || 0);
+      const scoreB = b.fit_score !== undefined ? b.fit_score : (b.score || 0);
+      return scoreB - scoreA;
+    });
   }
   if (!f.length) {
     el.innerHTML = '<div class="ldw">No results</div>';
@@ -35,11 +48,17 @@ function renderList() {
     const e = parse(job);
     const city = e.location?.city || job.place || '—';
     const st = job.user_status || 'unseen';
+    
+    // Use fit_score/fit_label if available
+    const displayScore = job.fit_score !== undefined ? job.fit_score : (job.score || 0);
+    const displayLabel = job.fit_label || job.score_label || 'Weak';
+    const fitClass = displayLabel.toLowerCase().replace(' ', '');
+    
     return `<div class="job-item${state.currentJob?.job_id === job.job_id ? ' active' : ''} status-${st}" onclick="window.selectJob('${job.job_id}')">
       <div class="ji-title">${job.title || 'Unknown'}</div>
       <div class="ji-co">${job.company_name || '—'}</div>
       <div class="ji-foot">
-        <span class="stag ${job.score_label || 'Weak'}">${job.score || 0} pts</span>
+        <span class="stag ${displayLabel}">${displayScore} pts</span>
         <div style="display:flex;align-items:center;gap:6px">
           ${job.pub_date ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtDate(job.pub_date)}</span>` : `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${city.toUpperCase()}</span>`}
           ${sicon(st)}

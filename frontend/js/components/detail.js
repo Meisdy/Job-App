@@ -91,6 +91,23 @@ function renderDetail() {
       <div class="fit-col">${fitNeg.map(f => `<div class="fit-item neg">✗ ${f}</div>`).join('')}</div>
     </div>` : '';
 
+  // Use fit_score/fit_label if available, fall back to score/score_label
+  const displayScore = job.fit_score !== undefined ? job.fit_score : (job.score || 0);
+  const displayLabel = job.fit_label || job.score_label || 'Weak';
+  const labelClass = displayLabel.toLowerCase().replace(' ', '');
+  
+  // Fit reasoning section
+  const fitReasoningHTML = job.fit_reasoning ? `
+    <div class="section">
+      <div class="st">AI Fit Assessment</div>
+      <div class="fit-verdict ${labelClass}">${displayLabel}</div>
+      <div class="fit-reasoning">
+        ${job.fit_summary ? `<div class="fit-summary">${job.fit_summary}</div>` : ''}
+        <div>${job.fit_reasoning}</div>
+      </div>
+    </div>
+  ` : '';
+
   document.getElementById('detail-scroll').innerHTML = `
     <div class="hero">
       <div class="score-box ${job.score_label || 'Weak'}">
@@ -123,6 +140,7 @@ function renderDetail() {
     </div>
     <div class="body">
       ${summary ? `<div class="section"><div class="st">Summary</div><div class="summary-text">${summary}</div></div>` : ''}
+      ${fitReasoningHTML}
       ${rHTML ? `<div class="section"><div class="st">Score Breakdown</div><div class="rtags">${rHTML}</div></div>` : ''}
       ${fitHTML ? `<div class="section"><div class="st">Fit Assessment</div>${fitHTML}</div>` : ''}
       ${redFlags.length ? `<div class="section"><div class="st" style="color:var(--red)">⚠ Red Flags</div><div class="redflag-list">${redFlags.map(f => `<div class="redflag-item">${f}</div>`).join('')}</div></div>` : ''}

@@ -24,13 +24,24 @@ function clearSearch() {
 
 function updateStats() {
   const total = state.allJobs.length;
-  const strong = state.allJobs.filter(j => j.score_label === 'Strong').length;
-  const unseen = state.allJobs.filter(j => j.user_status === null || j.user_status === '').length;
+  
+  // V2 fit verdict stats
+  const strong = state.allJobs.filter(j => (j.fit_label || j.score_label) === 'Strong').length;
+  const decent = state.allJobs.filter(j => j.fit_label === 'Decent').length;
+  const experimental = state.allJobs.filter(j => j.fit_label === 'Experimental').length;
+  const weak = state.allJobs.filter(j => (j.fit_label === 'Weak' || j.fit_label === 'No Go')).length;
+  
+  // User status stats
+  const unseen = state.allJobs.filter(j => !j.user_status || j.user_status === 'unseen').length;
   const interested = state.allJobs.filter(j => j.user_status === 'interested').length;
   const applied = state.allJobs.filter(j => j.user_status === 'applied').length;
 
+  // Update filter buttons
   document.getElementById('filter-all').textContent = `All (${total})`;
   document.getElementById('filter-strong').textContent = `Strong (${strong})`;
+  document.getElementById('filter-decent').textContent = `Decent (${decent})`;
+  document.getElementById('filter-experimental').textContent = `Exp (${experimental})`;
+  document.getElementById('filter-weak').textContent = `Weak (${weak})`;
   document.getElementById('filter-unseen').textContent = `New (${unseen})`;
   document.getElementById('filter-interested').textContent = `Starred (${interested})`;
   document.getElementById('filter-applied').textContent = `Applied (${applied})`;
