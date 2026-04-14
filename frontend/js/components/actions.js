@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, RESCORE_URL, SCRAPE_URL, DETAILS_URL, ENRICH_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, RESCORE_URL, SCRAPE_URL, DETAILS_URL, ENRICH_URL, FITCHECK_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -220,6 +220,49 @@ async function enrichJobs() {
   }
 }
 
+async function triggerFitCheck() {
+  const btn = document.getElementById('fitcheck-btn');
+  if (btn.classList.contains('running')) return;
+  btn.classList.add('running');
+  btn.innerHTML = '<span class="spin">⟳</span> Analyzing...';
+  try {
+    const r = await fetch(FITCHECK_URL, {method: 'POST'});
+    const data = await r.json();
+    if (r.ok) {
+      showToast(`Fit-check complete: ${data.checked} jobs, ${data.failed} failed`);
+      setTimeout(async () => {
+        btn.classList.remove('running');
+        btn.innerHTML = '🤖 Fit-Check';
+        // Reload jobs
+        setConnectionStatus('loading');
+        try {
+          const response = await fetch(GET_URL);
+          state.allJobs = await response.json();
+          state.allJobs.sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0));
+          setConnectionStatus('connected');
+          updateStats();
+          renderList();
+        } catch (e) {
+          setConnectionStatus('error');
+        }
+      }, 2000);
+    } else {
+      const err = await r.json();
+      showToast(err.error || 'Fit-check failed', true);
+      btn.classList.remove('running');
+      btn.innerHTML = '🤖 Fit-Check';
+    }
+  } catch (e) {
+    showToast('Fit-check failed: ' + e.message, true);
+    btn.classList.remove('running');
+    btn.innerHTML = '🤖 Fit-Check';
+  }
+}
+
+async function openProfile() {
+  window.open('/onboarding.html', '_blank');
+}
+
 export {
   setStatus,
   setRating,
@@ -233,5 +276,7 @@ export {
   rescoreAll,
   scrapeJobs,
   fetchDetails,
-  enrichJobs
+  enrichJobs,
+  triggerFitCheck,
+  openProfile
 };

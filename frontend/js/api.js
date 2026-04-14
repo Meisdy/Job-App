@@ -8,6 +8,13 @@ const ENRICH_URL = 'http://localhost:8080/api/enrich';
 const CONFIG_GET_URL = 'http://localhost:8080/api/config';
 const CONFIG_POST_URL = 'http://localhost:8080/api/config';
 
+// V2 API Endpoints
+const ONBOARDING_START_URL = 'http://localhost:8080/api/onboarding/start';
+const ONBOARDING_ANSWER_URL = 'http://localhost:8080/api/onboarding/answer';
+const PROFILE_GET_URL = 'http://localhost:8080/api/profile';
+const PROFILE_SAVE_URL = 'http://localhost:8080/api/profile/save';
+const FITCHECK_URL = 'http://localhost:8080/api/fitcheck';
+
 // Personal Skill Preferences
 // Dashed blue — curious / would enjoy learning (no point effect)
 const CURIOUS_SKILLS = [
@@ -31,5 +38,10 @@ export {
   CONFIG_GET_URL,
   CONFIG_POST_URL,
   CURIOUS_SKILLS,
-  AVOID_SKILLS
+  AVOID_SKILLS,
+  ONBOARDING_START_URL,
+  ONBOARDING_ANSWER_URL,
+  PROFILE_GET_URL,
+  PROFILE_SAVE_URL,
+  FITCHECK_URL
 };

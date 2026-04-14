@@ -3,7 +3,7 @@ import { GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, closeSettingsOnBg, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, rescoreAll, scrapeJobs, fetchDetails, enrichJobs } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, rescoreAll, scrapeJobs, fetchDetails, enrichJobs, triggerFitCheck, openProfile } from './components/actions.js';
 
 async function init() {
   setConnectionStatus('loading');
@@ -60,5 +60,7 @@ window.rescoreAll = rescoreAll;
 window.scrapeJobs = scrapeJobs;
 window.fetchDetails = fetchDetails;
 window.enrichJobs = enrichJobs;
+window.triggerFitCheck = triggerFitCheck;
+window.openProfile = openProfile;
 
 export { init };
