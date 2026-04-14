@@ -3,6 +3,7 @@
 //
 
 #include <stdexcept>
+#include <iostream>
 #include "../include/db.h"
 
 namespace {
@@ -45,6 +46,15 @@ void delete_job(sqlite3* db, const std::string &job_id) {
 }
 
 void update_job_field(sqlite3 *db, const std::string &job_id, const std::string& field, const std::string &value) {
+    // Whitelist of allowed fields to prevent SQL injection
+    static const std::vector<std::string> allowedFields = {
+        "user_status", "rating", "notes", "availability_status"
+    };
+    
+    if (std::find(allowedFields.begin(), allowedFields.end(), field) == allowedFields.end()) {
+        throw std::runtime_error("Invalid field name: " + field);
+    }
+    
     const std::string sql_update_str = "UPDATE jobs SET " + field + " = ? WHERE job_id = ?";
     exec_write(db, sql_update_str, {value, job_id});
 }
@@ -145,25 +155,25 @@ std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days) {
     
     exec_query(db, sql, [&](sqlite3_stmt* stmt) {
         Job job;
-        job.job_id = col(stmt, 0);
-        job.title = col(stmt, 1);
-        job.company_name = col(stmt, 2);
-        job.place = col(stmt, 3);
-        job.zipcode = col(stmt, 4);
-        job.canton_code = col(stmt, 5);
+        job.job_id = getColumn(stmt, 0);
+        job.title = getColumn(stmt, 1);
+        job.company_name = getColumn(stmt, 2);
+        job.place = getColumn(stmt, 3);
+        job.zipcode = getColumn(stmt, 4);
+        job.canton_code = getColumn(stmt, 5);
         job.employment_grade = sqlite3_column_int(stmt, 6);
-        job.application_url = col(stmt, 7);
-        job.detail_url = col(stmt, 8);
-        job.pub_date = col(stmt, 9);
-        job.end_date = col(stmt, 10);
-        job.template_text = col(stmt, 11);
+        job.application_url = getColumn(stmt, 7);
+        job.detail_url = getColumn(stmt, 8);
+        job.pub_date = getColumn(stmt, 9);
+        job.end_date = getColumn(stmt, 10);
+        job.template_text = getColumn(stmt, 11);
         jobs.push_back(job);
     }, {std::to_string(refresh_days)});
     
     return jobs;
 }
 
-std::string col(sqlite3_stmt* s, int i) {
+std::string getColumn(sqlite3_stmt* s, int i) {
     const char* v = (const char*)sqlite3_column_text(s, i);
     return v ? v : "";
 }
@@ -180,27 +190,27 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
     )";
     exec_query(db, sql, [&](sqlite3_stmt* stmt) {
         JobRecord job;
-        job.job_id              = col(stmt, 0);
-        job.title               = col(stmt, 1);
-        job.company_name        = col(stmt, 2);
-        job.place               = col(stmt, 3);
-        job.zipcode             = col(stmt, 4);
-        job.canton_code         = col(stmt, 5);
+        job.job_id              = getColumn(stmt, 0);
+        job.title               = getColumn(stmt, 1);
+        job.company_name        = getColumn(stmt, 2);
+        job.place               = getColumn(stmt, 3);
+        job.zipcode             = getColumn(stmt, 4);
+        job.canton_code         = getColumn(stmt, 5);
         job.employment_grade    = sqlite3_column_int(stmt, 6);
-        job.application_url     = col(stmt, 7);
+        job.application_url     = getColumn(stmt, 7);
         job.score               = sqlite3_column_int(stmt, 8);
-        job.score_label         = col(stmt, 9);
-        job.score_reasons       = col(stmt, 10);
-        job.user_status         = col(stmt, 11);
+        job.score_label         = getColumn(stmt, 9);
+        job.score_reasons       = getColumn(stmt, 10);
+        job.user_status         = getColumn(stmt, 11);
         job.rating              = sqlite3_column_int(stmt, 12);
-        job.notes               = col(stmt, 13);
-        job.matched_skills      = col(stmt, 14);
-        job.penalized_skills    = col(stmt, 15);
-        job.enriched_data       = col(stmt, 16);
-        job.availability_status = col(stmt, 17);
-        job.detail_url          = col(stmt, 18);
-        job.pub_date            = col(stmt, 19);
-        job.end_date            = col(stmt, 20);
+        job.notes               = getColumn(stmt, 13);
+        job.matched_skills      = getColumn(stmt, 14);
+        job.penalized_skills    = getColumn(stmt, 15);
+        job.enriched_data       = getColumn(stmt, 16);
+        job.availability_status = getColumn(stmt, 17);
+        job.detail_url          = getColumn(stmt, 18);
+        job.pub_date            = getColumn(stmt, 19);
+        job.end_date            = getColumn(stmt, 20);
         jobs.push_back(job);
     });
     return jobs;
@@ -216,15 +226,15 @@ std::vector<Job> get_unenriched_jobs(sqlite3* db) {
         ORDER BY initial_publication_date DESC
     )", [&](sqlite3_stmt* stmt) {
         Job job;
-        job.job_id           = col(stmt, 0);
-        job.title            = col(stmt, 1);
-        job.company_name     = col(stmt, 2);
-        job.place            = col(stmt, 3);
-        job.zipcode          = col(stmt, 4);
+        job.job_id           = getColumn(stmt, 0);
+        job.title            = getColumn(stmt, 1);
+        job.company_name     = getColumn(stmt, 2);
+        job.place            = getColumn(stmt, 3);
+        job.zipcode          = getColumn(stmt, 4);
         job.employment_grade = sqlite3_column_int(stmt, 5);
-        job.pub_date         = col(stmt, 6);
-        job.end_date         = col(stmt, 7);
-        job.template_text    = col(stmt, 8);
+        job.pub_date         = getColumn(stmt, 6);
+        job.end_date         = getColumn(stmt, 7);
+        job.template_text    = getColumn(stmt, 8);
         jobs.push_back(job);
     });
     return jobs;
@@ -241,7 +251,7 @@ std::vector<EnrichedJob> get_enriched_jobs(sqlite3* db) {
     std::vector<EnrichedJob> jobs;
     exec_query(db, "SELECT job_id, title, zipcode, enriched_data FROM jobs WHERE enriched_data IS NOT NULL",
         [&](sqlite3_stmt* stmt) {
-            jobs.push_back({col(stmt, 0), col(stmt, 1), col(stmt, 2), col(stmt, 3)});
+            jobs.push_back({getColumn(stmt, 0), getColumn(stmt, 1), getColumn(stmt, 2), getColumn(stmt, 3)});
         }
     );
     return jobs;
@@ -288,12 +298,12 @@ void db_v2_ensure_tables(sqlite3* db) {
         );
     )");
     
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_score INTEGER;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_label TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_summary TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_score INTEGER;"); } catch (...) { std::cerr << "[DB] fit_score column may already exist" << std::endl; }
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_label TEXT;"); } catch (...) { std::cerr << "[DB] fit_label column may already exist" << std::endl; }
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_summary TEXT;"); } catch (...) { std::cerr << "[DB] fit_summary column may already exist" << std::endl; }
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;"); } catch (...) { std::cerr << "[DB] fit_reasoning column may already exist" << std::endl; }
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;"); } catch (...) { std::cerr << "[DB] fit_checked_at column may already exist" << std::endl; }
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;"); } catch (...) { std::cerr << "[DB] fit_profile_hash column may already exist" << std::endl; }
 }
 
 bool profile_exists_v2(sqlite3* db) {
@@ -307,12 +317,12 @@ bool profile_exists_v2(sqlite3* db) {
 UserProfile get_profile_v2(sqlite3* db) {
     UserProfile profile;
     exec_query(db, "SELECT cv_text, narrative, markdown_path, created_at, updated_at, version_hash FROM user_profile WHERE id = 1", [&](sqlite3_stmt* stmt) {
-        profile.cv_text = col(stmt, 0);
-        profile.narrative = col(stmt, 1);
-        profile.markdown_path = col(stmt, 2);
-        profile.created_at = col(stmt, 3);
-        profile.updated_at = col(stmt, 4);
-        profile.version_hash = col(stmt, 5);
+        profile.cv_text = getColumn(stmt, 0);
+        profile.narrative = getColumn(stmt, 1);
+        profile.markdown_path = getColumn(stmt, 2);
+        profile.created_at = getColumn(stmt, 3);
+        profile.updated_at = getColumn(stmt, 4);
+        profile.version_hash = getColumn(stmt, 5);
     });
     return profile;
 }
@@ -338,9 +348,9 @@ OnboardingSession get_session_v2(sqlite3* db, const std::string& session_id) {
     session.session_id = session_id;
     exec_query(db, "SELECT current_question, answers_json, created_at, expires_at FROM onboarding_session WHERE session_id = ?", [&](sqlite3_stmt* stmt) {
         session.current_question = sqlite3_column_int(stmt, 0);
-        session.answers_json = col(stmt, 1);
-        session.created_at = col(stmt, 2);
-        session.expires_at = col(stmt, 3);
+        session.answers_json = getColumn(stmt, 1);
+        session.created_at = getColumn(stmt, 2);
+        session.expires_at = getColumn(stmt, 3);
     }, {session_id});
     return session;
 }
@@ -384,27 +394,27 @@ std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit) {
     )";
     exec_query(db, sql, [&](sqlite3_stmt* stmt) {
         JobRecordV2 job;
-        job.job_id = col(stmt, 0);
-        job.title = col(stmt, 1);
-        job.company_name = col(stmt, 2);
-        job.place = col(stmt, 3);
-        job.zipcode = col(stmt, 4);
-        job.canton_code = col(stmt, 5);
+        job.job_id = getColumn(stmt, 0);
+        job.title = getColumn(stmt, 1);
+        job.company_name = getColumn(stmt, 2);
+        job.place = getColumn(stmt, 3);
+        job.zipcode = getColumn(stmt, 4);
+        job.canton_code = getColumn(stmt, 5);
         job.employment_grade = sqlite3_column_int(stmt, 6);
-        job.application_url = col(stmt, 7);
+        job.application_url = getColumn(stmt, 7);
         job.fit_score = sqlite3_column_int(stmt, 8);
-        job.fit_label = col(stmt, 9);
-        job.fit_summary = col(stmt, 10);
-        job.fit_reasoning = col(stmt, 11);
-        job.fit_checked_at = col(stmt, 12);
-        job.fit_profile_hash = col(stmt, 13);
-        job.user_status = col(stmt, 14);
+        job.fit_label = getColumn(stmt, 9);
+        job.fit_summary = getColumn(stmt, 10);
+        job.fit_reasoning = getColumn(stmt, 11);
+        job.fit_checked_at = getColumn(stmt, 12);
+        job.fit_profile_hash = getColumn(stmt, 13);
+        job.user_status = getColumn(stmt, 14);
         job.rating = sqlite3_column_int(stmt, 15);
-        job.notes = col(stmt, 16);
-        job.availability_status = col(stmt, 17);
-        job.detail_url = col(stmt, 18);
-        job.pub_date = col(stmt, 19);
-        job.end_date = col(stmt, 20);
+        job.notes = getColumn(stmt, 16);
+        job.availability_status = getColumn(stmt, 17);
+        job.detail_url = getColumn(stmt, 18);
+        job.pub_date = getColumn(stmt, 19);
+        job.end_date = getColumn(stmt, 20);
         jobs.push_back(job);
     }, {std::to_string(limit)});
     return jobs;

@@ -131,6 +131,6 @@ std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 
 // db.h — just the signature
-std::string col(sqlite3_stmt* s, int i);
+std::string getColumn(sqlite3_stmt* s, int i);
 
 #endif //JOB_APP_DB_H
