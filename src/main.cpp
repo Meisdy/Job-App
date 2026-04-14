@@ -247,6 +247,62 @@ ConfigData loadConfig() {
 }
 
 
+// ── CONFIG V2 ────────────────────────────────────────────────────────────────
+
+struct ConfigV2 {
+    // Scraping
+    std::vector<std::string> scrape_queries;
+    int                      scrape_rows{};
+
+    // Fit-check
+    int                      fitcheck_limit{};
+    std::string              ollama_model{};
+    std::string              ollama_base_url{};
+    std::string              ollama_api_key{};
+    int                      ollama_max_tokens{};
+    double                   ollama_temperature{};
+
+    // Details
+    int                      detail_refresh_days{};
+
+    // Profile
+    std::string              profile_markdown_path{};
+};
+
+ConfigV2 loadConfigV2() {
+    std::ifstream file("../config/config_v2.json");
+    if (!file.is_open())
+        throw std::runtime_error("Could not open config_v2.json");
+
+    json c = json::parse(file);
+    ConfigV2 cfg;
+
+    if (c.contains("scrape")) {
+        cfg.scrape_queries = c["scrape"]["queries"].get<std::vector<std::string>>();
+        cfg.scrape_rows = c["scrape"]["rows"].get<int>();
+    }
+
+    if (c.contains("fitcheck")) {
+        cfg.fitcheck_limit = c["fitcheck"]["limit"].get<int>();
+        cfg.ollama_model = c["fitcheck"]["model"].get<std::string>();
+        cfg.ollama_base_url = c["fitcheck"]["base_url"].get<std::string>();
+        cfg.ollama_api_key = c["fitcheck"]["api_key"].get<std::string>();
+        cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
+        cfg.ollama_temperature = c["fitcheck"].value("temperature", 0.3);
+    }
+
+    if (c.contains("details")) {
+        cfg.detail_refresh_days = c["details"]["refresh_days"].get<int>();
+    }
+
+    if (c.contains("profile")) {
+        cfg.profile_markdown_path = c["profile"]["markdown_path"].get<std::string>();
+    }
+
+    return cfg;
+}
+
+
 // ── JSON / JOB HELPERS ───────────────────────────────────────────────────────
 
 json job_record_to_json(const JobRecord& job) {
@@ -309,6 +365,78 @@ Job job_from_json(const json& data) {
     return job;
 }
 
+
+// ── TEMPLATE TEXT CLEANER ────────────────────────────────────────────────────
+
+std::string cleanTemplateText(const std::string& raw) {
+    // Step 1: Handle JSON-encoded string (unwrap if needed)
+    std::string html;
+    try {
+        json parsed = json::parse(raw);
+        html = parsed.is_string() ? parsed.get<std::string>() : parsed.dump();
+        // Strip extra quotes if present
+        if (html.size() > 2 && html.front() == '"' && html.back() == '"') {
+            html = html.substr(1, html.size() - 2);
+        }
+    } catch (...) {
+        html = raw;
+    }
+
+    // Step 2: Strip HTML tags
+    std::string text;
+    bool inTag = false;
+    for (char c : html) {
+        if (c == '<') inTag = true;
+        else if (c == '>') inTag = false;
+        else if (!inTag) text += c;
+    }
+
+    // Step 3: Decode HTML entities
+    size_t pos = 0;
+    while ((pos = text.find("&amp;", pos)) != std::string::npos) {
+        text.replace(pos, 5, "&");
+    }
+    pos = 0;
+    while ((pos = text.find("&lt;", pos)) != std::string::npos) {
+        text.replace(pos, 4, "<");
+    }
+    pos = 0;
+    while ((pos = text.find("&gt;", pos)) != std::string::npos) {
+        text.replace(pos, 4, ">");
+    }
+    pos = 0;
+    while ((pos = text.find("&quot;", pos)) != std::string::npos) {
+        text.replace(pos, 6, "\"");
+    }
+
+    // Step 4: Collapse whitespace
+    std::string collapsed;
+    bool lastWasSpace = false;
+    for (char c : text) {
+        if (std::isspace(c)) {
+            if (!lastWasSpace) {
+                collapsed += ' ';
+                lastWasSpace = true;
+            }
+        } else {
+            collapsed += c;
+            lastWasSpace = false;
+        }
+    }
+    while (!collapsed.empty() && std::isspace(collapsed.back())) {
+        collapsed.pop_back();
+    }
+
+    // Step 5: Truncate to 8000 chars
+    if (collapsed.size() > 8000) {
+        collapsed = collapsed.substr(0, 8000);
+        while (!collapsed.empty() && (collapsed.back() & 0xC0) == 0x80) {
+            collapsed.pop_back();
+        }
+    }
+
+    return collapsed;
+}
 
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 
@@ -563,12 +691,13 @@ int main() {
     std::shared_mutex config_mutex;
 
     sqlite3* db;
-    if (sqlite3_open("../data/jobs.db", &db) != SQLITE_OK) {
-        std::cerr << "Cannot open database: " << sqlite3_errmsg(db) << std::endl;
+    if (sqlite3_open("../data/jobs_v2.db", &db) != SQLITE_OK) {
+        std::cerr << "Cannot open database v2: " << sqlite3_errmsg(db) << std::endl;
         return 1;
     }
-    std::cout << "Database opened" << std::endl;
+    std::cout << "Database v2 opened" << std::endl;
     db_init(db);
+    db_v2_init(db);
     std::mutex db_write_mutex;
 
 
@@ -881,6 +1010,180 @@ int main() {
             res.set_content(R"({"error":"config error","detail":")" + std::string(e.what()) + R"("})", "application/json");
         }
     });
+
+    // ── V2 API ENDPOINTS ───────────────────────────────────────────────────────
+
+    // Load v2 config
+    ConfigV2 config_v2;
+    try {
+        config_v2 = loadConfigV2();
+        std::cout << "Config v2 loaded" << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "[WARN] Could not load config_v2.json: " << e.what() << std::endl;
+    }
+
+    server.Post("/api/onboarding/start", [&db, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        std::lock_guard<std::mutex> lock(db_write_mutex);
+        OnboardingSession session = create_session_v2(db);
+        res.set_content(json{{"session_id", session.session_id}, {"question", 1}}.dump(), "application/json");
+    });
+
+    server.Get("/api/onboarding/:session_id", [&db](const httplib::Request& req, httplib::Response& res) {
+        std::string session_id = req.path_params.at("session_id");
+        OnboardingSession session = get_session_v2(db, session_id);
+        res.set_content(json{{"current_question", session.current_question}, {"answers", json::parse(session.answers_json)}}.dump(), "application/json");
+    });
+
+    server.Post("/api/onboarding/answer", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+        try {
+            json body = json::parse(req.body);
+            std::string session_id = body["session_id"];
+            std::string answer = body["answer"];
+
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            OnboardingSession session = get_session_v2(db, session_id);
+            session.current_question++;
+            json answers = json::parse(session.answers_json);
+            answers.push_back(answer);
+            session.answers_json = answers.dump();
+            update_session_v2(db, session);
+
+            if (session.current_question >= 9) {
+                // Generate profile from answers
+                UserProfile profile;
+                profile.cv_text = "";
+                profile.narrative = "Profile generated from onboarding";
+                profile.markdown_path = "../config/user_profile.md";
+                profile.version_hash = std::to_string(time(0));
+                save_profile_v2(db, profile);
+                delete_session_v2(db, session_id);
+                res.set_content(json{{"complete", true}}.dump(), "application/json");
+            } else {
+                res.set_content(json{{"question", session.current_question + 1}}.dump(), "application/json");
+            }
+        } catch (const std::exception& e) {
+            res.status = 400;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Get("/api/profile", [&db](const httplib::Request&, httplib::Response& res) {
+        UserProfile profile = get_profile_v2(db);
+        bool exists = profile_exists_v2(db);
+        res.set_content(json{{"exists", exists}, {"cv_text", profile.cv_text}, {"narrative", profile.narrative}}.dump(), "application/json");
+    });
+
+    server.Post("/api/profile/save", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+        try {
+            json body = json::parse(req.body);
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            UserProfile profile;
+            profile.cv_text = body.value("cv_text", "");
+            profile.narrative = body.value("narrative", "");
+            profile.markdown_path = "../config/user_profile.md";
+            profile.version_hash = std::to_string(time(0));
+            save_profile_v2(db, profile);
+            res.set_content(json{{"ok", true}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 400;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Post("/api/fitcheck", [&db, &config_v2, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        UserProfile profile = get_profile_v2(db);
+        if (!profile_exists_v2(db)) {
+            res.status = 400;
+            res.set_content(json{{"error", "No profile found. Complete onboarding first."}}.dump(), "application/json");
+            return;
+        }
+
+        if (config_v2.ollama_api_key.empty()) {
+            res.status = 500;
+            res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
+            return;
+        }
+
+        std::vector<JobRecordV2> jobs;
+        {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            jobs = get_jobs_needing_fitcheck_v2(db, config_v2.fitcheck_limit);
+        }
+
+        std::cout << "[INFO] Starting fit-check for " << jobs.size() << " jobs" << std::endl;
+
+        int checked = 0, failed = 0;
+        for (auto& job : jobs) {
+            try {
+                std::string cleaned = cleanTemplateText(job.template_text);
+                if (cleaned.empty()) {
+                    std::cerr << "[WARN] Empty template for job: " << job.job_id << std::endl;
+                    failed++;
+                    continue;
+                }
+
+                // Build prompt
+                std::string prompt = R"(Evaluate job fit for this person.
+
+CANDIDATE PROFILE:
+CV: )" + profile.cv_text + R"(
+Preferences: )" + profile.narrative + R"(
+
+JOB POSTING:
+)" + cleaned + R"(
+
+Respond in JSON:
+{
+    "fit_score": 0-100,
+    "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
+    "fit_summary": "2-3 sentences",
+    "fit_reasoning": "detailed explanation"
+})";
+
+                json request = {
+                    {"model", config_v2.ollama_model},
+                    {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
+                    {"max_tokens", config_v2.ollama_max_tokens},
+                    {"temperature", config_v2.ollama_temperature},
+                    {"response_format", {{"type", "json_object"}}}
+                };
+
+                std::string response = httpPost(config_v2.ollama_base_url + "/chat/completions",
+                                                config_v2.ollama_api_key, request.dump());
+
+                json resp_json = json::parse(response);
+                std::string content = resp_json["choices"][0]["message"]["content"];
+
+                // Strip markdown if present
+                if (content.find("```json") == 0) {
+                    content = content.substr(7);
+                    size_t end = content.rfind("```");
+                    if (end != std::string::npos) content = content.substr(0, end);
+                }
+
+                json fit_data = json::parse(content);
+                {
+                    std::lock_guard<std::mutex> lock(db_write_mutex);
+                    save_fit_result_v2(db, job.job_id,
+                                      fit_data.value("fit_score", 0),
+                                      fit_data.value("fit_label", "Unknown"),
+                                      fit_data.value("fit_summary", ""),
+                                      fit_data.value("fit_reasoning", ""),
+                                      profile.version_hash);
+                }
+                checked++;
+                std::cout << "[INFO] Fit-checked: " << job.job_id << std::endl;
+
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Failed fit-check for " << job.job_id << ": " << e.what() << std::endl;
+                failed++;
+            }
+        }
+
+        res.set_content(json{{"ok", true}, {"checked", checked}, {"failed", failed}}.dump(), "application/json");
+    });
+
+    // ── END V2 API ─────────────────────────────────────────────────────────────
 
 #ifdef DEBUG_MODE
     // POST /api/debug/query — run arbitrary SQL and return plain text result

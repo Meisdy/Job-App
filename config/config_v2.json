@@ -1,0 +1,33 @@
+{
+  "scrape": {
+    "queries": [
+      "Embedded Software Engineer",
+      "Robotics Engineer",
+      "Robotik Ingenieur",
+      "Test Engineer",
+      "Software Engineer",
+      "Mechatronics Engineer",
+      "Development Engineer",
+      "Embedded Linux",
+      "R&D Engineer"
+    ],
+    "rows": 50
+  },
+  "fitcheck": {
+    "limit": 20,
+    "model": "gemma3:31b",
+    "base_url": "https://api.ollama.ai/v1",
+    "api_key": "YOUR_OLLAMA_CLOUD_KEY_HERE",
+    "max_tokens": 4000,
+    "temperature": 0.3
+  },
+  "details": {
+    "refresh_days": 21
+  },
+  "profile": {
+    "markdown_path": "../config/user_profile.md"
+  },
+  "onboarding": {
+    "session_timeout_minutes": 60
+  }
+}

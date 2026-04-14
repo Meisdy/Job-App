@@ -68,6 +68,65 @@ void save_job_score(sqlite3* db, const std::string& job_id, int score, const std
                     const std::string& reasons, const std::string& matched_skills,
                     const std::string& penalized_skills);
 
+// ── V2 EXTENSIONS ────────────────────────────────────────────────────────────
+
+// Extended JobRecord with fit-check fields
+struct JobRecordV2 : Job {
+    // AI Fit Assessment
+    int         fit_score {};
+    std::string fit_label;
+    std::string fit_summary;
+    std::string fit_reasoning;
+    std::string fit_checked_at;
+    std::string fit_profile_hash;
+
+    // User controls
+    std::string user_status;
+    int         rating {};
+    std::string notes;
+    std::string availability_status;
+};
+
+// User Profile
+struct UserProfile {
+    std::string cv_text;
+    std::string narrative;
+    std::string markdown_path;
+    std::string created_at;
+    std::string updated_at;
+    std::string version_hash;
+};
+
+// Onboarding Session
+struct OnboardingSession {
+    std::string session_id;
+    int         current_question {};
+    std::string answers_json;
+    std::string created_at;
+    std::string expires_at;
+};
+
+// V2 database initialization
+void db_v2_init(sqlite3* db);
+void db_v2_ensure_tables(sqlite3* db);
+
+// V2 Profile operations
+bool profile_exists_v2(sqlite3* db);
+UserProfile get_profile_v2(sqlite3* db);
+void save_profile_v2(sqlite3* db, const UserProfile& profile);
+
+// V2 Onboarding operations
+OnboardingSession create_session_v2(sqlite3* db);
+OnboardingSession get_session_v2(sqlite3* db, const std::string& session_id);
+void update_session_v2(sqlite3* db, const OnboardingSession& session);
+void delete_session_v2(sqlite3* db, const std::string& session_id);
+void cleanup_expired_sessions_v2(sqlite3* db);
+
+// V2 Fit-check operations
+void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
+                        const std::string& label, const std::string& summary,
+                        const std::string& reasoning, const std::string& profile_hash);
+std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
 
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 

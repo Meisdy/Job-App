@@ -255,3 +255,157 @@ void save_job_score(sqlite3* db, const std::string& job_id, int score, const std
         WHERE job_id=?
     )", {std::to_string(score), label, reasons, matched_skills, penalized_skills, job_id});
 }
+
+// ── DB V2 IMPLEMENTATION ──────────────────────────────────────────────────────
+
+#include <ctime>
+#include <cstdlib>
+
+void db_v2_init(sqlite3* db) {
+    db_v2_ensure_tables(db);
+}
+
+void db_v2_ensure_tables(sqlite3* db) {
+    exec_write(db, R"(
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            cv_text TEXT,
+            narrative TEXT,
+            markdown_path TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            version_hash TEXT
+        );
+    )");
+    
+    exec_write(db, R"(
+        CREATE TABLE IF NOT EXISTS onboarding_session (
+            session_id TEXT PRIMARY KEY,
+            current_question INTEGER,
+            answers_json TEXT,
+            created_at TEXT,
+            expires_at TEXT
+        );
+    )");
+    
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_score INTEGER;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_label TEXT;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_summary TEXT;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;"); } catch (...) {}
+    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;"); } catch (...) {}
+}
+
+bool profile_exists_v2(sqlite3* db) {
+    int count = 0;
+    exec_query(db, "SELECT COUNT(*) FROM user_profile WHERE id = 1", [&](sqlite3_stmt* stmt) {
+        count = sqlite3_column_int(stmt, 0);
+    });
+    return count > 0;
+}
+
+UserProfile get_profile_v2(sqlite3* db) {
+    UserProfile profile;
+    exec_query(db, "SELECT cv_text, narrative, markdown_path, created_at, updated_at, version_hash FROM user_profile WHERE id = 1", [&](sqlite3_stmt* stmt) {
+        profile.cv_text = col(stmt, 0);
+        profile.narrative = col(stmt, 1);
+        profile.markdown_path = col(stmt, 2);
+        profile.created_at = col(stmt, 3);
+        profile.updated_at = col(stmt, 4);
+        profile.version_hash = col(stmt, 5);
+    });
+    return profile;
+}
+
+void save_profile_v2(sqlite3* db, const UserProfile& profile) {
+    exec_write(db, R"(
+        INSERT OR REPLACE INTO user_profile (id, cv_text, narrative, markdown_path, created_at, updated_at, version_hash)
+        VALUES (1, ?, ?, ?, datetime('now'), datetime('now'), ?)
+    )", {profile.cv_text, profile.narrative, profile.markdown_path, profile.version_hash});
+}
+
+OnboardingSession create_session_v2(sqlite3* db) {
+    std::string session_id = std::to_string(time(0)) + "_" + std::to_string(rand());
+    exec_write(db, R"(
+        INSERT INTO onboarding_session (session_id, current_question, answers_json, created_at, expires_at)
+        VALUES (?, 0, '[]', datetime('now'), datetime('now', '+60 minutes'))
+    )", {session_id});
+    return get_session_v2(db, session_id);
+}
+
+OnboardingSession get_session_v2(sqlite3* db, const std::string& session_id) {
+    OnboardingSession session;
+    session.session_id = session_id;
+    exec_query(db, "SELECT current_question, answers_json, created_at, expires_at FROM onboarding_session WHERE session_id = ?", [&](sqlite3_stmt* stmt) {
+        session.current_question = sqlite3_column_int(stmt, 0);
+        session.answers_json = col(stmt, 1);
+        session.created_at = col(stmt, 2);
+        session.expires_at = col(stmt, 3);
+    }, {session_id});
+    return session;
+}
+
+void update_session_v2(sqlite3* db, const OnboardingSession& session) {
+    exec_write(db, R"(
+        UPDATE onboarding_session SET current_question = ?, answers_json = ?
+        WHERE session_id = ?
+    )", {std::to_string(session.current_question), session.answers_json, session.session_id});
+}
+
+void delete_session_v2(sqlite3* db, const std::string& session_id) {
+    exec_write(db, "DELETE FROM onboarding_session WHERE session_id = ?", {session_id});
+}
+
+void cleanup_expired_sessions_v2(sqlite3* db) {
+    exec_write(db, "DELETE FROM onboarding_session WHERE expires_at < datetime('now')");
+}
+
+void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
+                        const std::string& label, const std::string& summary,
+                        const std::string& reasoning, const std::string& profile_hash) {
+    exec_write(db, R"(
+        UPDATE jobs SET fit_score=?, fit_label=?, fit_summary=?, fit_reasoning=?, fit_checked_at=?, fit_profile_hash=?
+        WHERE job_id=?
+    )", {std::to_string(score), label, summary, reasoning, "datetime('now')", profile_hash, job_id});
+}
+
+std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit) {
+    std::vector<JobRecordV2> jobs;
+    const std::string sql = R"(
+        SELECT job_id, title, company_name, place, zipcode, canton_code,
+               employment_grade, application_url, fit_score, fit_label,
+               fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash,
+               user_status, rating, notes, availability_status, detail_url,
+               initial_publication_date, publication_end_date
+        FROM jobs
+        WHERE fit_label IS NULL AND template_text IS NOT NULL
+        ORDER BY initial_publication_date DESC
+        LIMIT ?
+    )";
+    exec_query(db, sql, [&](sqlite3_stmt* stmt) {
+        JobRecordV2 job;
+        job.job_id = col(stmt, 0);
+        job.title = col(stmt, 1);
+        job.company_name = col(stmt, 2);
+        job.place = col(stmt, 3);
+        job.zipcode = col(stmt, 4);
+        job.canton_code = col(stmt, 5);
+        job.employment_grade = sqlite3_column_int(stmt, 6);
+        job.application_url = col(stmt, 7);
+        job.fit_score = sqlite3_column_int(stmt, 8);
+        job.fit_label = col(stmt, 9);
+        job.fit_summary = col(stmt, 10);
+        job.fit_reasoning = col(stmt, 11);
+        job.fit_checked_at = col(stmt, 12);
+        job.fit_profile_hash = col(stmt, 13);
+        job.user_status = col(stmt, 14);
+        job.rating = sqlite3_column_int(stmt, 15);
+        job.notes = col(stmt, 16);
+        job.availability_status = col(stmt, 17);
+        job.detail_url = col(stmt, 18);
+        job.pub_date = col(stmt, 19);
+        job.end_date = col(stmt, 20);
+        jobs.push_back(job);
+    }, {std::to_string(limit)});
+    return jobs;
+}

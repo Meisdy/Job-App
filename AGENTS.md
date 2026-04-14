@@ -672,5 +672,5 @@ Add ZIP code validation for Swiss postal codes
 
 ---
 
-*Last updated: 2026-04-13*
+*Last updated: 2026-04-14 (v2 rework in progress)*
 *Maintainer: Job-App Development Team*
