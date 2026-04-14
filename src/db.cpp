@@ -387,7 +387,7 @@ std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit) {
                employment_grade, application_url, fit_score, fit_label,
                fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash,
                user_status, rating, notes, availability_status, detail_url,
-               initial_publication_date, publication_end_date
+               initial_publication_date, publication_end_date, template_text
         FROM jobs
         WHERE fit_label IS NULL AND template_text IS NOT NULL
         ORDER BY initial_publication_date DESC
@@ -416,6 +416,7 @@ std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit) {
         job.detail_url = getColumn(stmt, 18);
         job.pub_date = getColumn(stmt, 19);
         job.end_date = getColumn(stmt, 20);
+        job.template_text = getColumn(stmt, 21);
         jobs.push_back(job);
     }, {std::to_string(limit)});
     return jobs;
