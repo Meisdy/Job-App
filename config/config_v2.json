@@ -16,7 +16,7 @@
   "fitcheck": {
     "limit": 20,
     "model": "gemma4:31b-cloud",
-    "base_url": "https://api.ollama.ai/v1",
+    "base_url": "https://ollama.com/api",
     "max_tokens": 4000,
     "temperature": 1.0,
     "top_p": 0.95,
