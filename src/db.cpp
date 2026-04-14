@@ -151,7 +151,8 @@ std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days) {
         "publication_end_date, template_text "
         "FROM jobs "
         "WHERE template_text IS NULL OR template_text = '' "
-        "OR scraped_at < datetime('now', '-' || ? || ' days')";
+        "ORDER BY initial_publication_date DESC "
+        "LIMIT 100";
     
     exec_query(db, sql, [&](sqlite3_stmt* stmt) {
         Job job;
