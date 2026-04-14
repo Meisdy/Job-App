@@ -1,7 +1,6 @@
 // API Endpoints
 const GET_URL = 'http://localhost:8080/api/jobs';
 const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
-const RESCORE_URL = 'http://localhost:8080/api/score';
 const SCRAPE_URL = 'http://localhost:8080/api/scrape/jobs';
 const DETAILS_URL = 'http://localhost:8080/api/scrape/details';
 const CONFIG_GET_URL = 'http://localhost:8080/api/config';
@@ -30,7 +29,6 @@ const AVOID_SKILLS = [
 export {
   GET_URL,
   UPDATE_URL,
-  RESCORE_URL,
   SCRAPE_URL,
   DETAILS_URL,
   CONFIG_GET_URL,

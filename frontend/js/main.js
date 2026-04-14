@@ -3,7 +3,7 @@ import { GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, rescoreAll, scrapeJobs, fetchDetails, triggerFitCheck, openProfile } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, fetchDetails, triggerFitCheck, openProfile } from './components/actions.js';
 
 async function init() {
   setConnectionStatus('loading');
@@ -48,7 +48,6 @@ function bindEvents() {
   onClick('search-clear', clearSearch);
 
   // Tool buttons
-  onClick('rescore-btn', rescoreAll);
   onClick('scrape-btn', scrapeJobs);
   onClick('details-btn', fetchDetails);
   onClick('profile-btn', openProfile);
@@ -150,7 +149,6 @@ window.saveNotes = saveNotes;
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.saveSettings = saveSettings;
-window.rescoreAll = rescoreAll;
 window.scrapeJobs = scrapeJobs;
 window.fetchDetails = fetchDetails;
 window.triggerFitCheck = triggerFitCheck;

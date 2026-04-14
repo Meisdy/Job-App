@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, RESCORE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -75,41 +75,6 @@ async function saveNotes() {
   updateInList(state.currentJob);
   await saveJob({job_id: state.currentJob.job_id, notes});
   showToast('Notes saved');
-}
-
-async function rescoreAll() {
-  const btn = document.getElementById('rescore-btn');
-  if (btn.classList.contains('running')) return;
-  btn.classList.add('running');
-  btn.innerHTML = '<span class="spin">⟳</span> Rescoring...';
-  try {
-    const r = await fetch(RESCORE_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({trigger: 'manual'})});
-    if (r.ok) {
-      showToast('Rescore triggered — reloading...');
-      setTimeout(async () => {
-        btn.classList.remove('running');
-        btn.innerHTML = '⟳ Rescore All';
-        // Reload jobs
-        setConnectionStatus('loading');
-        try {
-          const response = await fetch(GET_URL);
-          state.allJobs = await response.json();
-          state.allJobs.sort((a, b) => (b.score || 0) - (a.score || 0));
-          setConnectionStatus('connected');
-          updateStats();
-          renderList();
-        } catch (e) {
-          setConnectionStatus('error');
-        }
-      }, 3000);
-    } else {
-      throw new Error('Non-OK response');
-    }
-  } catch (e) {
-    showToast('Rescore failed');
-    btn.classList.remove('running');
-    btn.innerHTML = '⟳ Rescore All';
-  }
 }
 
 async function scrapeJobs() {
@@ -237,7 +202,6 @@ export {
   updateInList,
   saveJob,
   showToast,
-  rescoreAll,
   scrapeJobs,
   fetchDetails,
   triggerFitCheck,
