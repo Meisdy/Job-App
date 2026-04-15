@@ -1176,7 +1176,7 @@ Respond in JSON:
                 };
 
                 std::string response = httpPost(config_v2.ollama_base_url + "/chat",
-                                                "Bearer " + ollamaCloudApiKey, request.dump());
+                                                ollamaCloudApiKey, request.dump());
 
                 json resp_json = json::parse(response);
                 std::string content = resp_json["choices"][0]["message"]["content"];
