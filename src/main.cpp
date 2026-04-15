@@ -1183,7 +1183,19 @@ Respond in JSON:
                 std::cout << "[DEBUG] Raw response first 500 chars: " << response.substr(0, 500) << std::endl;
 
                 json resp_json = json::parse(response);
-                std::string content = resp_json["choices"][0]["message"]["content"];
+                
+                std::string content;
+                if (resp_json.contains("message") && resp_json["message"].contains("content")) {
+                    // Ollama Cloud API format
+                    content = resp_json["message"]["content"].get<std::string>();
+                } else if (resp_json.contains("choices") && !resp_json["choices"].empty() && 
+                          resp_json["choices"][0].contains("message") && 
+                          resp_json["choices"][0]["message"].contains("content")) {
+                    // OpenAI format
+                    content = resp_json["choices"][0]["message"]["content"].get<std::string>();
+                } else {
+                    throw std::runtime_error("Unexpected API response format");
+                }
 
                 // Strip markdown if present
                 if (content.find("```json") == 0) {
