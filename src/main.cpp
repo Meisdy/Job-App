@@ -1183,47 +1183,80 @@ Respond in JSON:
                 std::cout << "[DEBUG] Raw response length: " << response.length() << std::endl;
                 std::cout << "[DEBUG] Raw response first 500 chars: " << response.substr(0, 500) << std::endl;
 
-                // Parse response - handle streaming format (multiple JSON objects)
-                std::string fullContent;
+                // Parse streaming response - accumulate all chunks
+                std::string accumulatedResponse;
+                std::string lastChunk;
                 std::stringstream responseStream(response);
                 std::string line;
                 
                 while (std::getline(responseStream, line)) {
                     if (line.empty()) continue;
                     try {
-                        json resp_json = json::parse(line);
-                        if (resp_json.contains("message") && resp_json["message"].contains("content")) {
-                            fullContent += resp_json["message"]["content"].get<std::string>();
+                        // Try to parse each line as JSON
+                        json chunk = json::parse(line);
+                        
+                        // Extract content from message
+                        if (chunk.contains("message") && chunk["message"].contains("content")) {
+                            std::string content = chunk["message"]["content"].get<std::string>();
+                            accumulatedResponse += content;
+                            lastChunk = content;
                         }
-                        if (resp_json.contains("done") && resp_json["done"].get<bool>()) {
+                        
+                        // Check if this is the final chunk
+                        if (chunk.contains("done") && chunk["done"].get<bool>()) {
                             break;
                         }
-                    } catch (...) {
-                        // Skip malformed lines
-                        continue;
+                    } catch (const std::exception& e) {
+                        // If we can't parse, just accumulate the raw line
+                        accumulatedResponse += line + "\n";
                     }
                 }
                 
-                if (fullContent.empty()) {
+                if (accumulatedResponse.empty()) {
                     throw std::runtime_error("Empty response from API");
                 }
-
-                // Strip markdown if present
-                if (fullContent.find("```json") == 0) {
-                    fullContent = fullContent.substr(7);
-                    size_t end = fullContent.rfind("```");
-                    if (end != std::string::npos) fullContent = fullContent.substr(0, end);
+                
+                // Try to parse the accumulated response as JSON
+                // First, try to extract JSON from markdown code blocks
+                std::string jsonContent = accumulatedResponse;
+                
+                // Remove markdown code block markers if present
+                size_t jsonStart = jsonContent.find("```json");
+                if (jsonStart != std::string::npos) {
+                    jsonContent = jsonContent.substr(jsonStart + 7);
+                    size_t jsonEnd = jsonContent.find("```");
+                    if (jsonEnd != std::string::npos) {
+                        jsonContent = jsonContent.substr(0, jsonEnd);
+                    }
+                } else {
+                    // Try without language specifier
+                    jsonStart = jsonContent.find("```");
+                    if (jsonStart != std::string::npos) {
+                        jsonContent = jsonContent.substr(jsonStart + 3);
+                        size_t jsonEnd = jsonContent.find("```");
+                        if (jsonEnd != std::string::npos) {
+                            jsonContent = jsonContent.substr(0, jsonEnd);
+                        }
+                    }
                 }
-
-                // Clean up any remaining markdown or whitespace
-                while (!fullContent.empty() && (fullContent.front() == '\n' || fullContent.front() == ' ')) {
-                    fullContent = fullContent.substr(1);
+                
+                // Trim whitespace
+                while (!jsonContent.empty() && std::isspace(jsonContent.front())) {
+                    jsonContent = jsonContent.substr(1);
                 }
-                while (!fullContent.empty() && (fullContent.back() == '\n' || fullContent.back() == ' ')) {
-                    fullContent.pop_back();
+                while (!jsonContent.empty() && std::isspace(jsonContent.back())) {
+                    jsonContent.pop_back();
                 }
-
-                json fit_data = json::parse(fullContent);
+                
+                // Parse the final JSON
+                json fit_data;
+                try {
+                    fit_data = json::parse(jsonContent);
+                } catch (const std::exception& e) {
+                    std::cerr << "[ERROR] Failed to parse JSON: " << e.what() << std::endl;
+                    std::cerr << "[ERROR] Raw content: " << jsonContent.substr(0, 500) << std::endl;
+                    throw;
+                }
                 {
                     std::lock_guard<std::mutex> lock(db_write_mutex);
                     save_fit_result_v2(db, job.job_id,
