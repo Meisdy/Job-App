@@ -1,0 +1,51 @@
+API keys loaded
+Database v2 opened
+[DB] fit_score column may already exist
+[DB] fit_label column may already exist
+[DB] fit_summary column may already exist
+[DB] fit_reasoning column may already exist
+[DB] fit_checked_at column may already exist
+[DB] fit_profile_hash column may already exist
+Config v2 loaded
+Server running on http://localhost:8080
+[INFO] Starting fit-check for 20 jobs
+curl error for https://ollama.com/api/chat: Timeout was reached
+[DEBUG] Raw response length: 0
+[DEBUG] Raw response first 500 chars: 
+[ERROR] Failed fit-check for c8c3fc77-70b6-46d8-acc4-b4287d46cf7c: [json.exception.parse_error.101] parse error at line 1, column 1: attempting to parse an empty input; check that your input string or stream contains the expected JSON
+[DEBUG] Raw response length: 33713
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:34.835313435Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:34.863038348Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:34.890723177Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:34.890779028Z","message":{"role":"as
+[ERROR] Failed fit-check for ebff75d2-535b-4d1e-9f7f-bbf5810d8d97: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input
+[DEBUG] Raw response length: 53785
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:40.495020776Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:40.530604453Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:40.550524651Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:40.550570594Z","message":{"role":"as
+[ERROR] Failed fit-check for f6023b59-dd7b-4fe0-839c-2e6ab97c3e70: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input
+[DEBUG] Raw response length: 39290
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:48.788565296Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:48.816008125Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:48.81608703Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:48.8431576Z","message":{"role":"assis
+[ERROR] Failed fit-check for 6a1cbef8-4f3a-4703-b2e6-06907a741ec2: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input
+[DEBUG] Raw response length: 52421
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:54.826233531Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:54.854593026Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:54.854681852Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:55:54.883181825Z","message":{"role":"as
+[ERROR] Failed fit-check for 996835f2-c51e-4bbb-9405-db8d76768ddf: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input
+[DEBUG] Raw response length: 51464
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:02.691915283Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:02.692029921Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:02.717965533Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:02.718047728Z","message":{"role":"as
+[ERROR] Failed fit-check for 92e63326-3b03-4d5a-bb6e-e4167da5fdd2: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input
+[DEBUG] Raw response length: 42559
+[DEBUG] Raw response first 500 chars: {"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:10.268100055Z","message":{"role":"assistant","content":"```"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:10.295820208Z","message":{"role":"assistant","content":"json"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:10.295871232Z","message":{"role":"assistant","content":"\n"},"done":false}
+{"model":"gemma4:31b-cloud","created_at":"2026-04-15T18:56:10.323483927Z","message":{"role":"as
+[ERROR] Failed fit-check for d85483d0-c347-4798-b6b5-cfd67af9db66: [json.exception.parse_error.101] parse error at line 2, column 1: syntax error while parsing value - unexpected '{'; expected end of input

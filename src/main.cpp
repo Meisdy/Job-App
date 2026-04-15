@@ -1178,6 +1178,10 @@ Respond in JSON:
                 std::string response = httpPost(config_v2.ollama_base_url + "/chat",
                                                 ollamaCloudApiKey, request.dump());
 
+                // Debug: log the raw response
+                std::cout << "[DEBUG] Raw response length: " << response.length() << std::endl;
+                std::cout << "[DEBUG] Raw response first 500 chars: " << response.substr(0, 500) << std::endl;
+
                 json resp_json = json::parse(response);
                 std::string content = resp_json["choices"][0]["message"]["content"];
 
