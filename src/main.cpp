@@ -1,6 +1,7 @@
 #define _WIN32_WINNT 0x0A00
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 #include <chrono>
 #include <thread>
@@ -1182,29 +1183,47 @@ Respond in JSON:
                 std::cout << "[DEBUG] Raw response length: " << response.length() << std::endl;
                 std::cout << "[DEBUG] Raw response first 500 chars: " << response.substr(0, 500) << std::endl;
 
-                json resp_json = json::parse(response);
+                // Parse response - handle streaming format (multiple JSON objects)
+                std::string fullContent;
+                std::stringstream responseStream(response);
+                std::string line;
                 
-                std::string content;
-                if (resp_json.contains("message") && resp_json["message"].contains("content")) {
-                    // Ollama Cloud API format
-                    content = resp_json["message"]["content"].get<std::string>();
-                } else if (resp_json.contains("choices") && !resp_json["choices"].empty() && 
-                          resp_json["choices"][0].contains("message") && 
-                          resp_json["choices"][0]["message"].contains("content")) {
-                    // OpenAI format
-                    content = resp_json["choices"][0]["message"]["content"].get<std::string>();
-                } else {
-                    throw std::runtime_error("Unexpected API response format");
+                while (std::getline(responseStream, line)) {
+                    if (line.empty()) continue;
+                    try {
+                        json resp_json = json::parse(line);
+                        if (resp_json.contains("message") && resp_json["message"].contains("content")) {
+                            fullContent += resp_json["message"]["content"].get<std::string>();
+                        }
+                        if (resp_json.contains("done") && resp_json["done"].get<bool>()) {
+                            break;
+                        }
+                    } catch (...) {
+                        // Skip malformed lines
+                        continue;
+                    }
+                }
+                
+                if (fullContent.empty()) {
+                    throw std::runtime_error("Empty response from API");
                 }
 
                 // Strip markdown if present
-                if (content.find("```json") == 0) {
-                    content = content.substr(7);
-                    size_t end = content.rfind("```");
-                    if (end != std::string::npos) content = content.substr(0, end);
+                if (fullContent.find("```json") == 0) {
+                    fullContent = fullContent.substr(7);
+                    size_t end = fullContent.rfind("```");
+                    if (end != std::string::npos) fullContent = fullContent.substr(0, end);
                 }
 
-                json fit_data = json::parse(content);
+                // Clean up any remaining markdown or whitespace
+                while (!fullContent.empty() && (fullContent.front() == '\n' || fullContent.front() == ' ')) {
+                    fullContent = fullContent.substr(1);
+                }
+                while (!fullContent.empty() && (fullContent.back() == '\n' || fullContent.back() == ' ')) {
+                    fullContent.pop_back();
+                }
+
+                json fit_data = json::parse(fullContent);
                 {
                     std::lock_guard<std::mutex> lock(db_write_mutex);
                     save_fit_result_v2(db, job.job_id,
