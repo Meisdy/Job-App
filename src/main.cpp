@@ -1179,10 +1179,6 @@ Respond in JSON:
                 std::string response = httpPost(config_v2.ollama_base_url + "/chat",
                                                 ollamaCloudApiKey, request.dump());
 
-                // Debug: log the raw response
-                std::cout << "[DEBUG] Raw response length: " << response.length() << std::endl;
-                std::cout << "[DEBUG] Raw response first 500 chars: " << response.substr(0, 500) << std::endl;
-
                 // Parse streaming response - accumulate all chunks
                 std::string accumulatedResponse;
                 std::string lastChunk;
@@ -1253,8 +1249,7 @@ Respond in JSON:
                 try {
                     fit_data = json::parse(jsonContent);
                 } catch (const std::exception& e) {
-                    std::cerr << "[ERROR] Failed to parse JSON: " << e.what() << std::endl;
-                    std::cerr << "[ERROR] Raw content: " << jsonContent.substr(0, 500) << std::endl;
+                    std::cerr << "[ERROR] Failed to parse fit-check result: " << e.what() << std::endl;
                     throw;
                 }
                 {
