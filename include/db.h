@@ -36,6 +36,14 @@ struct JobRecord : Job {
     std::string penalized_skills;
     std::string enriched_data;
     std::string availability_status;
+    
+    // V2 fit-check fields (for backward compatibility)
+    int         fit_score {};
+    std::string fit_label;
+    std::string fit_summary;
+    std::string fit_reasoning;
+    std::string fit_checked_at;
+    std::string fit_profile_hash;
 };
 
 // Data structures

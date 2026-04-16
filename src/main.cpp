@@ -332,6 +332,14 @@ json job_record_to_json(const JobRecord& job) {
     job_json["end_date"]            = job.end_date;
     job_json["template_text"]       = job.template_text;
 
+    // V2 fit-check fields
+    job_json["fit_score"]           = job.fit_score;
+    job_json["fit_label"]           = job.fit_label;
+    job_json["fit_summary"]         = job.fit_summary;
+    job_json["fit_reasoning"]       = job.fit_reasoning;
+    job_json["fit_checked_at"]      = job.fit_checked_at;
+    job_json["fit_profile_hash"]    = job.fit_profile_hash;
+
     // enriched_data may be double-encoded JSON or empty
     if (!job.enriched_data.empty()) {
         try {
