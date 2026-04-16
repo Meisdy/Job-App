@@ -1,6 +1,6 @@
 /* ── ACTION BAR ── */
 .action-bar {
-  padding:12px 48px;
+  padding:12px 24px;
   background:var(--surface);
   border-top:1px solid var(--border);
   display:flex;
@@ -8,12 +8,56 @@
   align-items:center;
   flex-shrink:0;
 }
+
+/* Rating in action bar */
+.ab-rating {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding-right:16px;
+  border-right:1px solid var(--border);
+  margin-right:8px;
+}
+
+.ab-rating-label {
+  font-size:11px;
+  color:var(--text3);
+  font-weight:500;
+}
+
+.ab-rating-stars {
+  display:flex;
+  gap:4px;
+}
+
+.ab-rating-stars .star {
+  font-size:18px;
+  color:var(--border2);
+  cursor:pointer;
+  transition:color 0.15s;
+}
+
+.ab-rating-stars .star.filled {
+  color:var(--yellow);
+}
+
+.ab-rating-stars .star:hover {
+  color:var(--yellow);
+}
+
+.ab-divider {
+  width:1px;
+  height:24px;
+  background:var(--border);
+}
+
+/* Action buttons */
 .ab {
   display:flex; align-items:center; gap:7px;
   padding:7px 16px;
   border:1px solid var(--border2);
-  background:transparent;
-  color:var(--text3);
+  background:var(--surface2);
+  color:var(--text2);
   font-family:'Inter', sans-serif;
   font-size:12px;
   font-weight:600;
@@ -23,11 +67,34 @@
   text-decoration:none;
   letter-spacing:0.02em;
 }
-.ab:hover { color:var(--text2); border-color:var(--border2); background:var(--surface2); }
-.ab.ai:hover, .ab.ai.act { border-color:rgba(45,212,191,0.35); color:var(--green); background:var(--green-dim); }
-.ab.aa:hover, .ab.aa.act { border-color:rgba(251,191,36,0.35); color:var(--yellow); background:var(--yellow-dim); }
-.ab.as:hover, .ab.as.act { border-color:rgba(248,113,113,0.25); color:var(--red); background:var(--red-dim); }
-.ab.ae:hover, .ab.ae.act { border-color:rgba(251,146,60,0.3); color:#fb923c; background:rgba(251,146,60,0.08); }
+
+/* Star button - Green */
+.ab.ai:hover, .ab.ai.act {
+  border-color:var(--green);
+  color:white;
+  background:var(--green);
+}
+
+/* Applied button - Gold/Yellow */
+.ab.aa:hover, .ab.aa.act {
+  border-color:var(--yellow);
+  color:#333;
+  background:var(--yellow);
+}
+
+/* Skip button - Orange */
+.ab.as:hover, .ab.as.act {
+  border-color:#fb923c;
+  color:white;
+  background:#fb923c;
+}
+
+/* Delete button - Red */
+.ab.ae:hover, .ab.ae.act {
+  border-color:var(--red);
+  color:white;
+  background:var(--red);
+}
 
 /* ── TOOL BUTTONS (header actions) ── */
 .tool-btn {

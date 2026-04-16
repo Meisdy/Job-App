@@ -1157,11 +1157,10 @@ int main() {
                 }
 
                 // Build prompt
-                std::string prompt = R"(Evaluate job fit for this person.
+                std::string prompt = R"(Evaluate job fit.
 
-CANDIDATE PROFILE:
-CV: )" + profile.cv_text + R"(
-Preferences: )" + profile.narrative + R"(
+CANDIDATE PROFILE (use "you/your" in response, no names):
+)" + profile.narrative + R"(
 
 JOB POSTING:
 )" + cleaned + R"(
@@ -1171,7 +1170,7 @@ Respond in JSON:
     "fit_score": 0-100,
     "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
     "fit_summary": "2-3 sentences",
-    "fit_reasoning": "detailed explanation"
+    "fit_reasoning": "detailed explanation using 'you' without mentioning any names"
 })";
 
                 json request = {
@@ -1279,6 +1278,169 @@ Respond in JSON:
         }
 
         res.set_content(json{{"ok", true}, {"checked", checked}, {"failed", failed}}.dump(), "application/json");
+    });
+
+    // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
+    server.Post("/api/jobs/:id/fitcheck", [&db, &config_v2, &ollamaCloudApiKey, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+        std::string job_id = req.path_params.at("id");
+        
+        UserProfile profile = get_profile_v2(db);
+        if (!profile_exists_v2(db)) {
+            res.status = 400;
+            res.set_content(json{{"error", "No profile found. Complete onboarding first."}}.dump(), "application/json");
+            return;
+        }
+
+        if (ollamaCloudApiKey.empty()) {
+            res.status = 500;
+            res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
+            return;
+        }
+
+        // Get the specific job
+        JobRecordV2 job;
+        {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            sqlite3_stmt* stmt;
+            const std::string sql = "SELECT template_text FROM jobs WHERE job_id = ?";
+            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
+                if (sqlite3_step(stmt) == SQLITE_ROW) {
+                    job.job_id = job_id;
+                    job.template_text = getColumn(stmt, 0);
+                }
+                sqlite3_finalize(stmt);
+            }
+        }
+
+        if (job.job_id.empty() || job.template_text.empty()) {
+            res.status = 404;
+            res.set_content(json{{"error", "Job not found or has no description"}}.dump(), "application/json");
+            return;
+        }
+
+        try {
+            std::string cleaned = cleanTemplateText(job.template_text);
+            if (cleaned.empty()) {
+                res.status = 400;
+                res.set_content(json{{"error", "Job has no description text"}}.dump(), "application/json");
+                return;
+            }
+
+            // Build prompt
+            std::string prompt = R"(Evaluate job fit.
+
+CANDIDATE PROFILE (use "you/your" in response, no names):
+)" + profile.narrative + R"(
+
+JOB POSTING:
+)" + cleaned + R"(
+
+Respond in JSON:
+{
+    "fit_score": 0-100,
+    "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
+    "fit_summary": "2-3 sentences",
+    "fit_reasoning": "detailed explanation using 'you' without mentioning any names"
+})";
+
+            json request = {
+                {"model", config_v2.ollama_model},
+                {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
+                {"max_tokens", config_v2.ollama_max_tokens},
+                {"temperature", config_v2.ollama_temperature},
+                {"top_p", config_v2.ollama_top_p},
+                {"top_k", config_v2.ollama_top_k},
+                {"response_format", {{"type", "json_object"}}}
+            };
+
+            std::string api_response = httpPost(config_v2.ollama_base_url + "/chat",
+                                                ollamaCloudApiKey, request.dump());
+            
+            std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
+            
+            // Parse streaming NDJSON response
+            std::istringstream response_stream(api_response);
+            std::string line;
+            std::string accumulatedResponse;
+            
+            while (std::getline(response_stream, line)) {
+                if (line.empty()) continue;
+                try {
+                    json chunk = json::parse(line);
+                    if (chunk.contains("message") && chunk["message"].contains("content")) {
+                        accumulatedResponse += chunk["message"]["content"].get<std::string>();
+                    }
+                    if (chunk.contains("done") && chunk["done"].get<bool>()) break;
+                } catch (...) {}
+            }
+            
+            std::cout << "[DEBUG] Accumulated response length: " << accumulatedResponse.length() << std::endl;
+            if (accumulatedResponse.empty()) {
+                res.status = 500;
+                res.set_content(json{{"error", "Empty response from AI"}}.dump(), "application/json");
+                return;
+            }
+            
+            // Extract JSON from markdown
+            std::string jsonContent = accumulatedResponse;
+            size_t jsonStart = jsonContent.find("```json");
+            if (jsonStart != std::string::npos) {
+                jsonContent = jsonContent.substr(jsonStart + 7);
+                size_t jsonEnd = jsonContent.find("```");
+                if (jsonEnd != std::string::npos) jsonContent = jsonContent.substr(0, jsonEnd);
+            } else {
+                jsonStart = jsonContent.find("```");
+                if (jsonStart != std::string::npos) {
+                    jsonContent = jsonContent.substr(jsonStart + 3);
+                    size_t jsonEnd = jsonContent.find("```");
+                    if (jsonEnd != std::string::npos) jsonContent = jsonContent.substr(0, jsonEnd);
+                }
+            }
+            
+            // Trim whitespace
+            while (!jsonContent.empty() && std::isspace(jsonContent.front())) jsonContent = jsonContent.substr(1);
+            while (!jsonContent.empty() && std::isspace(jsonContent.back())) jsonContent.pop_back();
+            
+            json fit_data;
+            try {
+                fit_data = json::parse(jsonContent);
+            } catch (const std::exception& e) {
+                // Try to find JSON object boundaries
+                size_t objStart = jsonContent.find("{");
+                size_t objEnd = jsonContent.rfind("}");
+                if (objStart != std::string::npos && objEnd != std::string::npos && objEnd > objStart) {
+                    std::string extracted = jsonContent.substr(objStart, objEnd - objStart + 1);
+                    try {
+                        fit_data = json::parse(extracted);
+                    } catch (...) {
+                        res.status = 500;
+                        res.set_content(json{{"error", "Failed to parse AI response", "raw_response", accumulatedResponse}}.dump(), "application/json");
+                        return;
+                    }
+                } else {
+                    res.status = 500;
+                    res.set_content(json{{"error", "No valid JSON found in response", "raw_response", accumulatedResponse}}.dump(), "application/json");
+                    return;
+                }
+            }
+            
+            {
+                std::lock_guard<std::mutex> lock(db_write_mutex);
+                save_fit_result_v2(db, job_id,
+                                  fit_data.value("fit_score", 0),
+                                  fit_data.value("fit_label", "Unknown"),
+                                  fit_data.value("fit_summary", ""),
+                                  fit_data.value("fit_reasoning", ""),
+                                  profile.version_hash);
+            }
+            
+            res.set_content(fit_data.dump(), "application/json");
+            
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content(json{{"error", std::string("Fit-check failed: ") + e.what()}}.dump(), "application/json");
+        }
     });
 
     // ── END V2 API ─────────────────────────────────────────────────────────────

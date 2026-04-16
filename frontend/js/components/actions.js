@@ -189,6 +189,10 @@ async function triggerFitCheck() {
 }
 
 async function openProfile() {
+  window.open('/profile.html', '_blank');
+}
+
+async function openOnboarding() {
   window.open('/onboarding.html', '_blank');
 }
 
@@ -205,6 +209,7 @@ export {
   scrapeJobs,
   fetchDetails,
   triggerFitCheck,
-  openProfile
+  openProfile,
+  openOnboarding
 };
 

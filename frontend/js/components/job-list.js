@@ -52,13 +52,13 @@ function renderList() {
     // Use fit_score/fit_label if available
     const displayScore = job.fit_score !== undefined ? job.fit_score : (job.score || 0);
     const displayLabel = job.fit_label || job.score_label || 'Weak';
-    const fitClass = displayLabel.toLowerCase().replace(' ', '');
+    const labelClass = displayLabel.toLowerCase().replace(' ', '');
     
     return `<div class="job-item${state.currentJob?.job_id === job.job_id ? ' active' : ''} status-${st}" data-id="${job.job_id}">
       <div class="ji-title">${job.title || 'Unknown'}</div>
       <div class="ji-co">${job.company_name || '—'}</div>
       <div class="ji-foot">
-        <span class="stag ${displayLabel}">${displayScore} pts</span>
+        <span class="stag ${labelClass}">${displayLabel} | ${displayScore}</span>
         <div style="display:flex;align-items:center;gap:6px">
           ${job.pub_date ? `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${fmtDate(job.pub_date)}</span>` : `<span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)">${city.toUpperCase()}</span>`}
           ${sicon(st)}

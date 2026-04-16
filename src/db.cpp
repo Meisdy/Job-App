@@ -187,7 +187,8 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
                score_reasons, user_status, rating, notes, matched_skills,
                penalized_skills, enriched_data, availability_status, detail_url,
                initial_publication_date, publication_end_date, fit_score, fit_label,
-               fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash
+               fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash,
+               template_text
         FROM jobs
     )";
     exec_query(db, sql, [&](sqlite3_stmt* stmt) {
@@ -218,7 +219,8 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
         job.fit_summary         = getColumn(stmt, 23);
         job.fit_reasoning       = getColumn(stmt, 24);
         job.fit_checked_at      = getColumn(stmt, 25);
-        job.fit_profile_hash    = getColumn(stmt, 26);
+        job.fit_profile_hash      = getColumn(stmt, 26);
+        job.template_text         = getColumn(stmt, 27);
         jobs.push_back(job);
     });
     return jobs;
