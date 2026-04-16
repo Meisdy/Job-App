@@ -108,46 +108,63 @@ function renderDetail() {
     </div>
   ` : '';
 
+  // Determine fit verdict label - prioritizes AI fit_label, falls back to score_label
+  const displayLabel = job.fit_label || job.score_label || 'Unknown';
+  const labelClass = displayLabel.toLowerCase().replace(' ', '');
+  
+  // Score display - show fit_score if available, otherwise show old score
+  const displayScore = job.fit_score || job.score || 0;
+  const scoreColor = displayLabel === 'Strong' ? 'var(--green)' : 
+                     displayLabel === 'Decent' ? 'var(--accent)' :
+                     displayLabel === 'Experimental' ? 'var(--yellow)' :
+                     displayLabel === 'Weak' ? 'var(--red)' : 'var(--text3)';
+
+  // Job type and level - use AI data if available
+  const jobLevel = data.experience?.seniority || jobType || '';
+  const jobDomain = industry || product || (data.industry_type ? data.industry_type : '');
+  const jobTypeDisplay = jobType || (data.job_type || '').toUpperCase();
+
   document.getElementById('detail-scroll').innerHTML = `
-    <div class="hero">
-      <div class="score-box ${job.score_label || 'Weak'}">
-        <div class="score-lbl">Match Score</div>
-        <div class="score-n ${job.score_label || 'Weak'}">${job.score || 0}</div>
-        <div class="score-sl">${job.score_label || 'Weak'}</div>
-        <div class="stars">${starsHTML}</div>
+    <div class="fit-hero">
+      <div class="fit-verdict-badge ${labelClass}">${displayLabel}</div>
+      <div class="fit-score">${displayScore}</div>
+      <button class="recheck-btn" id="recheck-btn" title="Re-check this job">🔄 Re-Check</button>
+    </div>
+    
+    <div class="hero-metadata">
+      <h1 class="hero-title">${job.title || 'Unknown'}</h1>
+      <div class="hero-meta">
+        <span class="chip company-chip">${job.company_name || '—'}</span>
+        <span class="chip location-chip">📍 ${zip} ${city}</span>
+        ${job.pub_date ? `<span class="chip posted-chip" title="Posted date">📅 ${fmtDate(job.pub_date)}</span>` : ''}
+        ${job.end_date ? `<span class="chip expired-chip" title="Application expires">⏱️ ${fmtDate(job.end_date)}</span>` : ''}
       </div>
-      <div class="hero-left">
-        <div class="hero-top">
-          <div class="hero-title">${job.title || 'Unknown'}</div>
-          <a href="${job.detail_url || '#'}" class="posting-btn" target="_blank">View Listing ↗</a>
-        </div>
-        <div class="hero-meta">
-          <span style="color:var(--text);font-weight:600">${job.company_name || '—'}</span>
-          <span style="color:var(--border2)">·</span>
-          <a href="${mapsUrl}" target="_blank">${zip} ${city} ↗</a>
-          ${salLabel ? `<span style="color:var(--border2)">·</span><span style="color:var(--green);font-weight:600">💰 ${salLabel}</span>` : ''}
-          ${job.pub_date ? `<span style="color:var(--border2)">·</span><span style="color:var(--text3)">Posted ${fmtDate(job.pub_date)}${job.end_date ? ` — Expires ${fmtDate(job.end_date)}` : ''}</span>` : ''}
-        </div>
-        <div class="hero-chips">
-          ${seniority ? `<span class="chip">${seniority}</span>` : ''}
-          ${jobType ? `<span class="chip">${jobType}</span>` : ''}
-          <span class="chip ${remoteClass}">${remoteLabel}</span>
-          <span class="chip">${job.employment_grade || 100}%</span>
-          ${industry ? `<span class="chip cy">${industry}</span>` : ''}
-          ${product ? `<span class="chip cp" title="Product">⬡ ${product}</span>` : ''}
-        </div>
+      <div class="hero-meta">
+        <span class="chip type-chip">${jobTypeDisplay}</span>
+        <span class="chip level-chip">${jobLevel}</span>
+        <span class="chip domain-chip">${jobDomain}</span>
+        ${salLabel ? `<span class="chip salary-chip">💰 ${salLabel}</span>` : ''}
+      </div>
+      <div class="hero-meta">
+        <a href="${job.detail_url || '#'}" class="posting-btn" target="_blank" rel="noopener">View on jobs.ch ↗</a>
+        <span style="font-size:12px;color:var(--text3)">Job ID: ${job.job_id.slice(-8)}</span>
       </div>
     </div>
+    
+    <div class="fit-reasoning-section section">
+      <div class="section-title fi">AI Fit Assessment</div>
+      ${job.fit_summary ? `<div class="fit-summary">${job.fit_summary}</div>` : ''}
+      <div class="fit-reasoning">${job.fit_reasoning || 'No reasoning available.'}</div>
+    </div>
+    
     <div class="body">
-      ${summary ? `<div class="section"><div class="st">Summary</div><div class="summary-text">${summary}</div></div>` : ''}
-      ${fitReasoningHTML}
-      ${rHTML ? `<div class="section"><div class="st">Score Breakdown</div><div class="rtags">${rHTML}</div></div>` : ''}
-      ${fitHTML ? `<div class="section"><div class="st">Fit Assessment</div>${fitHTML}</div>` : ''}
       ${redFlags.length ? `<div class="section"><div class="st" style="color:var(--red)">⚠ Red Flags</div><div class="redflag-list">${redFlags.map(f => `<div class="redflag-item">${f}</div>`).join('')}</div></div>` : ''}
+      
       <div class="two-col">
         <div>
           ${skHTML ? `<div class="section"><div class="st">Required Skills</div><div>${skHTML}</div></div>` : ''}
           ${(coding || hw || meets || other) ? `<div class="section"><div class="st">Work Split</div>${wsBarHTML}</div>` : ''}
+          ${respHTML ? `<div class="section"><div class="st">Responsibilities</div><ul class="rl">${respHTML}</ul></div>` : ''}
           <div class="section">
             <div class="st">Notes</div>
             <textarea class="notes-ta" id="notes-input" placeholder="Your private notes...">${job.notes || ''}</textarea>
@@ -155,25 +172,64 @@ function renderDetail() {
           </div>
         </div>
         <div>
-          ${respHTML ? `<div class="section"><div class="st">Responsibilities</div><ul class="rl">${respHTML}</ul></div>` : ''}
+          ${fitHTML ? `<div class="section"><div class="st">Fit Assessment</div>${fitHTML}</div>` : ''}
+          <div class="section">
+            <div class="st">Rating</div>
+            <div class="rating-stars">${starsHTML}</div>
+          </div>
+          <div class="section">
+            <div class="st">Status</div>
+            <div class="status-controls">
+              <button class="ab ai" data-status="interested" title="Mark as interested">Star</button>
+              <button class="ab aa" data-status="applied" title="Mark as applied">Applied</button>
+              <button class="ab as" data-status="skipped" title="Mark as skipped">Skip</button>
+              <button class="ab ae" title="Delete job">🗑️ Delete</button>
+            </div>
+          </div>
         </div>
       </div>
+    </div>
+    <div class="action-bar" id="action-bar" style="display:none">
+      <button class="ab ai" id="btn-i" data-status="interested">✦ Star</button>
+      <button class="ab aa" id="btn-a" data-status="applied">✓ Applied</button>
+      <button class="ab as" id="btn-s" data-status="skipped">✕ Skip</button>
+      <button class="ab ae" id="btn-e">🗑️ Delete</button>
     </div>`;
 
-  document.getElementById('action-bar').style.display = 'flex';
+  document.getElementById('action-bar').style.display = 'none';
+  document.getElementById('btn-i').style.display = 'none';
+  document.getElementById('btn-a').style.display = 'none';
+  document.getElementById('btn-s').style.display = 'none';
+  document.getElementById('btn-e').style.display = 'none';
 
+  // Remove old star event delegation - now handled in detail panel
   const bi = document.getElementById('btn-i');
   const ba = document.getElementById('btn-a');
   const bs = document.getElementById('btn-s');
   const be = document.getElementById('btn-e');
 
-  [bi, ba, bs, be].forEach(b => b.classList.remove('act', 'locked'));
-
-  if (hasStatus) {
-    if (status === 'interested') bi.classList.add('act');
-    if (status === 'applied') ba.classList.add('act');
-    if (status === 'skipped') bs.classList.add('act');
-  }
+  // Set up individual status buttons
+  const statusBtns = [
+    [bi, 'interested', 'Star'],
+    [ba, 'applied', 'Applied'],
+    [bs, 'skipped', 'Skip'],
+    [be, null, 'Delete']
+  ];
+  
+  statusBtns.forEach(([btn, status, defaultText]) => {
+    btn.innerHTML = defaultText;
+    if (status) {
+      btn.className = 'ab ' + status;
+      if (hasStatus && status === job.user_status) btn.classList.add('act');
+      btn.onclick = () => {
+        if (status === 'skipped' || status === 'applied' || status === 'interested') {
+          setStatus(status);
+        }
+      };
+    } else {
+      btn.onclick = () => setExpired();
+    }
+  });
 }
 
 export { renderDetail };

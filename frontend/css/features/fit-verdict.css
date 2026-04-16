@@ -136,3 +136,218 @@
   background: rgba(248, 113, 113, 0.1);
   color: var(--red);
 }
+
+/* === NEW V2 STYLES === */
+
+/* Fit Hero Section */
+.fit-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.fit-verdict-badge {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.fit-verdict-badge.strong {
+  background: var(--green);
+}
+
+.fit-verdict-badge.decent {
+  background: var(--accent);
+}
+
+.fit-verdict-badge.experimental {
+  background: var(--yellow);
+  color: #333;
+}
+
+.fit-verdict-badge.weak,
+.fit-verdict-badge.nogo {
+  background: var(--red);
+}
+
+.fit-score {
+  margin-top: 12px;
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--text1);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.recheck-btn {
+  margin-top: 16px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.recheck-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+}
+
+/* Hero Metadata Section */
+.hero-metadata {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text1);
+  margin: 0 0 12px 0;
+  line-height: 1.3;
+}
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--surface2);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.chip.company-chip {
+  font-weight: 600;
+}
+
+.chip.location-chip {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.chip.posted-chip,
+.chip.expired-chip {
+  background: var(--yellow-dim);
+  color: var(--yellow);
+}
+
+.chip.type-chip {
+  background: var(--surface3);
+}
+
+.chip.level-chip {
+  font-weight: 500;
+}
+
+.chip.domain-chip {
+  background: var(--green-dim);
+  color: var(--green);
+}
+
+.chip.salary-chip {
+  background: var(--green);
+  color: #fff;
+}
+
+.posting-btn {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.posting-btn:hover {
+  text-decoration: underline;
+}
+
+/* Fit Reasoning Section */
+.fit-reasoning-section {
+  padding: 0 24px 24px 24px;
+}
+
+.section-title.fi {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  color: var(--text2);
+}
+
+.fit-summary {
+  font-size: 15px;
+  color: var(--text2);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.fit-reasoning {
+  font-size: 14px;
+  color: var(--text1);
+  line-height: 1.7;
+  background: var(--surface2);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+/* Body layout */
+.body {
+  padding: 0 24px 24px 24px;
+}
+
+.two-col {
+  display: flex;
+  gap: 24px;
+}
+
+.two-col > div {
+  flex: 1;
+}
+
+/* Status controls in detail panel */
+.status-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.status-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.15s;
+}
+
+.status-controls button:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
