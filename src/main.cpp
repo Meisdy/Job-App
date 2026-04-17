@@ -1302,20 +1302,64 @@ then trigger a profile refresh to update the narrative.*
                 }
 
                 // Build prompt - use full markdown content as narrative
-                std::string prompt = R"(Evaluate job fit.
+                std::string prompt = R"(You are an expert career advisor performing a job fit analysis.
 
-CANDIDATE PROFILE (use "you/your" in response, no names):
+CANDIDATE PROFILE (use "you/your" in all responses, never use the candidate's name):
 )" + content + R"(
-
 JOB POSTING:
 )" + cleaned + R"(
+INSTRUCTIONS:
 
-Respond in JSON:
+1. Check for No-Go violations first (candidate's stated dealbreakers).
+   If any hard No-Go is present, set fit_score ≤ 20 and fit_label = "No Go"
+   regardless of all other factors. No exceptions.
+
+2. Score the following dimensions (0-100 each):
+   - technical_match:  required skills vs. your stack and experience
+   - seniority_match:  expected experience level vs. your current level
+   - motivation_fit:   role tasks and culture vs. your intrinsic motivators
+   - constraint_fit:   salary / location / remote / travel vs. your hard constraints
+   - growth_fit:       "want to master" skills vs. what this role actively develops
+
+3. Compute fit_score as weighted average:
+   technical_match × 0.30
+   seniority_match × 0.20
+   motivation_fit  × 0.25
+   constraint_fit  × 0.15
+   growth_fit      × 0.10
+
+4. Assign fit_label based on qualitative judgement using all available
+   context — not mechanically from fit_score. A role with low technical
+   match but exceptional motivation or growth upside can be "Experimental".
+   A role scoring 75 but hitting a No-Go is "No Go". The label is your
+   honest characterization of the nature of this fit, not a score bucket.
+
+   Label definitions:
+   - Strong:       High match across all dimensions, no significant friction
+   - Decent:       Solid match, minor gaps or caveats, nothing deal-breaking
+   - Experimental: Contains things you dislike or clear mismatches, but offset
+                   by strong growth potential, unique upside, or rare opportunity
+                   worth the risk
+   - Weak:         More friction than value — possible but hard to recommend
+   - No Go:        Hard No-Go violation present, or fundamental mismatch on
+                   multiple axes simultaneously
+
+Respond ONLY in valid JSON, no additional text:
 {
-    "fit_score": 0-100,
-    "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
-    "fit_summary": "2-3 sentences",
-    "fit_reasoning": "detailed explanation using 'you' without mentioning any names"
+  "fit_score": 0-100,
+  "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
+  "fit_summary": "2-3 sentence plain-language verdict using you/your",
+  "dimension_scores": {
+    "technical_match": 0-100,
+    "seniority_match": 0-100,
+    "motivation_fit": 0-100,
+    "constraint_fit": 0-100,
+    "growth_fit": 0-100
+  },
+  "no_go_violations": ["list any triggered No-Gos, empty array if none"],
+  "strengths": ["top 3 reasons this role fits you"],
+  "gaps": ["top 3 honest gaps or risks"],
+  "verdict": "One direct sentence: apply now / apply with caveats / skip"
 })";
 
                 json request = {
@@ -1479,20 +1523,64 @@ Respond in JSON:
             }
 
             // Build prompt
-            std::string prompt = R"(Evaluate job fit.
+            std::string prompt = R"(You are an expert career advisor performing a job fit analysis.
 
-CANDIDATE PROFILE (use "you/your" in response, no names):
+CANDIDATE PROFILE (use "you/your" in all responses, never use the candidate's name):
 )" + profileContent + R"(
-
 JOB POSTING:
 )" + cleaned + R"(
+INSTRUCTIONS:
 
-Respond in JSON:
+1. Check for No-Go violations first (candidate's stated dealbreakers).
+   If any hard No-Go is present, set fit_score ≤ 20 and fit_label = "No Go"
+   regardless of all other factors. No exceptions.
+
+2. Score the following dimensions (0-100 each):
+   - technical_match:  required skills vs. your stack and experience
+   - seniority_match:  expected experience level vs. your current level
+   - motivation_fit:   role tasks and culture vs. your intrinsic motivators
+   - constraint_fit:   salary / location / remote / travel vs. your hard constraints
+   - growth_fit:       "want to master" skills vs. what this role actively develops
+
+3. Compute fit_score as weighted average:
+   technical_match × 0.30
+   seniority_match × 0.20
+   motivation_fit  × 0.25
+   constraint_fit  × 0.15
+   growth_fit      × 0.10
+
+4. Assign fit_label based on qualitative judgement using all available
+   context — not mechanically from fit_score. A role with low technical
+   match but exceptional motivation or growth upside can be "Experimental".
+   A role scoring 75 but hitting a No-Go is "No Go". The label is your
+   honest characterization of the nature of this fit, not a score bucket.
+
+   Label definitions:
+   - Strong:       High match across all dimensions, no significant friction
+   - Decent:       Solid match, minor gaps or caveats, nothing deal-breaking
+   - Experimental: Contains things you dislike or clear mismatches, but offset
+                   by strong growth potential, unique upside, or rare opportunity
+                   worth the risk
+   - Weak:         More friction than value — possible but hard to recommend
+   - No Go:        Hard No-Go violation present, or fundamental mismatch on
+                   multiple axes simultaneously
+
+Respond ONLY in valid JSON, no additional text:
 {
-    "fit_score": 0-100,
-    "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
-    "fit_summary": "2-3 sentences",
-    "fit_reasoning": "detailed explanation using 'you' without mentioning any names"
+  "fit_score": 0-100,
+  "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
+  "fit_summary": "2-3 sentence plain-language verdict using you/your",
+  "dimension_scores": {
+    "technical_match": 0-100,
+    "seniority_match": 0-100,
+    "motivation_fit": 0-100,
+    "constraint_fit": 0-100,
+    "growth_fit": 0-100
+  },
+  "no_go_violations": ["list any triggered No-Gos, empty array if none"],
+  "strengths": ["top 3 reasons this role fits you"],
+  "gaps": ["top 3 honest gaps or risks"],
+  "verdict": "One direct sentence: apply now / apply with caveats / skip"
 })";
 
             json request = {
