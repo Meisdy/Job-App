@@ -17,14 +17,7 @@ header {
   text-transform:uppercase;
   display:flex;
   align-items:center;
-  gap:8px;
   flex-shrink:0;
-}
-.logo-dot {
-  width:5px; height:5px;
-  background:var(--accent);
-  border-radius:50%;
-  box-shadow:0 0 8px var(--accent);
 }
 
 .search-wrap { flex:1; max-width:280px; position:relative; margin:0 auto; }

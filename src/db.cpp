@@ -344,42 +344,6 @@ void save_profile_v2(sqlite3* db, const UserProfile& profile) {
     )", {profile.cv_text, profile.narrative, profile.markdown_path, profile.version_hash});
 }
 
-OnboardingSession create_session_v2(sqlite3* db) {
-    std::string session_id = std::to_string(time(0)) + "_" + std::to_string(rand());
-    exec_write(db, R"(
-        INSERT INTO onboarding_session (session_id, current_question, answers_json, created_at, expires_at)
-        VALUES (?, 0, '[]', datetime('now'), datetime('now', '+60 minutes'))
-    )", {session_id});
-    return get_session_v2(db, session_id);
-}
-
-OnboardingSession get_session_v2(sqlite3* db, const std::string& session_id) {
-    OnboardingSession session;
-    session.session_id = session_id;
-    exec_query(db, "SELECT current_question, answers_json, created_at, expires_at FROM onboarding_session WHERE session_id = ?", [&](sqlite3_stmt* stmt) {
-        session.current_question = sqlite3_column_int(stmt, 0);
-        session.answers_json = getColumn(stmt, 1);
-        session.created_at = getColumn(stmt, 2);
-        session.expires_at = getColumn(stmt, 3);
-    }, {session_id});
-    return session;
-}
-
-void update_session_v2(sqlite3* db, const OnboardingSession& session) {
-    exec_write(db, R"(
-        UPDATE onboarding_session SET current_question = ?, answers_json = ?
-        WHERE session_id = ?
-    )", {std::to_string(session.current_question), session.answers_json, session.session_id});
-}
-
-void delete_session_v2(sqlite3* db, const std::string& session_id) {
-    exec_write(db, "DELETE FROM onboarding_session WHERE session_id = ?", {session_id});
-}
-
-void cleanup_expired_sessions_v2(sqlite3* db) {
-    exec_write(db, "DELETE FROM onboarding_session WHERE expires_at < datetime('now')");
-}
-
 void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
                         const std::string& label, const std::string& summary,
                         const std::string& reasoning, const std::string& profile_hash) {

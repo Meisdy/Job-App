@@ -27,8 +27,5 @@
   },
   "profile": {
     "markdown_path": "../config/user_profile.md"
-  },
-  "onboarding": {
-    "session_timeout_minutes": 60
   }
 }

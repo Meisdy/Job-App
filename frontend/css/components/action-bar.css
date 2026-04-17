@@ -1,122 +1,118 @@
-/* ── ACTION BAR ── */
+/* === ACTION BAR === */
+
 .action-bar {
-  padding:12px 24px;
-  background:var(--surface);
-  border-top:1px solid var(--border);
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-shrink:0;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
 }
 
-/* Rating in action bar */
+.ab-left {
+  display: flex;
+  gap: 8px;
+}
+
+.ab-right {
+  display: flex;
+  gap: 8px;
+}
+
+/* === RATING === */
+
 .ab-rating {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding-right:16px;
-  border-right:1px solid var(--border);
-  margin-right:8px;
-}
-
-.ab-rating-label {
-  font-size:11px;
-  color:var(--text3);
-  font-weight:500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .ab-rating-stars {
-  display:flex;
-  gap:4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .ab-rating-stars .star {
-  font-size:18px;
-  color:var(--border2);
-  cursor:pointer;
-  transition:color 0.15s;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--border2);
+  cursor: pointer;
+  transition: color 0.15s;
+  display: flex;
+  align-items: center;
 }
 
-.ab-rating-stars .star.filled {
-  color:var(--yellow);
-}
-
-.ab-rating-stars .star:hover {
-  color:var(--yellow);
-}
+.ab-rating-stars .star.filled { color: var(--yellow); }
+.ab-rating-stars .star:hover { color: var(--yellow); }
 
 .ab-divider {
-  width:1px;
-  height:24px;
-  background:var(--border);
+  width: 1px;
+  height: 24px;
+  background: var(--border);
 }
 
-/* Action buttons */
+/* === ACTION BUTTONS === */
+
 .ab {
-  display:flex; align-items:center; gap:7px;
-  padding:7px 16px;
-  border:1px solid var(--border2);
-  background:var(--surface2);
-  color:var(--text2);
-  font-family:'Inter', sans-serif;
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-  border-radius:7px;
-  transition:all 0.15s;
-  text-decoration:none;
-  letter-spacing:0.02em;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  color: var(--text2);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: all 0.15s;
 }
 
-/* Star button - Green */
-.ab.ai:hover, .ab.ai.act {
-  border-color:var(--green);
-  color:white;
-  background:var(--green);
-}
+/* Button variants */
+.ab.ai:hover, .ab.ai.act { border-color: var(--green); color: white; background: var(--green); }
+.ab.aa:hover, .ab.aa.act { border-color: var(--yellow); color: #333; background: var(--yellow); }
+.ab.as:hover, .ab.as.act { border-color: #fb923c; color: white; background: #fb923c; }
+.ab.ae:hover, .ab.ae.act { border-color: var(--red); color: white; background: var(--red); }
 
-/* Applied button - Gold/Yellow */
-.ab.aa:hover, .ab.aa.act {
-  border-color:var(--yellow);
-  color:#333;
-  background:var(--yellow);
-}
+/* === TOOL BUTTONS (header) === */
 
-/* Skip button - Orange */
-.ab.as:hover, .ab.as.act {
-  border-color:#fb923c;
-  color:white;
-  background:#fb923c;
-}
-
-/* Delete button - Red */
-.ab.ae:hover, .ab.ae.act {
-  border-color:var(--red);
-  color:white;
-  background:var(--red);
-}
-
-/* ── TOOL BUTTONS (header actions) ── */
 .tool-btn {
-  display:flex; align-items:center; gap:6px;
-  padding:5px 13px;
-  background:transparent;
-  border:1px solid var(--border2);
-  color:var(--text3);
-  font-family:'Inter', sans-serif;
-  font-size:11px;
-  font-weight:600;
-  cursor:pointer;
-  border-radius:6px;
-  transition:all 0.18s;
-  letter-spacing:0.03em;
-  flex-shrink:0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--text3);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.18s;
+  flex-shrink: 0;
 }
-.tool-btn.running { cursor:not-allowed; opacity:0.7; }
-.tool-btn .spin { display:inline-block; animation:spin 0.9s linear infinite; }
-@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
-.rescore-btn:hover,  .rescore-btn.running  { border-color:rgba(251,191,36,0.45);  color:var(--yellow); background:var(--yellow-dim); }
-.scrape-btn:hover,   .scrape-btn.running   { border-color:rgba(52,211,153,0.45);   color:var(--green);  background:var(--green-dim); }
-.details-btn:hover,  .details-btn.running  { border-color:rgba(96,165,250,0.45);   color:var(--accent); background:var(--accent-glow); }
-.enrich-btn:hover,   .enrich-btn.running   { border-color:rgba(139,92,246,0.45);   color:#a78bfa;       background:rgba(139,92,246,0.08); }
+.tool-btn.running { cursor: not-allowed; opacity: 0.7; }
+
+.tool-btn .spin {
+  display: inline-block;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Tool button variants */
+.rescore-btn:hover, .rescore-btn.running { border-color: rgba(251, 191, 36, 0.45); color: var(--yellow); background: var(--yellow-dim); }
+.scrape-btn:hover, .scrape-btn.running { border-color: rgba(52, 211, 153, 0.45); color: var(--green); background: var(--green-dim); }
+.details-btn:hover, .details-btn.running { border-color: rgba(96, 165, 250, 0.45); color: var(--accent); background: var(--accent-dim); }
+.enrich-btn:hover, .enrich-btn.running { border-color: rgba(139, 92, 246, 0.45); color: #a78bfa; background: rgba(139, 92, 246, 0.08); }

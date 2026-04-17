@@ -74,11 +74,18 @@
   font-weight:500;
   letter-spacing:0.02em;
 }
-.stag.strong { color:var(--green); border-color:rgba(45,212,191,0.25); background:var(--green-dim); }
-.stag.decent { color:var(--accent); border-color:rgba(96,165,250,0.25); background:var(--accent-dim); }
+.stag.strong { color:var(--turquoise); border-color:rgba(45,212,191,0.25); background:var(--turquoise-dim); }
+.stag.decent { color:var(--green); border-color:rgba(52,211,153,0.25); background:var(--green-dim); }
 .stag.experimental { color:var(--yellow); border-color:rgba(251,191,36,0.25); background:var(--yellow-dim); }
-.stag.weak { color:var(--red); border-color:rgba(248,113,113,0.25); background:var(--red-dim); }
-.stag.nogo { color:#ff6b6b; border-color:rgba(139,0,0,0.4); background:rgba(139,0,0,0.1); }
+.stag.weak { color:var(--orange); border-color:rgba(249,115,22,0.25); background:var(--orange-dim); }
+.stag.nogo { color:#fca5a5; border-color:rgba(153,27,27,0.4); background:var(--dark-red-dim); }
+
+.ji-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.02em;
+}
 
 /* Fit tag for job list - label on top, score below */
 .fit-tag {
@@ -95,12 +102,12 @@
 }
 
 .fit-tag.strong {
-  background: var(--green);
+  background: var(--turquoise);
   color: white;
 }
 
 .fit-tag.decent {
-  background: var(--accent);
+  background: var(--green);
   color: white;
 }
 
@@ -110,12 +117,12 @@
 }
 
 .fit-tag.weak {
-  background: var(--red);
+  background: var(--orange);
   color: white;
 }
 
 .fit-tag.nogo {
-  background: #7f1d1d;
+  background: var(--dark-red);
   color: white;
 }
 

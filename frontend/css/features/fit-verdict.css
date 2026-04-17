@@ -9,38 +9,40 @@
   min-height: 100px;
   border-radius: 12px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border: 2px solid;
   flex-shrink: 0;
   padding: 12px 16px;
 }
 
+/* Badge variants - matching sidebar style with border + dim background */
 .fit-badge.strong {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-  color: white;
+  border-color: rgba(45, 212, 191, 0.4);
+  background: var(--turquoise-dim);
+  color: var(--turquoise);
 }
-
 .fit-badge.decent {
-  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
-  color: white;
+  border-color: rgba(52, 211, 153, 0.4);
+  background: var(--green-dim);
+  color: var(--green);
 }
-
 .fit-badge.experimental {
-  background: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
-  color: white;
+  border-color: rgba(251, 191, 36, 0.4);
+  background: var(--yellow-dim);
+  color: var(--yellow);
 }
-
 .fit-badge.weak {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-  color: white;
+  border-color: rgba(249, 115, 22, 0.4);
+  background: var(--orange-dim);
+  color: var(--orange);
 }
-
 .fit-badge.nogo {
-  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
-  color: white;
+  border-color: rgba(153, 27, 27, 0.5);
+  background: var(--dark-red-dim);
+  color: #fca5a5;
 }
 
 .fit-badge-label {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -50,30 +52,10 @@
 
 .fit-badge-score {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 400;
   font-family: 'JetBrains Mono', monospace;
   line-height: 1;
-  opacity: 0.8;
   margin-top: 4px;
-}
-
-/* Re-check button */
-.recheck-btn {
-  margin-top: 8px;
-  padding: 6px 12px;
-  background: var(--surface2);
-  color: var(--text2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.recheck-btn:hover {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
 }
 
 /* === HEADER LAYOUT === */
@@ -114,7 +96,8 @@
   flex: 1;
 }
 
-/* Metadata rows */
+/* === METADATA === */
+
 .metadata-row {
   display: flex;
   flex-wrap: wrap;
@@ -135,31 +118,13 @@
   color: var(--text2);
 }
 
-.meta-item.company {
-  font-weight: 600;
-  color: var(--text1);
-  font-size: 14px;
-}
+.meta-item.company { font-weight: 600; color: var(--text1); font-size: 14px; }
+.meta-item.location { color: var(--accent); text-decoration: none; }
+.meta-item.location:hover { opacity: 0.8; text-decoration: underline; }
+.meta-item.date, .meta-item.expiry, .meta-item.job-id { color: var(--text3); font-size: 12px; }
 
-.meta-item.location {
-  color: var(--accent);
-  text-decoration: none;
-  transition: opacity 0.15s;
-}
+/* === TAGS === */
 
-.meta-item.location:hover {
-  opacity: 0.8;
-  text-decoration: underline;
-}
-
-.meta-item.date,
-.meta-item.expiry,
-.meta-item.job-id {
-  color: var(--text3);
-  font-size: 12px;
-}
-
-/* Tags */
 .meta-tag {
   display: inline-flex;
   align-items: center;
@@ -172,34 +137,13 @@
   border: 1px solid var(--border2);
 }
 
-.meta-tag.type {
-  background: var(--accent-dim);
-  color: var(--accent);
-  border-color: rgba(96, 165, 250, 0.3);
-}
+.meta-tag.type { background: var(--accent-dim); color: var(--accent); border-color: rgba(96, 165, 250, 0.3); }
+.meta-tag.level { background: var(--surface3); }
+.meta-tag.domain { background: var(--green-dim); color: var(--green); border-color: rgba(52, 211, 153, 0.3); }
+.meta-tag.remote { background: var(--yellow-dim); color: var(--yellow); border-color: rgba(251, 191, 36, 0.3); }
+.meta-tag.salary { background: var(--green); color: white; border-color: transparent; font-weight: 600; }
 
-.meta-tag.level {
-  background: var(--surface3);
-}
-
-.meta-tag.domain {
-  background: var(--green-dim);
-  color: var(--green);
-  border-color: rgba(52, 211, 153, 0.3);
-}
-
-.meta-tag.remote {
-  background: var(--yellow-dim);
-  color: var(--yellow);
-  border-color: rgba(251, 191, 36, 0.3);
-}
-
-.meta-tag.salary {
-  background: var(--green);
-  color: white;
-  border-color: transparent;
-  font-weight: 600;
-}
+/* === VIEW JOB BUTTON === */
 
 .view-job-btn {
   display: inline-flex;
@@ -222,7 +166,7 @@
   border-color: var(--accent);
 }
 
-/* === FIT ASSESSMENT SECTION === */
+/* === FIT SECTION === */
 
 .fit-section {
   padding: 24px;
@@ -237,9 +181,7 @@
   margin-bottom: 16px;
 }
 
-.section-icon {
-  font-size: 18px;
-}
+.section-icon { font-size: 18px; }
 
 .section-title {
   font-size: 14px;
@@ -264,15 +206,10 @@
   color: var(--text1);
 }
 
-.fit-reasoning p {
-  margin: 0 0 12px 0;
-}
+.fit-reasoning p { margin: 0 0 12px 0; }
+.fit-reasoning p:last-child { margin-bottom: 0; }
 
-.fit-reasoning p:last-child {
-  margin-bottom: 0;
-}
-
-/* === JOB TEMPLATE SECTION === */
+/* === TEMPLATE SECTION === */
 
 .template-section {
   padding: 24px;
@@ -289,8 +226,11 @@
 
 .template-text h1,
 .template-text h2,
-.template-text h3 {
-  font-size: 16px;
+.template-text h3,
+.template-text h4,
+.template-text h5,
+.template-text h6 {
+  font-size: 15px;
   font-weight: 600;
   margin: 16px 0 8px 0;
   color: var(--text1);
@@ -310,24 +250,16 @@
   margin-bottom: 4px;
 }
 
+.template-text br {
+  display: block;
+  content: "";
+  margin-bottom: 4px;
+}
+
 /* === DETAIL BODY === */
 
 .detail-body {
   padding: 24px;
-}
-
-/* Remove top padding when detail-body is first (no fit/template sections) */
-.detail-scroll > .detail-body:first-child {
-  padding-top: 0;
-}
-
-/* Adjacent sections should collapse margins */
-.fit-section + .template-section {
-  border-top: none;
-}
-
-.template-section + .detail-body {
-  padding-top: 0;
 }
 
 .section {
@@ -353,16 +285,11 @@
   gap: 32px;
 }
 
-.col-left {
-  flex: 2;
-}
+.col-left { flex: 2; }
+.col-right { flex: 1; min-width: 200px; }
 
-.col-right {
-  flex: 1;
-  min-width: 200px;
-}
+/* === RED FLAGS === */
 
-/* Red flags */
 .redflag-list {
   display: flex;
   flex-direction: column;
@@ -378,7 +305,8 @@
   font-size: 13px;
 }
 
-/* Status controls */
+/* === STATUS CONTROLS === */
+
 .status-controls {
   display: flex;
   flex-direction: column;
@@ -412,26 +340,12 @@
   color: var(--accent);
 }
 
-.status-controls button.ab.ai.act {
-  background: var(--yellow-dim);
-  border-color: var(--yellow);
-  color: var(--yellow);
-}
+.status-controls button.ab.ai.act { background: var(--yellow-dim); border-color: var(--yellow); color: var(--yellow); }
+.status-controls button.ab.aa.act { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+.status-controls button.ab.as.act { background: var(--red-dim); border-color: var(--red); color: var(--red); }
 
-.status-controls button.ab.aa.act {
-  background: var(--green-dim);
-  border-color: var(--green);
-  color: var(--green);
-}
+/* === NOTES === */
 
-.status-controls button.ab.as.act {
-  background: var(--red-dim);
-  border-color: var(--red);
-  color: var(--red);
-}
-
-/* Notes textarea */
-/* Notes section with proper spacing */
 .notes-section {
   margin-top: 32px;
   padding-top: 24px;
@@ -469,11 +383,10 @@
   transition: opacity 0.15s;
 }
 
-.save-b:hover {
-  opacity: 0.9;
-}
+.save-b:hover { opacity: 0.9; }
 
-/* Rating stars */
+/* === RATING STARS === */
+
 .rating-stars {
   display: flex;
   gap: 4px;
@@ -486,12 +399,29 @@
   transition: color 0.15s;
 }
 
-.star.filled {
-  color: var(--yellow);
+.star.filled { color: var(--yellow); }
+.star:hover { color: var(--yellow); }
+
+/* === RECHECK BUTTON === */
+
+.recheck-btn {
+  padding: 8px 16px;
+  background: var(--surface2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.star:hover {
-  color: var(--yellow);
+.recheck-btn:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* Responsive adjustments */
@@ -507,17 +437,12 @@
     align-items: center;
   }
   
-  .recheck-btn {
-    margin-top: 0;
-  }
+  .recheck-btn { margin-top: 0; }
   
   .two-col {
     flex-direction: column;
     gap: 24px;
   }
   
-  .col-left,
-  .col-right {
-    flex: 1;
-  }
+  .col-left, .col-right { flex: 1; }
 }

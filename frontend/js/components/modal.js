@@ -2,197 +2,298 @@ import state from '../state.js';
 import { CONFIG_GET_URL, CONFIG_POST_URL } from '../api.js';
 import { showToast } from './actions.js';
 
-async function openSettings() {
-  document.getElementById('settings-overlay').classList.add('open');
-  document.getElementById('settings-body').innerHTML = '<div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>';
+// ============================================================================
+// Modal State
+// ============================================================================
+
+let rawConfig = null;
+
+// ============================================================================
+// Open/Close
+// ============================================================================
+
+export async function openSettings() {
+  const overlay = document.getElementById('settings-overlay');
+  const body = document.getElementById('settings-body');
+  
+  if (!overlay || !body) return;
+  
+  overlay.classList.add('open');
+  body.innerHTML = renderLoadingState();
+  
   try {
-    const r = await fetch(CONFIG_GET_URL);
-    state._cfgRaw = await r.json();
-    renderSettingsForm(state._cfgRaw);
-  } catch (e) {
-    document.getElementById('settings-body').innerHTML = '<div style="color:var(--red);font-size:12px">Failed to load config</div>';
+    const response = await fetch(CONFIG_GET_URL);
+    rawConfig = await response.json();
+    body.innerHTML = renderConfigForm(rawConfig);
+  } catch (error) {
+    body.innerHTML = renderErrorState('Failed to load config');
   }
 }
 
-function closeSettings() {
-  document.getElementById('settings-overlay').classList.remove('open');
+export function closeSettings() {
+  const overlay = document.getElementById('settings-overlay');
+  if (overlay) overlay.classList.remove('open');
 }
 
-function closeSettingsOnBg(e) {
-  // Only close if both mousedown AND mouseup landed on the overlay itself
-  // This prevents closing when user clicks+drags from inside (e.g. selecting a number)
-  if (e.target === document.getElementById('settings-overlay') &&
-    state._modalMousedownTarget === document.getElementById('settings-overlay')) {
+export function closeSettingsOnBg(event) {
+  const overlay = document.getElementById('settings-overlay');
+  if (!overlay) return;
+  
+  // Only close if both mousedown AND mouseup landed on overlay itself
+  // Prevents closing when user clicks+drags from inside
+  if (event.target === overlay && state._modalMousedownTarget === overlay) {
     closeSettings();
   }
 }
 
-function renderSettingsForm(cfg) {
-  const s = cfg.score_thresholds || {};
-  const hw = cfg.hardware_proximity_scores || {};
-  const sen = cfg.seniority_scores || {};
-  const cat = cfg.category_bonus || {};
-  const loc = cfg.location_default || {};
+// ============================================================================
+// Render Helpers
+// ============================================================================
 
-  document.getElementById('settings-body').innerHTML = `
-      <div class="cfg-section">
-        <div class="cfg-section-title">Scraping</div>
-        <div class="cfg-grid">
-          <div class="cfg-field full">
-            <div class="cfg-label">Search Queries (one per line)</div>
-            <textarea class="cfg-textarea" id="cfg-queries">${(cfg.scrape_queries || []).join('\n')}</textarea>
-          </div>
-          <div class="cfg-field">
-            <div class="cfg-label">Rows per Query</div>
-            <input class="cfg-input" id="cfg-rows" type="number" value="${cfg.scrape_rows || 50}">
-          </div>
-          <div class="cfg-field">
-            <div class="cfg-label">Enrich Limit</div>
-            <input class="cfg-input" id="cfg-enrich-limit" type="number" value="${cfg.enrich_limit || 20}">
-          </div>
-          <div class="cfg-field">
-            <div class="cfg-label">Detail Refresh Days</div>
-            <input class="cfg-input" id="cfg-refresh-days" type="number" value="${cfg.detail_refresh_days || 7}">
-          </div>
-          <div class="cfg-field">
-            <div class="cfg-label">Salary Min Threshold</div>
-            <input class="cfg-input" id="cfg-salary-min" type="number" value="${cfg.salary_min_threshold || 0}">
-          </div>
-        </div>
-      </div>
+function renderLoadingState() {
+  return `
+    <div class="ldw">
+      <span class="ld">●</span>
+      <span class="ld">●</span>
+      <span class="ld">●</span>
+    </div>`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Score Thresholds</div>
-        <div class="cfg-grid">
-          <div class="cfg-field">
-            <div class="cfg-label">Strong</div>
-            <input class="cfg-input" id="cfg-strong" type="number" value="${s.strong || 40}">
-          </div>
-          <div class="cfg-field">
-            <div class="cfg-label">Decent</div>
-            <input class="cfg-input" id="cfg-decent" type="number" value="${s.decent || 20}">
-          </div>
-        </div>
-      </div>
+function renderErrorState(message) {
+  return `
+    <div style="color:var(--red);font-size:12px">
+      ${message}
+    </div>`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Hardware Proximity Scores</div>
-        <div class="cfg-grid">
-          <div class="cfg-field"><div class="cfg-label">High</div><input class="cfg-input" id="cfg-hw-high" type="number" value="${hw.high || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Medium</div><input class="cfg-input" id="cfg-hw-medium" type="number" value="${hw.medium || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Low</div><input class="cfg-input" id="cfg-hw-low" type="number" value="${hw.low || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">None</div><input class="cfg-input" id="cfg-hw-none" type="number" value="${hw.none || 0}"></div>
-        </div>
-      </div>
+function renderSection(title, content) {
+  return `
+    <div class="cfg-section">
+      <div class="cfg-section-title">${title}</div>
+      ${content}
+    </div>`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Seniority Scores</div>
-        <div class="cfg-hint" style="margin-bottom:8px">⚠ Apprentice, Vocational/EFZ, and PhD are <b>hard disqualifiers</b> — label is always forced to Weak. Use large negatives (e.g. −100, −40, −20).</div>
-        <div class="cfg-grid">
-          <div class="cfg-field"><div class="cfg-label">🚫 Apprentice / Lehrling</div><input class="cfg-input" id="cfg-sen-apprentice" type="number" value="${sen.apprentice ?? -100}"></div>
-          <div class="cfg-field"><div class="cfg-label">🚫 Vocational / EFZ</div><input class="cfg-input" id="cfg-sen-vocational" type="number" value="${sen.vocational ?? -40}"></div>
-          <div class="cfg-field"><div class="cfg-label">🚫 PhD</div><input class="cfg-input" id="cfg-sen-phd" type="number" value="${sen.PhD ?? -20}"></div>
-          <div class="cfg-field"><div class="cfg-label">Intern</div><input class="cfg-input" id="cfg-sen-intern" type="number" value="${sen.intern || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Junior</div><input class="cfg-input" id="cfg-sen-junior" type="number" value="${sen.junior || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Mid</div><input class="cfg-input" id="cfg-sen-mid" type="number" value="${sen.mid || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Senior</div><input class="cfg-input" id="cfg-sen-senior" type="number" value="${sen.senior || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Lead</div><input class="cfg-input" id="cfg-sen-lead" type="number" value="${sen.lead || 0}"></div>
-          <div class="cfg-field"><div class="cfg-label">Unspecified</div><input class="cfg-input" id="cfg-sen-unspec" type="number" value="${sen.seniority_unspecified || 0}"></div>
-        </div>
-      </div>
+function renderField(label, inputHtml) {
+  return `
+    <div class="cfg-field">
+      <div class="cfg-label">${label}</div>
+      ${inputHtml}
+    </div>`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Category Bonus</div>
-        <div class="cfg-grid">
-          <div class="cfg-field">
-            <div class="cfg-label">Points</div>
-            <input class="cfg-input" id="cfg-cat-pts" type="number" value="${cat.pts || 0}">
-          </div>
-          <div class="cfg-field full">
-            <div class="cfg-label">Categories (one per line)</div>
-            <textarea class="cfg-textarea" id="cfg-cat-list">${(cat.categories || []).join('\n')}</textarea>
-          </div>
-        </div>
-      </div>
+function renderTextarea(id, value, options = {}) {
+  const { minHeight = '60px', placeholder = '' } = options;
+  return `<textarea class="cfg-textarea" id="${id}" placeholder="${placeholder}" style="min-height:${minHeight}">${value}</textarea>`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Wanted Skills</div>
-        <div class="cfg-field full">
-          <div class="cfg-label">Format: skill name, points (one per line)</div>
-          <textarea class="cfg-textarea" id="cfg-wanted-skills" style="min-height:100px">${(cfg.wanted_skills || []).map(s => s.name + ', ' + s.pts).join('\n')}</textarea>
-        </div>
-      </div>
+function renderInput(id, value, type = 'number') {
+  return `<input class="cfg-input" id="${id}" type="${type}" value="${value}">`;
+}
 
-      <div class="cfg-section">
-        <div class="cfg-section-title">Penalty Skills</div>
-        <div class="cfg-field full">
-          <div class="cfg-label">Format: skill name, points (one per line, points should be negative)</div>
-          <textarea class="cfg-textarea" id="cfg-penalty-skills" style="min-height:80px">${(cfg.penalty_skills || []).map(s => s.name + ', ' + s.pts).join('\n')}</textarea>
-        </div>
-      </div>
-    `;
+function renderGrid(fields) {
+  return `<div class="cfg-grid">${fields.join('')}</div>`;
+}
+
+// ============================================================================
+// Form Rendering
+// ============================================================================
+
+function renderScrapingSection(config) {
+  const fields = [
+    renderField('Search Queries (one per line)', renderTextarea('cfg-queries', (config.scrape_queries || []).join('\n'))),
+    renderField('Rows per Query', renderInput('cfg-rows', config.scrape_rows || 50)),
+    renderField('Enrich Limit', renderInput('cfg-enrich-limit', config.enrich_limit || 20)),
+    renderField('Detail Refresh Days', renderInput('cfg-refresh-days', config.detail_refresh_days || 7)),
+    renderField('Salary Min Threshold', renderInput('cfg-salary-min', config.salary_min_threshold || 0))
+  ];
+  
+  return renderSection('Scraping', renderGrid(fields));
+}
+
+function renderScoreThresholdsSection(config) {
+  const s = config.score_thresholds || {};
+  const fields = [
+    renderField('Strong', renderInput('cfg-strong', s.strong || 40)),
+    renderField('Decent', renderInput('cfg-decent', s.decent || 20))
+  ];
+  
+  return renderSection('Score Thresholds', renderGrid(fields));
+}
+
+function renderHardwareSection(config) {
+  const hw = config.hardware_proximity_scores || {};
+  const fields = [
+    renderField('High', renderInput('cfg-hw-high', hw.high || 0)),
+    renderField('Medium', renderInput('cfg-hw-medium', hw.medium || 0)),
+    renderField('Low', renderInput('cfg-hw-low', hw.low || 0)),
+    renderField('None', renderInput('cfg-hw-none', hw.none || 0))
+  ];
+  
+  return renderSection('Hardware Proximity Scores', renderGrid(fields));
+}
+
+function renderSenioritySection(config) {
+  const sen = config.seniority_scores || {};
+  const hint = `<div class="cfg-hint" style="margin-bottom:8px">
+    ⚠ Apprentice, Vocational/EFZ, and PhD are <b>hard disqualifiers</b> — use large negatives.
+  </div>`;
+  
+  const fields = [
+    renderField('🚫 Apprentice / Lehrling', renderInput('cfg-sen-apprentice', sen.apprentice ?? -100)),
+    renderField('🚫 Vocational / EFZ', renderInput('cfg-sen-vocational', sen.vocational ?? -40)),
+    renderField('🚫 PhD', renderInput('cfg-sen-phd', sen.PhD ?? -20)),
+    renderField('Intern', renderInput('cfg-sen-intern', sen.intern || 0)),
+    renderField('Junior', renderInput('cfg-sen-junior', sen.junior || 0)),
+    renderField('Mid', renderInput('cfg-sen-mid', sen.mid || 0)),
+    renderField('Senior', renderInput('cfg-sen-senior', sen.senior || 0)),
+    renderField('Lead', renderInput('cfg-sen-lead', sen.lead || 0)),
+    renderField('Unspecified', renderInput('cfg-sen-unspec', sen.seniority_unspecified || 0))
+  ];
+  
+  return renderSection('Seniority Scores', hint + renderGrid(fields));
+}
+
+function renderCategorySection(config) {
+  const cat = config.category_bonus || {};
+  const fields = [
+    renderField('Points', renderInput('cfg-cat-pts', cat.pts || 0)),
+    renderField('Categories (one per line)', renderTextarea('cfg-cat-list', (cat.categories || []).join('\n')))
+  ];
+  
+  return renderSection('Category Bonus', renderGrid(fields));
+}
+
+function renderSkillsSection(title, skills, id, hint) {
+  const skillsText = (skills || []).map(s => `${s.name}, ${s.pts}`).join('\n');
+  const hintHtml = hint ? `<div class="cfg-label">${hint}</div>` : '';
+  
+  return renderSection(title, `
+    <div class="cfg-field full">
+      ${hintHtml}
+      ${renderTextarea(id, skillsText, { minHeight: '100px' })}
+    </div>
+  `);
+}
+
+export function renderConfigForm(config) {
+  const sections = [
+    renderScrapingSection(config),
+    renderScoreThresholdsSection(config),
+    renderHardwareSection(config),
+    renderSenioritySection(config),
+    renderCategorySection(config),
+    renderSkillsSection('Wanted Skills', config.wanted_skills, 'cfg-wanted-skills', 
+      'Format: skill name, points (one per line)'),
+    renderSkillsSection('Penalty Skills', config.penalty_skills, 'cfg-penalty-skills',
+      'Format: skill name, points (one per line, points should be negative)')
+  ];
+  
+  return sections.join('');
+}
+
+// ============================================================================
+// Save Settings
+// ============================================================================
+
+function getInputValue(id, defaultValue = 0) {
+  const element = document.getElementById(id);
+  if (!element) return defaultValue;
+  const value = parseInt(element.value);
+  return isNaN(value) ? defaultValue : value;
+}
+
+function getTextareaLines(id) {
+  const element = document.getElementById(id);
+  if (!element) return [];
+  return element.value.split('\n').map(s => s.trim()).filter(Boolean);
 }
 
 function parseSkillLines(text) {
-  return text.split('\n').map(l => l.trim()).filter(Boolean).map(l => {
-    const lastComma = l.lastIndexOf(',');
-    return {name: l.substring(0, lastComma).trim(), pts: parseInt(l.substring(lastComma + 1).trim()) || 0};
-  });
+  return text.split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => {
+      const lastComma = line.lastIndexOf(',');
+      const name = line.substring(0, lastComma).trim();
+      const pts = parseInt(line.substring(lastComma + 1).trim()) || 0;
+      return { name, pts };
+    });
 }
 
-async function saveSettings() {
-  if (!state._cfgRaw) return;
-  try {
-    // Build updated config by merging changes into original (preserves location_rules etc.)
-    const updated = JSON.parse(JSON.stringify(state._cfgRaw));
-    updated.scrape_queries = document.getElementById('cfg-queries').value.split('\n').map(s => s.trim()).filter(Boolean);
-    updated.scrape_rows = parseInt(document.getElementById('cfg-rows').value);
-    updated.enrich_limit = parseInt(document.getElementById('cfg-enrich-limit').value);
-    updated.detail_refresh_days = parseInt(document.getElementById('cfg-refresh-days').value);
-    updated.salary_min_threshold = parseInt(document.getElementById('cfg-salary-min').value);
-    updated.score_thresholds = {strong: parseInt(document.getElementById('cfg-strong').value), decent: parseInt(document.getElementById('cfg-decent').value)};
-    updated.hardware_proximity_scores = {
-      high: parseInt(document.getElementById('cfg-hw-high').value),
-      medium: parseInt(document.getElementById('cfg-hw-medium').value),
-      low: parseInt(document.getElementById('cfg-hw-low').value),
-      none: parseInt(document.getElementById('cfg-hw-none').value),
-    };
-    updated.seniority_scores = {
-      apprentice: parseInt(document.getElementById('cfg-sen-apprentice').value),
-      vocational: parseInt(document.getElementById('cfg-sen-vocational').value),
-      intern: parseInt(document.getElementById('cfg-sen-intern').value),
-      junior: parseInt(document.getElementById('cfg-sen-junior').value),
-      mid: parseInt(document.getElementById('cfg-sen-mid').value),
-      senior: parseInt(document.getElementById('cfg-sen-senior').value),
-      lead: parseInt(document.getElementById('cfg-sen-lead').value),
-      PhD: parseInt(document.getElementById('cfg-sen-phd').value),
-      seniority_unspecified: parseInt(document.getElementById('cfg-sen-unspec').value),
-    };
-    updated.category_bonus = {
-      pts: parseInt(document.getElementById('cfg-cat-pts').value),
-      categories: document.getElementById('cfg-cat-list').value.split('\n').map(s => s.trim()).filter(Boolean),
-    };
-    updated.wanted_skills = parseSkillLines(document.getElementById('cfg-wanted-skills').value);
-    updated.penalty_skills = parseSkillLines(document.getElementById('cfg-penalty-skills').value);
+function getSkillsFromTextarea(id) {
+  const element = document.getElementById(id);
+  if (!element) return [];
+  return parseSkillLines(element.value);
+}
 
-    const r = await fetch(CONFIG_POST_URL, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(updated)});
-    const data = await r.json();
-    if (r.ok) {
+export async function saveSettings() {
+  if (!rawConfig) return;
+  
+  try {
+    // Deep clone and update
+    const updated = JSON.parse(JSON.stringify(rawConfig));
+    
+    // Scraping
+    updated.scrape_queries = getTextareaLines('cfg-queries');
+    updated.scrape_rows = getInputValue('cfg-rows', 50);
+    updated.enrich_limit = getInputValue('cfg-enrich-limit', 20);
+    updated.detail_refresh_days = getInputValue('cfg-refresh-days', 7);
+    updated.salary_min_threshold = getInputValue('cfg-salary-min', 0);
+    
+    // Score thresholds
+    updated.score_thresholds = {
+      strong: getInputValue('cfg-strong', 40),
+      decent: getInputValue('cfg-decent', 20)
+    };
+    
+    // Hardware proximity
+    updated.hardware_proximity_scores = {
+      high: getInputValue('cfg-hw-high', 0),
+      medium: getInputValue('cfg-hw-medium', 0),
+      low: getInputValue('cfg-hw-low', 0),
+      none: getInputValue('cfg-hw-none', 0)
+    };
+    
+    // Seniority
+    updated.seniority_scores = {
+      apprentice: getInputValue('cfg-sen-apprentice', -100),
+      vocational: getInputValue('cfg-sen-vocational', -40),
+      intern: getInputValue('cfg-sen-intern', 0),
+      junior: getInputValue('cfg-sen-junior', 0),
+      mid: getInputValue('cfg-sen-mid', 0),
+      senior: getInputValue('cfg-sen-senior', 0),
+      lead: getInputValue('cfg-sen-lead', 0),
+      PhD: getInputValue('cfg-sen-phd', -20),
+      seniority_unspecified: getInputValue('cfg-sen-unspec', 0)
+    };
+    
+    // Category
+    updated.category_bonus = {
+      pts: getInputValue('cfg-cat-pts', 0),
+      categories: getTextareaLines('cfg-cat-list')
+    };
+    
+    // Skills
+    updated.wanted_skills = getSkillsFromTextarea('cfg-wanted-skills');
+    updated.penalty_skills = getSkillsFromTextarea('cfg-penalty-skills');
+    
+    // Save
+    const response = await fetch(CONFIG_POST_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated)
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
       showToast('Config saved & reloaded');
       closeSettings();
     } else {
       showToast('Error: ' + (data.error || 'unknown'), true);
     }
-  } catch (e) {
+  } catch (error) {
     showToast('Save failed', true);
   }
 }
-
-export {
-  openSettings,
-  closeSettings,
-  closeSettingsOnBg,
-  renderSettingsForm,
-  parseSkillLines,
-  saveSettings
-};

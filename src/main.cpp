@@ -1036,87 +1036,226 @@ int main() {
         std::cerr << "[WARN] Could not load config_v2.json: " << e.what() << std::endl;
     }
 
-    server.Post("/api/onboarding/start", [&db, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
-        std::lock_guard<std::mutex> lock(db_write_mutex);
-        OnboardingSession session = create_session_v2(db);
-        res.set_content(json{{"session_id", session.session_id}, {"question", 1}}.dump(), "application/json");
-    });
-
-    server.Get("/api/onboarding/:session_id", [&db](const httplib::Request& req, httplib::Response& res) {
-        std::string session_id = req.path_params.at("session_id");
-        OnboardingSession session = get_session_v2(db, session_id);
-        res.set_content(json{{"current_question", session.current_question}, {"answers", json::parse(session.answers_json)}}.dump(), "application/json");
-    });
-
-    server.Post("/api/onboarding/answer", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/onboarding/complete", [&config_v2, &ollamaCloudApiKey](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
-            std::string session_id = body["session_id"];
-            std::string answer = body["answer"];
-
-            std::lock_guard<std::mutex> lock(db_write_mutex);
-            OnboardingSession session = get_session_v2(db, session_id);
-            session.current_question++;
-            json answers = json::parse(session.answers_json);
-            answers.push_back(answer);
-            session.answers_json = answers.dump();
-            update_session_v2(db, session);
-
-            if (session.current_question >= 9) {
-                // Generate profile from answers - store the actual answers
-                UserProfile profile;
-                
-                // Format the 9 answers into a structured profile
-                std::string narrative = "Profile generated from onboarding interview:\n\n";
-                const char* questionLabels[] = {
-                    "Background",
-                    "Peak Experience", 
-                    "Exit Triggers",
-                    "Revealed Preferences",
-                    "Priority Stack",
-                    "Intrinsic Pulls", 
-                    "Deal-breakers",
-                    "Vision of Good",
-                    "External Perspective"
-                };
-                
-                json answersJson = json::parse(session.answers_json);
-                for (size_t i = 0; i < answersJson.size() && i < 9; i++) {
-                    narrative += std::string(questionLabels[i]) + ": " + answersJson[i].get<std::string>() + "\n\n";
-                }
-                
-                profile.cv_text = answersJson.dump();
-                profile.narrative = narrative;
-                profile.markdown_path = "../config/user_profile.md";
-                profile.version_hash = std::to_string(time(0));
-                save_profile_v2(db, profile);
-                delete_session_v2(db, session_id);
-                res.set_content(json{{"complete", true}}.dump(), "application/json");
-            } else {
-                res.set_content(json{{"question", session.current_question + 1}}.dump(), "application/json");
+            
+            if (!body.contains("answers") || !body["answers"].is_array() || body["answers"].size() != 9) {
+                res.status = 400;
+                res.set_content(json{{"error", "Expected 9 answers"}}.dump(), "application/json");
+                return;
             }
+            
+            if (ollamaCloudApiKey.empty()) {
+                res.status = 500;
+                res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
+                return;
+            }
+            
+            const auto& answers = body["answers"];
+            
+            // Build prompt for LLM to generate markdown profile
+            std::string questions[] = {
+                "CV Drop",
+                "Career Goal (3–5 Years)",
+                "Intrinsic Motivation",
+                "No-Gos",
+                "Tech Skills: Build vs. Tolerate",
+                "Company Type & Region",
+                "Hard Constraints",
+                "Work Style",
+                "What Should the LLM Know That's Not in the CV?"
+            };
+            
+            std::string fullProfile = "Candidate Onboarding Answers:\n\n";
+            for (int i = 0; i < 9; i++) {
+                fullProfile += "Q" + std::to_string(i+1) + ": " + questions[i] + "\n";
+                std::string answerVal = answers[i].is_string() ? answers[i].get<std::string>() : answers[i].dump();
+                fullProfile += "A" + std::to_string(i+1) + ": " + answerVal + "\n\n";
+            }
+            
+            std::string prompt = R"(Generate a comprehensive user profile in markdown format from the candidate answers below.
+
+TEMPLATE STRUCTURE TO FOLLOW:
+# User Profile
+
+Generated: [TIMESTAMP]
+Last Updated: [TIMESTAMP]
+Version: [HASH]
+
+---
+
+## Q1: CV Drop
+[Answer]
+
+---
+
+## Q2: Career Goal (3–5 Years)
+[Answer]
+
+---
+
+## Q3: Intrinsic Motivation
+[Answer]
+
+---
+
+## Q4: No-Gos
+[Answer]
+
+---
+
+## Q5: Tech Skills: Build vs. Tolerate
+[Answer]
+
+---
+
+## Q6: Company Type & Region
+[Answer]
+
+---
+
+## Q7: Hard Constraints
+[Answer]
+
+---
+
+## Q8: Work Style
+[Answer]
+
+---
+
+## Q9: What Should the LLM Know That's Not in the CV?
+[Answer]
+
+---
+
+## Synthesized Narrative
+[Auto-generated from all answers above. Combine into cohesive paragraph for job assessment.]
+
+[EXAMPLE NARRATIVE]
+[Generated narrative]
+
+---
+
+*This profile is used by the AI to assess job fit. Edit any section above, 
+then trigger a profile refresh to update the narrative.*
+)"; 
+
+            prompt += fullProfile;
+            
+            json request = {
+                {"model", config_v2.ollama_model},
+                {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
+                {"max_tokens", config_v2.ollama_max_tokens},
+                {"temperature", config_v2.ollama_temperature},
+                {"top_p", config_v2.ollama_top_p},
+                {"top_k", config_v2.ollama_top_k},
+                {"response_format", {{"type", "text"}}}
+            };
+            
+            std::string response = httpPost(config_v2.ollama_base_url + "/chat",
+                                            ollamaCloudApiKey, request.dump());
+            
+            // Parse streaming response - accumulate all chunks
+            std::string accumulatedResponse;
+            std::string lastChunk;
+            std::stringstream responseStream(response);
+            std::string line;
+            
+            while (std::getline(responseStream, line)) {
+                if (line.empty()) continue;
+                try {
+                    json chunk = json::parse(line);
+                    
+                    if (chunk.contains("message") && chunk["message"].contains("content")) {
+                        std::string content = chunk["message"]["content"].get<std::string>();
+                        accumulatedResponse += content;
+                        lastChunk = content;
+                    }
+                    
+                    if (chunk.contains("done") && chunk["done"].get<bool>()) {
+                        break;
+                    }
+                } catch (const std::exception& e) {
+                    accumulatedResponse += line + "\n";
+                }
+            }
+            
+            if (accumulatedResponse.empty()) {
+                throw std::runtime_error("Empty response from API");
+            }
+            
+            // Extract markdown from code blocks if present
+            std::string markdownContent = accumulatedResponse;
+            size_t mdStart = markdownContent.find("```markdown");
+            if (mdStart != std::string::npos) {
+                markdownContent = markdownContent.substr(mdStart + 11);
+                size_t mdEnd = markdownContent.find("```");
+                if (mdEnd != std::string::npos) {
+                    markdownContent = markdownContent.substr(0, mdEnd);
+                }
+            } else {
+                size_t start = markdownContent.find("```");
+                if (start != std::string::npos) {
+                    markdownContent = markdownContent.substr(start + 3);
+                    size_t end = markdownContent.find("```");
+                    if (end != std::string::npos) {
+                        markdownContent = markdownContent.substr(0, end);
+                    }
+                }
+            }
+            
+            // Save to file
+            std::string markdownPath = "../config/user_profile.md";
+            std::ofstream outfile(markdownPath);
+            if (!outfile.is_open()) {
+                throw std::runtime_error("Failed to open file: " + markdownPath);
+            }
+            outfile << markdownContent;
+            outfile.close();
+            
+            res.set_content(json{{"ok", true}}.dump(), "application/json");
+            
         } catch (const std::exception& e) {
-            res.status = 400;
-            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+            res.status = 500;
+            res.set_content(json{{"error", std::string(e.what())}}.dump(), "application/json");
         }
     });
 
-    server.Get("/api/profile", [&db](const httplib::Request&, httplib::Response& res) {
-        UserProfile profile = get_profile_v2(db);
-        bool exists = profile_exists_v2(db);
-        res.set_content(json{{"exists", exists}, {"cv_text", profile.cv_text}, {"narrative", profile.narrative}}.dump(), "application/json");
+    server.Get("/api/profile", [](const httplib::Request&, httplib::Response& res) {
+        std::string markdownPath = "../config/user_profile.md";
+        std::ifstream file(markdownPath);
+        
+        if (!file.is_open()) {
+            res.status = 404;
+            res.set_content(json{{"error", "No profile found"}}.dump(), "application/json");
+            return;
+        }
+        
+        std::string content((std::istreambuf_iterator<char>(file)),
+                          std::istreambuf_iterator<char>());
+        file.close();
+        
+        res.set_content(content, "text/markdown");
+        res.set_header("Content-Type", "text/markdown");
+        res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     });
 
-    server.Post("/api/profile/save", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/profile/save", [](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
-            std::lock_guard<std::mutex> lock(db_write_mutex);
-            UserProfile profile;
-            profile.cv_text = body.value("cv_text", "");
-            profile.narrative = body.value("narrative", "");
-            profile.markdown_path = "../config/user_profile.md";
-            profile.version_hash = std::to_string(time(0));
-            save_profile_v2(db, profile);
+            std::string content = body.value("content", "");
+            
+            std::string markdownPath = "../config/user_profile.md";
+            std::ofstream file(markdownPath);
+            if (!file.is_open()) {
+                throw std::runtime_error("Failed to open file: " + markdownPath);
+            }
+            
+            file << content;
+            file.close();
+            
             res.set_content(json{{"ok", true}}.dump(), "application/json");
         } catch (const std::exception& e) {
             res.status = 400;
@@ -1124,14 +1263,20 @@ int main() {
         }
     });
 
-    server.Post("/api/fitcheck", [&db, &config_v2, &ollamaCloudApiKey, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
-        UserProfile profile = get_profile_v2(db);
-        if (!profile_exists_v2(db)) {
+    server.Post("/api/fitcheck", [&config_v2, &ollamaCloudApiKey, &db_write_mutex, &db](const httplib::Request&, httplib::Response& res) {
+        std::string markdownPath = "../config/user_profile.md";
+        std::ifstream file(markdownPath);
+        
+        if (!file.is_open()) {
             res.status = 400;
             res.set_content(json{{"error", "No profile found. Complete onboarding first."}}.dump(), "application/json");
             return;
         }
-
+        
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+        
         if (ollamaCloudApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
@@ -1156,11 +1301,11 @@ int main() {
                     continue;
                 }
 
-                // Build prompt
+                // Build prompt - use full markdown content as narrative
                 std::string prompt = R"(Evaluate job fit.
 
 CANDIDATE PROFILE (use "you/your" in response, no names):
-)" + profile.narrative + R"(
+)" + content + R"(
 
 JOB POSTING:
 )" + cleaned + R"(
@@ -1261,12 +1406,12 @@ Respond in JSON:
                 }
                 {
                     std::lock_guard<std::mutex> lock(db_write_mutex);
-                    save_fit_result_v2(db, job.job_id,
-                                      fit_data.value("fit_score", 0),
-                                      fit_data.value("fit_label", "Unknown"),
-                                      fit_data.value("fit_summary", ""),
-                                      fit_data.value("fit_reasoning", ""),
-                                      profile.version_hash);
+                     save_fit_result_v2(db, job.job_id,
+                                       fit_data.value("fit_score", 0),
+                                       fit_data.value("fit_label", "Unknown"),
+                                       fit_data.value("fit_summary", ""),
+                                       fit_data.value("fit_reasoning", ""),
+                                       "md_file_profile");
                 }
                 checked++;
                 std::cout << "[INFO] Fit-checked: " << job.job_id << std::endl;
@@ -1281,16 +1426,22 @@ Respond in JSON:
     });
 
     // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
-    server.Post("/api/jobs/:id/fitcheck", [&db, &config_v2, &ollamaCloudApiKey, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &ollamaCloudApiKey, &db_write_mutex, &db](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         
-        UserProfile profile = get_profile_v2(db);
-        if (!profile_exists_v2(db)) {
+        // Read profile from markdown file
+        std::string markdownPath = "../config/user_profile.md";
+        std::ifstream file(markdownPath);
+        if (!file.is_open()) {
             res.status = 400;
             res.set_content(json{{"error", "No profile found. Complete onboarding first."}}.dump(), "application/json");
             return;
         }
-
+        
+        std::string profileContent((std::istreambuf_iterator<char>(file)),
+                                   std::istreambuf_iterator<char>());
+        file.close();
+        
         if (ollamaCloudApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
@@ -1331,7 +1482,7 @@ Respond in JSON:
             std::string prompt = R"(Evaluate job fit.
 
 CANDIDATE PROFILE (use "you/your" in response, no names):
-)" + profile.narrative + R"(
+)" + profileContent + R"(
 
 JOB POSTING:
 )" + cleaned + R"(
@@ -1428,11 +1579,11 @@ Respond in JSON:
             {
                 std::lock_guard<std::mutex> lock(db_write_mutex);
                 save_fit_result_v2(db, job_id,
-                                  fit_data.value("fit_score", 0),
-                                  fit_data.value("fit_label", "Unknown"),
-                                  fit_data.value("fit_summary", ""),
-                                  fit_data.value("fit_reasoning", ""),
-                                  profile.version_hash);
+                                   fit_data.value("fit_score", 0),
+                                   fit_data.value("fit_label", "Unknown"),
+                                   fit_data.value("fit_summary", ""),
+                                   fit_data.value("fit_reasoning", ""),
+                                   "md_profile");
             }
             
             res.set_content(fit_data.dump(), "application/json");

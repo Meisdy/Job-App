@@ -30,7 +30,7 @@
 <body>
 
 <header>
-  <div class="logo"><div class="logo-dot"></div>Job Radar</div>
+  <div class="logo">Job Master</div>
   <div class="filters">
     <button class="filter-btn active" id="filter-all" data-filter="all">All</button>
     <button class="filter-btn" id="filter-strong" data-filter="Strong">Strong</button>
@@ -44,7 +44,7 @@
   <div class="search-wrap">
     <span class="search-icon">⌕</span>
     <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city...">
-    <button class="search-clear" id="search-clear">✕</button>
+    <button class="search-clear" id="search-clear" aria-label="Clear search">✕</button>
   </div>
   <button class="tool-btn scrape-btn" id="scrape-btn">⊕ Scrape Jobs</button>
   <button class="tool-btn details-btn" id="details-btn">⇩ Fetch Details</button>
@@ -88,7 +88,7 @@
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">⚙ Settings</span>
-      <button class="modal-close" id="modal-close">✕</button>
+      <button class="modal-close" id="modal-close" aria-label="Close settings">✕</button>
     </div>
     <div class="modal-body" id="settings-body">
       <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>

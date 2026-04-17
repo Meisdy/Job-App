@@ -161,10 +161,9 @@
       const card = document.getElementById('profile-card');
       
       try {
-        const res = await fetch(PROFILE_URL);
-        const data = await res.json();
+        const content = await fetch(PROFILE_URL).then(r => r.text());
         
-        if (!data.exists || (!data.cv_text && !data.narrative)) {
+        if (!content.trim()) {
           card.innerHTML = `
             <div class="empty">
               <div class="empty-icon">👤</div>
@@ -182,19 +181,10 @@
             <a href="/onboarding.html?redo=true" class="btn">🔄 Re-do Onboarding</a>
           </div>
           
-          ${data.narrative ? `
           <div class="section">
-            <div class="section-title">Profile Summary</div>
-            <div class="content">${escapeHtml(data.narrative)}</div>
+            <div class="section-title">Profile Markdown</div>
+            <pre class="content">${escapeHtml(content)}</pre>
           </div>
-          ` : ''}
-          
-          ${data.cv_text ? `
-          <div class="section">
-            <div class="section-title">CV / Background</div>
-            <div class="content">${escapeHtml(data.cv_text)}</div>
-          </div>
-          ` : ''}
         `;
       } catch (err) {
         card.innerHTML = `
@@ -213,7 +203,9 @@
       return div.innerHTML;
     }
 
-    loadProfile();
+    loadProfile().catch(err => {
+      console.error('Profile loading error:', err);
+    });
   </script>
 </body>
 </html>

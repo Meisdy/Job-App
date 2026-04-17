@@ -105,30 +105,15 @@ struct UserProfile {
     std::string version_hash;
 };
 
-// Onboarding Session
-struct OnboardingSession {
-    std::string session_id;
-    int         current_question {};
-    std::string answers_json;
-    std::string created_at;
-    std::string expires_at;
-};
-
 // V2 database initialization
 void db_v2_init(sqlite3* db);
 void db_v2_ensure_tables(sqlite3* db);
 
-// V2 Profile operations
+// V2 Profile operations - FILE BASED
+// UserProfile struct kept for compatibility but not used for storage
 bool profile_exists_v2(sqlite3* db);
 UserProfile get_profile_v2(sqlite3* db);
 void save_profile_v2(sqlite3* db, const UserProfile& profile);
-
-// V2 Onboarding operations
-OnboardingSession create_session_v2(sqlite3* db);
-OnboardingSession get_session_v2(sqlite3* db, const std::string& session_id);
-void update_session_v2(sqlite3* db, const OnboardingSession& session);
-void delete_session_v2(sqlite3* db, const std::string& session_id);
-void cleanup_expired_sessions_v2(sqlite3* db);
 
 // V2 Fit-check operations
 void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,

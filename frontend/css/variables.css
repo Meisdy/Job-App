@@ -17,4 +17,10 @@
   --yellow-dim:rgba(251,191,36,0.09);
   --red:#f87171;
   --red-dim:rgba(248,113,113,0.08);
+  --turquoise:#2dd4bf;
+  --turquoise-dim:rgba(45,212,191,0.09);
+  --orange:#f97316;
+  --orange-dim:rgba(249,115,22,0.09);
+  --dark-red:#991b1b;
+  --dark-red-dim:rgba(153,27,27,0.1);
 }

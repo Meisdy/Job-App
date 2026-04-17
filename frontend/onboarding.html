@@ -3,14 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job Radar - Onboarding</title>
+  <title>Job Master - Onboarding</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/variables.css">
   <link rel="stylesheet" href="/css/base.css">
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
     body {
       display: flex;
       justify-content: center;
@@ -40,7 +38,7 @@
     }
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--green));
+      background: var(--accent);
       transition: width 0.3s ease;
     }
     .question-title {
@@ -69,10 +67,7 @@
       resize: vertical;
       font-family: inherit;
     }
-    textarea::placeholder {
-      color: var(--text3);
-      opacity: 0.6;
-    }
+    textarea::placeholder { color: var(--text3); opacity: 0.6; }
     textarea:focus {
       outline: none;
       border-color: var(--accent);
@@ -94,14 +89,8 @@
       transition: all 0.15s;
       font-family: inherit;
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-    }
-    .btn-primary:hover {
-      background: #4a9af0;
-      transform: translateY(-1px);
-    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #4a9af0; transform: translateY(-1px); }
     .btn-secondary {
       background: var(--surface2);
       color: var(--text);
@@ -127,7 +116,19 @@
       font-size: 16px;
       line-height: 1.6;
     }
-    /* Question counter badge */
+    .loading-spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--border2);
+      border-top: 4px solid var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
     .question-counter {
       display: inline-block;
       padding: 4px 12px;
@@ -149,7 +150,7 @@
     </div>
     
     <div id="question-container">
-      <div class="question-counter" id="question-counter">Question 1 of 9</div>
+      <div class="question-counter" id="question-counter">Question 1 of 10</div>
       <h1 class="question-title" id="question-title">Loading...</h1>
       <p class="question-subtitle" id="question-subtitle"></p>
       <textarea id="answer-input" placeholder="Type your answer here..."></textarea>
@@ -161,63 +162,66 @@
     
     <div class="complete-screen" id="complete-screen">
       <h2>✅ Profile Complete!</h2>
-      <p>Your profile has been created. The AI will now use this to evaluate job fit.</p>
+      <p>Your profile has been generated. Check /config/user_profile.md to view or edit.</p>
       <button class="btn-primary" onclick="goToDashboard()">Go to Dashboard</button>
+    </div>
+    
+    <div class="complete-screen" id="loading-screen" style="display: none;">
+      <div class="loading-spinner"></div>
+      <h2>Generating Profile...</h2>
+      <p>Analyzing your answers and creating your comprehensive profile...</p>
+      <p style="font-size: 14px; color: var(--text3);">This may take a moment as we build your personalized narrative.</p>
     </div>
   </div>
 
-  <script>
+    <script>
     const questions = [
       {
-        title: "Tell me about your background",
-        subtitle: "Paste your CV or describe your experience. Focus on what you actually did, not what looks impressive."
+        title: "CV Drop",
+        subtitle: "Paste your full CV or key stations: title, company/institution, period, core tasks."
       },
       {
-        title: "Describe a project you genuinely enjoyed",
-        subtitle: "Not the one that looks best on paper — the one you looked forward to working on. What specifically made it engaging day-to-day?"
+        title: "Career Goal (3–5 Years)",
+        subtitle: "Role, industry, country, seniority — as specific as possible. Not 'interesting work', but what exactly."
       },
       {
-        title: "What made you leave your last role?",
-        subtitle: "Think of a job or role you left (or considered leaving). What was the actual trigger — the moment you decided to start looking?"
+        title: "Intrinsic Motivation",
+        subtitle: "What gives you energy at work? (e.g. hands-on building, debugging deep systems, deploying things, autonomy, impact) — no generic answers."
       },
       {
-        title: "A trade-off you accepted",
-        subtitle: "Tell me about a time you accepted a job that had something you dislike (long commute, boring tech, big company) because something else made it worth it. What was that 'something else'?"
+        title: "No-Gos",
+        subtitle: "Absolute dealbreakers: culture, task types, travel %, hierarchy, corporate language, management style, industries."
       },
       {
-        title: "Your priorities",
-        subtitle: "Rank these for your next role: (1) Technical challenge (2) Team quality (3) Compensation (4) Work-life balance (5) Product domain. What would make you sacrifice #1 for #3?"
+        title: "Tech Skills: Build vs. Tolerate",
+        subtitle: "Separate 'want to master' from 'can do but dislike'. This shapes fit quality significantly."
       },
       {
-        title: "What pulls your attention?",
-        subtitle: "What technologies, domains, or problems have you found yourself reading about or tinkering with in your free time? Not work-related — just what pulls your attention."
+        title: "Company Type & Region",
+        subtitle: "Startup / SME / corporate, product / service, known brand / hidden champion. Country/region preference or hard constraint."
       },
       {
-        title: "Your deal-breakers",
-        subtitle: "Give me 2-3 things that would make you immediately reject a role. For each: is there ANY scenario where you'd accept it anyway? What would that scenario be?"
+        title: "Hard Constraints",
+        subtitle: "Minimum salary, remote %, location, start date, visa/permit status, language of work."
       },
       {
-        title: "Your ideal Monday",
-        subtitle: "It's Monday 9am. You're in the right job. What are you looking forward to this week?"
+        title: "Work Style",
+        subtitle: "Solo deep-focus vs. collaborative, how you handle ambiguity, preferred feedback culture, pace."
       },
       {
-        title: "External perspective",
-        subtitle: "What would your last manager or teammate say you should look for in a role that you might not have mentioned?"
+        title: "What Should the LLM Know That's Not in the CV?",
+        subtitle: "Personality, values, things that went wrong before, what a great day at work looks like. Free-form."
       }
     ];
 
     let currentQuestion = 0;
-    let sessionId = null;
     let answers = [];
 
     async function init() {
       try {
-        const res = await fetch('/api/onboarding/start', {method: 'POST'});
-        const data = await res.json();
-        sessionId = data.session_id;
         showQuestion(0);
       } catch (e) {
-        document.getElementById('question-title').textContent = 'Error starting onboarding';
+        document.getElementById('question-title').textContent = 'Error loading questions';
         console.error(e);
       }
     }
@@ -243,23 +247,41 @@
       
       answers[currentQuestion] = answer;
       
+      // Check if we're on the last question (10th)
+      if (currentQuestion === questions.length - 1) {
+        // All questions answered, call complete endpoint with all answers
+        await completeOnboarding();
+      } else {
+        showQuestion(currentQuestion + 1);
+      }
+    }
+    
+    async function completeOnboarding() {
+      document.getElementById('question-container').style.display = 'none';
+      document.getElementById('loading-screen').style.display = 'block';
+      
+      // Call complete endpoint to generate markdown profile
       try {
-        const res = await fetch('/api/onboarding/answer', {
+        const res = await fetch('/api/onboarding/complete', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({session_id: sessionId, answer: answer})
+          body: JSON.stringify({answers: answers})
         });
         const data = await res.json();
         
-        if (data.complete) {
-          document.getElementById('question-container').style.display = 'none';
+        if (data.ok) {
+          document.getElementById('loading-screen').style.display = 'none';
           document.getElementById('complete-screen').style.display = 'block';
         } else {
-          showQuestion(currentQuestion + 1);
+          document.getElementById('loading-screen').style.display = 'none';
+          document.getElementById('question-container').style.display = 'block';
+          alert('Profile generation failed: ' + (data.error || 'Unknown error'));
         }
       } catch (e) {
-        console.error('Error submitting answer:', e);
-        alert('Error saving answer. Please try again.');
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('question-container').style.display = 'block';
+        console.error('Complete error:', e);
+        alert('Error generating profile: ' + e.message);
       }
     }
 
@@ -273,12 +295,6 @@
     function goToDashboard() {
       window.location.href = '/';
     }
-
-    document.getElementById('answer-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
-        nextQuestion();
-      }
-    });
 
     init();
   </script>

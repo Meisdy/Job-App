@@ -1,17 +1,21 @@
 // Date formatting utility
-function fmtDate(d) {
-  if (!d) return '';
-  const dt = new Date(d);
-  if (isNaN(dt)) return '';
-  return dt.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
+export function formatDate(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'});
 }
 
 // Status icon utility
-function sicon(s) {
-  if (s === 'interested') return '<span style="color:var(--green);font-size:11px">✦</span>';
-  if (s === 'applied') return '<span style="color:var(--yellow);font-size:11px">✓</span>';
-  if (s === 'skipped') return '<span style="color:var(--text3);font-size:11px">✕</span>';
-  return '';
+export function getStatusIcon(status) {
+  const icons = {
+    interested: '<span style="color:var(--green);font-size:11px">✦</span>',
+    applied: '<span style="color:var(--yellow);font-size:11px">✓</span>',
+    skipped: '<span style="color:var(--text3);font-size:11px">✕</span>'
+  };
+  return icons[status] || '';
 }
 
-export { fmtDate, sicon };
+// Legacy exports for backward compatibility
+export const fmtDate = formatDate;
+export const sicon = getStatusIcon;
