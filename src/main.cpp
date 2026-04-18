@@ -75,8 +75,15 @@ std::string httpRequest(const std::string& url, const std::string& method,
         }
 
         CURLcode res = curl_easy_perform(curl);
-        if (res != CURLE_OK)
+        if (res != CURLE_OK) {
             std::cerr << "curl error for " << url << ": " << curl_easy_strerror(res) << std::endl;
+        } else {
+            long httpCode = 0;
+            curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+            if (httpCode >= 400)
+                std::cerr << "[HTTP] " << url << " returned " << httpCode
+                          << " — body: " << response.substr(0, 500) << std::endl;
+        }
 
         curl_slist_free_all(headerList);
         curl_easy_cleanup(curl);
@@ -101,12 +108,20 @@ std::string httpPost(const std::string& url, const std::string& apiKey, const st
     }, body);
 }
 
-// AI inference calls need a longer timeout — model inference can take several minutes
+// AI inference calls need a longer timeout — model inference can take several minutes.
+// Retries once on empty response (handles cold-start drops from cloud providers).
 std::string httpPostAI(const std::string& url, const std::string& apiKey, const std::string& body) {
-    return httpRequest(url, "POST", {
+    const std::vector<std::string> headers = {
         "Content-Type: application/json",
         "Authorization: Bearer " + apiKey
-    }, body, 600L);
+    };
+    std::string response = httpRequest(url, "POST", headers, body, 600L);
+    if (response.empty()) {
+        std::cerr << "[WARN] httpPostAI: empty response, retrying in 3s..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+        response = httpRequest(url, "POST", headers, body, 600L);
+    }
+    return response;
 }
 
 
