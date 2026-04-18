@@ -1,6 +1,6 @@
 # Code Review: Job-App
 
-**Date:** 2026-04-18 (updated after fixes)
+**Date:** 2026-04-18 (updated after V1 removal)
 **Reviewer:** Full-project audit
 **Scope:** All C++ backend, frontend JS/CSS/HTML, config, git hygiene
 
@@ -9,18 +9,26 @@
 - `exec_query` now checks `sqlite3_prepare_v2` return code (db.cpp:33-37)
 - GET timeout added: `CURLOPT_CONNECTTIMEOUT=10`, `CURLOPT_TIMEOUT=120` (main.cpp:69-70)
 - `.gitignore` updated: `cmake-build-rework/`, `user_profile.md` added
-- `save_fit_result_v2` timestamp fixed: `datetime('now')` inline in SQL, not bound as text (db.cpp:355-358)
+- `save_fit_result_v2` timestamp fixed: `datetime('now')` inline in SQL, not bound as text
 - Duplicate `showToast` removed from detail.js (imported from actions.js)
 - `parseEnrichedData` deduplicated (imported from job-list.js)
 - `DEBUG_MODE` SQL endpoint removed
 - Test HTML files and AI summary docs removed from git tracking
-- Fitcheck prompt extracted to `buildFitcheckPrompt` lambda — used in all 3 endpoints (main.cpp:1038)
-- NDJSON streaming parser extracted to `parseStreamingResponse` lambda (main.cpp:1112)
-- JSON-from-markdown extractor extracted to `extractJsonFromResponse` lambda (main.cpp:1127)
+- Fitcheck prompt extracted to `buildFitcheckPrompt` lambda — used in all 3 endpoints
+- NDJSON streaming parser extracted to `parseStreamingResponse` lambda
+- JSON-from-markdown extractor extracted to `extractJsonFromResponse` lambda
 - Hardcoded `localhost:8080` URLs replaced with relative `/api` paths in frontend JS
 - `escapeHtml()` added to formatting.js; applied to all user-data injection points in detail.js
 - `cleanTemplateText` reordered: tag-strip → entity-decode → second tag-strip; output escaped before innerHTML
 - `runBackgroundJob` double-consume bug fixed: server error messages now surface correctly
+- **V1 pipeline fully removed:** `/api/enrich`, `/api/score` endpoints deleted; `ConfigData`, `score_job()`, `ScoreResult`, `skillMatch()`, `is_valid_swiss_zip()`, `EnrichedJob`, `JobRecordV2`, `UserProfile` structs removed; v1 DB functions (`get_unenriched_jobs`, `save_enriched_data`, `get_enriched_jobs`, `save_job_score`, `profile_exists_v2`, `get_profile_v2`, `save_profile_v2`) removed
+- **config_v2_mutex added:** all `config_v2` field reads now protected by `shared_lock`; POST /api/config uses `unique_lock`
+- **JobRecordV2 → JobRecord:** `get_jobs_needing_fitcheck_v2` return type unified; all endpoint local vars updated
+- **modal.js rewritten:** v1 sections (score thresholds, hardware, seniority, category, skills) replaced with v2 config fields (scrape queries/rows, fitcheck limit/model/base_url/params, detail refresh days)
+- **api.js cleaned:** `ONBOARDING_START_URL`, `ONBOARDING_ANSWER_URL` dead exports removed
+- **Dead files deleted:** `config/config.json`, `frontend/job_dashboard.html`
+- `profile.markdown_path` removed from `ConfigV2` struct and `config_v2.json` (was parsed but never used)
+- `config_v2` declaration moved before endpoint registration (fixed declaration-before-use compile error)
 
 ---
 
@@ -42,47 +50,31 @@
 
 ### HIGH
 
-`src/main.cpp:L667-671: 🔴 Mis-indented block. if (!locationMatched) at extra indent makes closing brace ambiguous. Reindent.`
+`src/main.cpp: 🟡 Hardcoded ../config/ and ../data/ paths throughout. If binary runs from any other cwd, file I/O silently fails. Derive base path from executable location or accept as CLI arg.`
 
-`src/main.cpp:L512: 🟡 score_job() calls json::parse(enriched_data) without try-catch. Caller catches but corrupted data produces confusing error messages. Wrap parse in try, return default/zero ScoreResult on failure.`
+`src/main.cpp: 🟡 job.job_id injected into detail fetch URL without encoding: "https://www.jobs.ch/api/v1/public/search/job/" + job.job_id. Path traversal risk if ID contains special chars. Use urlEncode().`
 
-`src/main.cpp:L19,694,707,1265,1487: 🟡 Hardcoded ../config/ and ../data/ paths. If binary runs from any other cwd, file I/O silently fails. Derive base path from executable location or accept as CLI arg.`
+`src/main.cpp: 🟡 No validation on job_id, user_status values, or rating range from POST /api/jobs/update request body. user_status: "../../etc/passwd" passes through to DB. Validate user_status against enum {"unseen","saved","applied","rejected"}, rating to [0,5].`
 
-`src/main.cpp:L820: 🟡 job.job_id injected into URL without encoding: "https://www.jobs.ch/api/v1/public/search/job/" + job.job_id. Path traversal risk if ID contains special chars. Use urlEncode().`
+`src/main.cpp: 🟡 POST /api/profile/save writes arbitrary-length content to ../config/user_profile.md with no size limit. Add max content size check (e.g. 64KB).`
 
-`src/main.cpp:L738-744: 🟡 No validation on job_id, user_status values, or rating range from request body. user_status: "../../etc/passwd" passes through to DB. Validate user_status against enum, rating to [0,5].`
+`src/main.cpp: 🟡 No auth on admin endpoints. DELETE /api/admin/jobs/:id, POST /api/admin/fitcheck/clear, /clear/:id, /recheck/:id, /recheck — any localhost process can hit these. Add at minimum a static bearer token check.`
 
-`src/main.cpp:L1373: 🟡 POST /api/profile/save writes arbitrary-length content to ../config/user_profile.md with no size limit. Add max content size check (e.g. 64KB).`
+`src/db.cpp: 🟡 get_jobs_needing_details() accepts refresh_days param but never uses it in SQL. Either add WHERE scraped_at < date('now', '-' || ? || ' days') clause or remove dead param.`
 
-`src/main.cpp:L1580,1596,1625: 🟡 No auth on admin endpoints. DELETE /api/admin/jobs/:id, POST /api/admin/fitcheck/clear, /clear/:id, /recheck/:id, /recheck — any localhost process can hit these. Add at minimum a static bearer token check.`
-
-`src/db.cpp:L155-184: 🟡 get_jobs_needing_details() accepts refresh_days param but never uses it. Bound at L181 but SQL has no ? for it. Either add WHERE clause or remove the dead param.`
-
-`include/db.h:L28-47,82-96: 🟡 JobRecord and JobRecordV2 are near-identical structs with same fit fields. V1 scorer is gone — no need for two. Collapse into one struct.`
-
-`frontend/js/utils/validation.js:L8: 🟡 Bidirectional substring match: t.includes(skillLabel) means a 50-char token matches any 2-char skill label substring. Reverse condition or use word-boundary matching.`
-
----
-
-### MEDIUM
-
-`src/main.cpp:L667-671: 🟡 Mis-indented scoring block (same as HIGH item above).`
-
-`include/db.h:L99-106,L113-116: 🔵 UserProfile struct and profile_exists_v2/get_profile_v2/save_profile_v2 declared but profile is now file-based. Dead code. Remove.`
-
-`frontend/js/main.js:L146-159: 🔵 15 window.* exports defeat ES6 modules. bindEvents() wires everything via addEventListener. These are dead code. Remove.`
-
-`frontend/onboarding.html:L158-159: 🔵 Inline onclick="prevQuestion()"/onclick="nextQuestion()" inconsistent with main app using addEventListener. Switch to addEventListener.`
+`frontend/js/utils/validation.js: 🟡 Bidirectional substring match: t.includes(skillLabel) means a 50-char token matches any 2-char skill label substring. Reverse condition or use word-boundary matching.`
 
 ---
 
 ### LOW
 
-`src/db.cpp:L320-325: 🔵 6 catch-all blocks silently swallow ALTER TABLE errors. Add [DB] prefix consistently and log the actual exception.`
+`src/db.cpp: 🔵 6 catch-all blocks in db_v2_ensure_tables() silently swallow ALTER TABLE errors. Log actual exception message.`
 
-`src/main.cpp:L251-304: 🔵 Dual config system (ConfigData + ConfigV2) with overlapping fields. Merge into one config with versioned sections.`
+`frontend/js/main.js: 🔵 15 window.* exports defeat ES6 modules. bindEvents() wires everything via addEventListener — these globals are dead code. Remove.`
 
-`CMakeLists.txt:L6: 🔵 src/sqlite3.c and include/httplib.h listed as source files — third-party amalgamations (~250K lines sqlite3.c). Move to vendor/ or use find_package.`
+`frontend/onboarding.html: 🔵 Inline onclick="prevQuestion()"/onclick="nextQuestion()" inconsistent with main app using addEventListener. Switch to addEventListener.`
+
+`CMakeLists.txt: 🔵 src/sqlite3.c and include/httplib.h listed as source files — third-party amalgamations (~250K lines sqlite3.c). Move to vendor/ or use find_package.`
 
 ---
 
@@ -90,9 +82,9 @@
 
 | Severity | Count |
 |----------|-------|
-| 🔴 Critical | 3 |
-| 🟡 High/Risk | 9 |
-| 🔵 Low/Nit | 5 |
-| **Total** | **17** |
+| 🔴 Critical | 1 |
+| 🟡 High/Risk | 7 |
+| 🔵 Low/Nit | 4 |
+| **Total** | **12** |
 
-Priority: Fix JSON injection (12 locations, systematic fix). Then XSS in detail.js. Then admin endpoint auth. Then input validation and size limits.
+Priority: API key rotation (immediate). Then input validation on user_status/rating. Then profile save size limit. Then admin endpoint auth.
