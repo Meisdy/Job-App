@@ -24,8 +24,5 @@
   },
   "details": {
     "refresh_days": 21
-  },
-  "profile": {
-    "markdown_path": "../config/user_profile.md"
   }
 }

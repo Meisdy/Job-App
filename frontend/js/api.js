@@ -6,9 +6,6 @@ const DETAILS_URL = '/api/scrape/details';
 const CONFIG_GET_URL = '/api/config';
 const CONFIG_POST_URL = '/api/config';
 
-// V2 API Endpoints
-const ONBOARDING_START_URL = '/api/onboarding/start';
-const ONBOARDING_ANSWER_URL = '/api/onboarding/answer';
 const PROFILE_GET_URL = '/api/profile';
 const PROFILE_SAVE_URL = '/api/profile/save';
 const FITCHECK_URL = '/api/fitcheck';
@@ -35,8 +32,6 @@ export {
   CONFIG_POST_URL,
   CURIOUS_SKILLS,
   AVOID_SKILLS,
-  ONBOARDING_START_URL,
-  ONBOARDING_ANSWER_URL,
   PROFILE_GET_URL,
   PROFILE_SAVE_URL,
   FITCHECK_URL
