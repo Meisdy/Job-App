@@ -30,7 +30,11 @@ namespace {
 
     void exec_query(sqlite3* db, const std::string& sql, const std::function<void(sqlite3_stmt*)> &callback, const std::vector<std::string>& params = {}) {
         sqlite3_stmt* stmt;
-        sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+        int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) {
+            std::cerr << "[DB] prepare failed: " << sqlite3_errmsg(db) << " SQL: " << sql << std::endl;
+            throw std::runtime_error("exec_query prepare failed: " + std::string(sqlite3_errmsg(db)));
+        }
 
         for (int i = 0; i < static_cast<int>(params.size()); i++) {
             sqlite3_bind_text(stmt, i + 1, params[i].c_str(), -1, SQLITE_TRANSIENT);
@@ -353,9 +357,9 @@ void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
                         const std::string& label, const std::string& summary,
                         const std::string& reasoning, const std::string& profile_hash) {
     exec_write(db, R"(
-        UPDATE jobs SET fit_score=?, fit_label=?, fit_summary=?, fit_reasoning=?, fit_checked_at=?, fit_profile_hash=?
+        UPDATE jobs SET fit_score=?, fit_label=?, fit_summary=?, fit_reasoning=?, fit_checked_at=datetime('now'), fit_profile_hash=?
         WHERE job_id=?
-    )", {std::to_string(score), label, summary, reasoning, "datetime('now')", profile_hash, job_id});
+    )", {std::to_string(score), label, summary, reasoning, profile_hash, job_id});
 }
 
 void clear_fit_data(sqlite3* db, const std::string& job_id) {

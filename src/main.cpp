@@ -1977,31 +1977,6 @@ Respond ONLY in valid JSON, no additional text:
 
     // ── END V2 API ─────────────────────────────────────────────────────────────
 
-#ifdef DEBUG_MODE
-    // POST /api/debug/query — run arbitrary SQL and return plain text result
-    server.Post("/api/debug/query", [&db](const httplib::Request& req, httplib::Response& res) {
-        sqlite3_stmt* stmt;
-        if (sqlite3_prepare_v2(db, req.body.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-            res.set_content(std::string("Error: ") + sqlite3_errmsg(db), "text/plain");
-            return;
-        }
-        int cols = sqlite3_column_count(stmt);
-        std::string out;
-        for (int i = 0; i < cols; i++) { if (i) out += " | "; out += sqlite3_column_name(stmt, i); }
-        out += "\n" + std::string(60, '-') + "\n";
-        while (sqlite3_step(stmt) == SQLITE_ROW) {
-            for (int i = 0; i < cols; i++) {
-                if (i) out += " | ";
-                const char* v = reinterpret_cast<const char *>(sqlite3_column_text(stmt, i));
-                out += v ? v : "NULL";
-            }
-            out += "\n";
-        }
-        sqlite3_finalize(stmt);
-        res.set_content(out, "text/plain");
-    });
-#endif
-
     std::cout << "Server running on http://localhost:8080" << std::endl;
     server.listen("localhost", 8080);
     sqlite3_close(db);
