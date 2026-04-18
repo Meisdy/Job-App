@@ -128,7 +128,7 @@ export async function setExpired() {
   if (!confirm(`Delete "${jobTitle}" permanently?`)) return;
   
   try {
-    await fetch(`http://localhost:8080/api/jobs/${state.currentJob.job_id}`, {
+    await fetch(`/api/jobs/${state.currentJob.job_id}`, {
       method: 'DELETE'
     });
     

@@ -2,12 +2,8 @@ import state from '../state.js';
 import { CURIOUS_SKILLS, AVOID_SKILLS } from '../api.js';
 import { fmtDate } from '../utils/formatting.js';
 import { tokenMatches } from '../utils/validation.js';
-import { setStatus, setExpired, saveNotes, setRating } from './actions.js';
-
-function parseEnrichedData(job) {
-  if (!job.enriched_data) return {};
-  return typeof job.enriched_data === 'string' ? JSON.parse(job.enriched_data) : job.enriched_data;
-}
+import { setStatus, setExpired, saveNotes, setRating, showToast } from './actions.js';
+import { parseEnrichedData } from './job-list.js';
 
 function buildGoogleMapsUrl(zip, city) {
   const query = encodeURIComponent(`${zip} ${city} Switzerland`);
@@ -326,7 +322,7 @@ function setupRecheckButton() {
     recheckBtn.innerHTML = '<span class="spin">⟳</span> Checking...';
     
     try {
-      const response = await fetch(`http://localhost:8080/api/jobs/${state.currentJob.job_id}/fitcheck`, {
+      const response = await fetch(`/api/jobs/${state.currentJob.job_id}/fitcheck`, {
         method: 'POST'
       });
       const data = await response.json();
@@ -349,18 +345,6 @@ function setupRecheckButton() {
       recheckBtn.innerHTML = '🔄 Re-Check';
     }
   };
-}
-
-function showToast(message, isError = false) {
-  const toast = document.getElementById('toast');
-  if (!toast) return;
-  
-  toast.textContent = message;
-  toast.style.borderColor = isError ? 'rgba(248,113,113,0.35)' : 'rgba(96,165,250,0.3)';
-  toast.style.color = isError ? 'var(--red)' : 'var(--accent)';
-  toast.classList.add('show');
-  
-  setTimeout(() => toast.classList.remove('show'), 2000);
 }
 
 export function renderDetail() {

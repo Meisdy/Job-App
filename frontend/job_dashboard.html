@@ -826,14 +826,14 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  const GET_URL    = 'http://localhost:8080/api/jobs';
-  const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
-  const RESCORE_URL = 'http://localhost:8080/api/score';
-  const SCRAPE_URL   = 'http://localhost:8080/api/scrape/jobs';
-  const DETAILS_URL  = 'http://localhost:8080/api/scrape/details';
-  const ENRICH_URL  = 'http://localhost:8080/api/enrich';
-  const CONFIG_GET_URL  = 'http://localhost:8080/api/config';
-  const CONFIG_POST_URL = 'http://localhost:8080/api/config';
+  const GET_URL    = '/api/jobs';
+  const UPDATE_URL = '/api/jobs/update';
+  const RESCORE_URL = '/api/score';
+  const SCRAPE_URL   = '/api/scrape/jobs';
+  const DETAILS_URL  = '/api/scrape/details';
+  const ENRICH_URL  = '/api/enrich';
+  const CONFIG_GET_URL  = '/api/config';
+  const CONFIG_POST_URL = '/api/config';
 
   // ── PERSONAL SKILL PREFERENCES ──────────────────────────────────────────────
   // Dashed blue — curious / would enjoy learning (no point effect)
@@ -1147,7 +1147,7 @@
   async function setExpired(){
     if(!currentJob) return;
     if(!confirm(`Delete "${currentJob.title}" permanently?`)) return;
-    await fetch(`http://localhost:8080/api/jobs/${currentJob.job_id}`, {method:'DELETE'});
+    await fetch(`/api/jobs/${currentJob.job_id}`, {method:'DELETE'});
     allJobs = allJobs.filter(j => j.job_id !== currentJob.job_id);
     currentJob = null;
     document.getElementById('action-bar').style.display = 'none';

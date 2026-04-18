@@ -1,17 +1,17 @@
 // API Endpoints
-const GET_URL = 'http://localhost:8080/api/jobs';
-const UPDATE_URL = 'http://localhost:8080/api/jobs/update';
-const SCRAPE_URL = 'http://localhost:8080/api/scrape/jobs';
-const DETAILS_URL = 'http://localhost:8080/api/scrape/details';
-const CONFIG_GET_URL = 'http://localhost:8080/api/config';
-const CONFIG_POST_URL = 'http://localhost:8080/api/config';
+const GET_URL = '/api/jobs';
+const UPDATE_URL = '/api/jobs/update';
+const SCRAPE_URL = '/api/scrape/jobs';
+const DETAILS_URL = '/api/scrape/details';
+const CONFIG_GET_URL = '/api/config';
+const CONFIG_POST_URL = '/api/config';
 
 // V2 API Endpoints
-const ONBOARDING_START_URL = 'http://localhost:8080/api/onboarding/start';
-const ONBOARDING_ANSWER_URL = 'http://localhost:8080/api/onboarding/answer';
-const PROFILE_GET_URL = 'http://localhost:8080/api/profile';
-const PROFILE_SAVE_URL = 'http://localhost:8080/api/profile/save';
-const FITCHECK_URL = 'http://localhost:8080/api/fitcheck';
+const ONBOARDING_START_URL = '/api/onboarding/start';
+const ONBOARDING_ANSWER_URL = '/api/onboarding/answer';
+const PROFILE_GET_URL = '/api/profile';
+const PROFILE_SAVE_URL = '/api/profile/save';
+const FITCHECK_URL = '/api/fitcheck';
 
 // Personal Skill Preferences
 // Dashed blue — curious / would enjoy learning (no point effect)

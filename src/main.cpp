@@ -664,11 +664,11 @@ ScoreResult score_job(const std::string& enriched_data, const std::string& zipco
                 break;
             }
         }
-            if (!locationMatched) {
-                score += config.location_default_pts;
-                reasons.push_back(config.location_default_label + " (" + (config.location_default_pts>=0?"+":"") + std::to_string(config.location_default_pts) + ")");
-            }
+        if (!locationMatched) {
+            score += config.location_default_pts;
+            reasons.push_back(config.location_default_label + " (" + (config.location_default_pts>=0?"+":"") + std::to_string(config.location_default_pts) + ")");
         }
+    }
 
     std::string label = isHardDisqualified ? "Weak"
                       : score >= config.score_strong_threshold ? "Strong"

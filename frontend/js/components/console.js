@@ -1,6 +1,6 @@
 import state from '../state.js';
 
-const API_BASE = 'http://localhost:8080/api';
+const API_BASE = '/api';
 
 function resolveJobId(input) {
   if (!input) throw new Error('Usage: command <id>');
