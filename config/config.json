@@ -10,7 +10,7 @@
     "pts": 8
   },
   "detail_refresh_days": 21,
-  "enrich_limit": 50,
+  "enrich_limit": 20,
   "hardware_proximity_scores": {
     "high": 15,
     "low": -8,
