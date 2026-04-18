@@ -1,3 +1,13 @@
+// HTML escaping — must be applied to all user/external data before innerHTML injection
+export function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // Date formatting utility
 export function formatDate(dateString) {
   if (!dateString) return '';

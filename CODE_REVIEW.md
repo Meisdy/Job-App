@@ -18,6 +18,9 @@
 - NDJSON streaming parser extracted to `parseStreamingResponse` lambda (main.cpp:1112)
 - JSON-from-markdown extractor extracted to `extractJsonFromResponse` lambda (main.cpp:1127)
 - Hardcoded `localhost:8080` URLs replaced with relative `/api` paths in frontend JS
+- `escapeHtml()` added to formatting.js; applied to all user-data injection points in detail.js
+- `cleanTemplateText` reordered: tag-strip → entity-decode → second tag-strip; output escaped before innerHTML
+- `runBackgroundJob` double-consume bug fixed: server error messages now surface correctly
 
 ---
 
@@ -25,9 +28,13 @@
 
 ### CRITICAL
 
-`src/main.cpp:L749,L760,L1000,L1022,L1350,L1390,L1574,L1591,L1606,L1620,L1704,L1715: 🔴 JSON injection — e.what() embedded raw into JSON responses. If exception message contains `"`, response is broken JSON. 12 locations total. Fix: use nlohmann::json to build all error responses instead of string concatenation.`
+`src/main.cpp: ✅ JSON injection — FALSE POSITIVE. All error responses use nlohmann json{{"error", e.what()}}.dump() which properly escapes string values including quotes. No raw JSON string concatenation exists. No fix needed.`
 
-`frontend/js/components/detail.js:L368: 🔴 XSS — job fields interpolated raw into innerHTML. Job title, company, notes from DB can contain <script>. Add escapeHtml() (exists in profile.html) and apply to all user-controlled fields: title, company_name, place, notes, fit_summary, fit_reasoning, template_text, skill names, red flags.`
+`frontend/js/components/detail.js: ✅ FIXED — XSS. escapeHtml() added to formatting.js and applied to all user-controlled fields: title, company_name, zipcode, city, job_id, jobTypeDisplay, jobLevel, jobDomain, salLabel, displayLabel, fit_summary, fit_reasoning, red flags, skill names, responsibility items, notes. detail_url sanitized to reject non-http(s) URLs.`
+
+`frontend/js/components/detail.js: ✅ FIXED — Entity-decode XSS in cleanTemplateText. Reordered: tags stripped before entity decode, then second tag-strip pass catches any tags introduced by decoding. buildTemplateSection now escapes output and renders newlines as <br>.`
+
+`frontend/js/components/actions.js: ✅ FIXED — runBackgroundJob double body-consume. response.json() called once; data reused on error branch instead of re-parsing consumed stream. Server error messages now surface correctly.`
 
 `config/api_keys.json: 🔴 API keys on disk. .gitignore prevents tracking but verify no history exposure: git log --all -- config/api_keys.json. Rotate keys regardless as precaution.`
 

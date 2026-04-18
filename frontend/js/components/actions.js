@@ -196,12 +196,11 @@ async function runBackgroundJob(options) {
   try {
     const response = await fetch(apiUrl, { method: apiMethod });
     const data = await response.json();
-    
+
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || 'Request failed');
+      throw new Error(data.error || 'Request failed');
     }
-    
+
     showToast(successMessage(data));
     
     setTimeout(async () => {

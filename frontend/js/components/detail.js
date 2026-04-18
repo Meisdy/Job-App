@@ -1,6 +1,6 @@
 import state from '../state.js';
 import { CURIOUS_SKILLS, AVOID_SKILLS } from '../api.js';
-import { fmtDate } from '../utils/formatting.js';
+import { fmtDate, escapeHtml } from '../utils/formatting.js';
 import { tokenMatches } from '../utils/validation.js';
 import { setStatus, setExpired, saveNotes, setRating, showToast } from './actions.js';
 import { parseEnrichedData } from './job-list.js';
@@ -54,7 +54,7 @@ function generateSkillsHtml(skillsArray, matchedSkills, penalizedSkills) {
     if (cls.isCurious) classNames += ' curious';
     if (cls.isAvoid) classNames += ' avoid';
     
-    return `<span class="${classNames}">${skill}</span>`;
+    return `<span class="${classNames}">${escapeHtml(skill)}</span>`;
   }).join('');
 }
 
@@ -94,7 +94,7 @@ function generateWorkSplitHtml(workSplit) {
 
 function generateResponsibilitiesHtml(responsibilities) {
   if (!responsibilities || responsibilities.length === 0) return '';
-  const items = responsibilities.map(r => `<li>${r}</li>`).join('');
+  const items = responsibilities.map(r => `<li>${escapeHtml(r)}</li>`).join('');
   return `<ul class="rl">${items}</ul>`;
 }
 
@@ -110,85 +110,82 @@ function getFitVerdict(job) {
 
 function cleanTemplateText(text) {
   if (!text) return '';
-  
+
   // Step 1: Remove surrounding quotes
   let cleaned = text.replace(/^["']|["']$/g, '');
-  
-  // Step 2: Convert HTML to text
-  // Replace <br>, <br/> with newlines
+
+  // Step 2: Strip HTML tags first — entity-encoded tags (e.g. &lt;script&gt;) are NOT yet
+  // decoded, so this only removes real tags. Stripping before entity-decode prevents the
+  // pattern where &lt;script&gt; survives the tag strip and gets decoded to <script>.
   cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
-  
-  // Replace </p> with newlines
   cleaned = cleaned.replace(/<\/p>/gi, '\n\n');
-  
-  // Replace </div> with newlines
   cleaned = cleaned.replace(/<\/div>/gi, '\n');
-  
-  // Replace <li> with bullet points
   cleaned = cleaned.replace(/<li>/gi, '• ');
   cleaned = cleaned.replace(/<\/li>/gi, '\n');
-  
-  // Strip remaining HTML tags
   cleaned = cleaned.replace(/<[^>]+>/g, '');
-  
-  // Step 3: Clean up whitespace
-  cleaned = cleaned
-    .replace(/\n\s*\n\s*\n+/g, '\n\n')  // Collapse 3+ newlines to 2
-    .replace(/\n[ \t]+/g, '\n')          // Remove leading spaces on lines
-    .replace(/[ \t]+\n/g, '\n')          // Remove trailing spaces on lines
-    .replace(/\n+/g, '\n')               // Collapse multiple newlines
-    .replace(/^[\s\n]+|[\s\n]+$/g, '')    // Trim start/end
-    .replace(/\s{2,}/g, ' ')              // Collapse multiple spaces
-    .trim();
-  
-  // Step 4: Decode HTML entities
+
+  // Step 3: Decode HTML entities — now safe because real tags are already gone
   const textarea = document.createElement('textarea');
   textarea.innerHTML = cleaned;
   cleaned = textarea.value;
-  
+
+  // Step 4: Strip any tags introduced by entity decoding (e.g. &lt;b&gt; → <b>)
+  cleaned = cleaned.replace(/<[^>]+>/g, '');
+
+  // Step 5: Clean up whitespace
+  cleaned = cleaned
+    .replace(/\n\s*\n\s*\n+/g, '\n\n')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n+/g, '\n')
+    .replace(/^[\s\n]+|[\s\n]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
   return cleaned;
 }
 
 function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain, jobTypeDisplay, salLabel, displayScore, displayLabel) {
-  const zip = job.zipcode || '';
+  const zip = escapeHtml(job.zipcode || '');
   const remote = data.location?.remote || 'none';
-  
+  const safeDetailUrl = /^https?:\/\//.test(job.detail_url || '') ? escapeHtml(job.detail_url) : '#';
+
   return `
     <div class="detail-header">
       <div class="fit-badge-col">
-        <div class="fit-badge ${displayLabel.toLowerCase().replace(' ', '')}">
-          <div class="fit-badge-label">${displayLabel}</div>
+        <div class="fit-badge ${escapeHtml(displayLabel.toLowerCase().replace(' ', ''))}">
+          <div class="fit-badge-label">${escapeHtml(displayLabel)}</div>
           <div class="fit-badge-score">${displayScore}</div>
         </div>
       </div>
-      
+
       <div class="header-content">
         <div class="title-row">
-          <h1 class="job-title">${job.title || 'Unknown'}</h1>
+          <h1 class="job-title">${escapeHtml(job.title || 'Unknown')}</h1>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <a href="${job.detail_url || '#'}" class="view-job-btn" target="_blank" rel="noopener">
+            <a href="${safeDetailUrl}" class="view-job-btn" target="_blank" rel="noopener">
               View on jobs.ch ↗
             </a>
             <button class="recheck-btn" id="recheck-btn" title="Re-check this job">🔄 Re-Check</button>
           </div>
         </div>
-        
+
         <div class="metadata-row">
-          <span class="meta-item company">${job.company_name || '—'}</span>
+          <span class="meta-item company">${escapeHtml(job.company_name || '—')}</span>
           <a href="${mapsUrl}" class="meta-item location" target="_blank" rel="noopener" title="View on Google Maps">
-            📍 ${zip} ${city} ↗
+            📍 ${zip} ${escapeHtml(city)} ↗
           </a>
           ${job.pub_date ? `<span class="meta-item date">📅 ${fmtDate(job.pub_date)}</span>` : ''}
           ${job.end_date ? `<span class="meta-item expiry">⏱️ ${fmtDate(job.end_date)}</span>` : ''}
-          <span class="meta-item job-id">ID: ${job.job_id.slice(-8)}</span>
+          <span class="meta-item job-id">ID: ${escapeHtml(job.job_id.slice(-8))}</span>
         </div>
-        
+
         <div class="metadata-row">
-          ${jobTypeDisplay ? `<span class="meta-tag type">${jobTypeDisplay}</span>` : ''}
-          ${jobLevel ? `<span class="meta-tag level">${jobLevel}</span>` : ''}
-          ${jobDomain ? `<span class="meta-tag domain">${jobDomain}</span>` : ''}
-          ${remote !== 'none' ? `<span class="meta-tag remote">${remoteLabel}</span>` : ''}
-          ${salLabel ? `<span class="meta-tag salary">💰 ${salLabel}</span>` : ''}
+          ${jobTypeDisplay ? `<span class="meta-tag type">${escapeHtml(jobTypeDisplay)}</span>` : ''}
+          ${jobLevel ? `<span class="meta-tag level">${escapeHtml(jobLevel)}</span>` : ''}
+          ${jobDomain ? `<span class="meta-tag domain">${escapeHtml(jobDomain)}</span>` : ''}
+          ${remote !== 'none' ? `<span class="meta-tag remote">${escapeHtml(remoteLabel)}</span>` : ''}
+          ${salLabel ? `<span class="meta-tag salary">💰 ${escapeHtml(salLabel)}</span>` : ''}
         </div>
       </div>
     </div>`;
@@ -203,21 +200,22 @@ function buildFitSection(job) {
         <span class="section-icon">🤖</span>
         <span class="section-title">AI Fit Assessment</span>
       </div>
-      ${job.fit_summary ? `<div class="fit-summary">${job.fit_summary}</div>` : ''}
-      ${job.fit_reasoning ? `<div class="fit-reasoning">${job.fit_reasoning}</div>` : ''}
+      ${job.fit_summary ? `<div class="fit-summary">${escapeHtml(job.fit_summary)}</div>` : ''}
+      ${job.fit_reasoning ? `<div class="fit-reasoning">${escapeHtml(job.fit_reasoning)}</div>` : ''}
     </div>`;
 }
 
 function buildTemplateSection(text) {
   if (!text) return '';
-  
+  // text is plain text from cleanTemplateText — escape before HTML injection
+  const safe = escapeHtml(text).replace(/\n/g, '<br>');
   return `
     <div class="template-section">
       <div class="section-header">
         <span class="section-icon">📄</span>
         <span class="section-title">Job Description</span>
       </div>
-      <div class="template-text">${text}</div>
+      <div class="template-text">${safe}</div>
     </div>`;
 }
 
@@ -228,7 +226,7 @@ function buildSecondaryInfo(job, data, redFlags, skillsHtml, workSplitHtml, resp
       <div class="section red-flags">
         <div class="st" style="color:var(--red)">⚠ Red Flags</div>
         <div class="redflag-list">
-          ${redFlags.map(f => `<div class="redflag-item">${f}</div>`).join('')}
+          ${redFlags.map(f => `<div class="redflag-item">${escapeHtml(f)}</div>`).join('')}
         </div>
       </div>` : ''}
       
@@ -254,7 +252,7 @@ function buildSecondaryInfo(job, data, redFlags, skillsHtml, workSplitHtml, resp
           
           <div class="section notes-section">
             <div class="st">Notes</div>
-            <textarea class="notes-ta" id="notes-input" placeholder="Your private notes...">${job.notes || ''}</textarea>
+            <textarea class="notes-ta" id="notes-input" placeholder="Your private notes...">${escapeHtml(job.notes || '')}</textarea>
             <button class="save-b" id="save-notes-btn">Save Notes</button>
           </div>
         </div>
