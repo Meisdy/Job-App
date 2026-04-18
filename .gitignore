@@ -4,6 +4,7 @@
 # Build output
 cmake-build-debug/
 cmake-build-release/
+cmake-build-rework/
 
 # Compiled binaries
 *.exe
