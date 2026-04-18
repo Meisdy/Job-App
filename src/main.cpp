@@ -1009,6 +1009,7 @@ then trigger a profile refresh to update the narrative.*
     // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
     server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &ollamaCloudApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
+        std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
         
         // Read profile from markdown file
         std::string markdownPath = "../config/user_profile.md";
@@ -1176,6 +1177,7 @@ then trigger a profile refresh to update the narrative.*
         &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
+        std::cout << "[INFO] Admin recheck triggered for job: " << job_id << std::endl;
 
         std::string profile = loadProfileMarkdown();
         if (profile.empty()) {
@@ -1270,6 +1272,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     server.Post("/api/admin/fitcheck/recheck", [&db, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        std::cout << "[INFO] Admin batch recheck triggered (clear all)" << std::endl;
         try {
             std::lock_guard<std::mutex> lock(db_write_mutex);
             clear_all_fit_data(db);
