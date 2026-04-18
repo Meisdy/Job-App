@@ -19,6 +19,7 @@ build.ninja
 data/jobs.db
 data/*.csv
 /config/api_keys.json
+/config/user_profile.md
 /data/jobs.db-shm
 /data/jobs.db-wal
 *.db
