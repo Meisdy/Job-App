@@ -2,704 +2,217 @@
 
 This document provides build, test, and code style guidelines for agentic coding in the Job-App repository.
 
+## 📁 Project Structure
+
+```
+config/
+  ├── config_v2.json        # Active config: scrape queries, fitcheck params, detail refresh
+  ├── api_keys.json         # API keys (gitignored)
+  └── user_profile.md       # Candidate profile for fit-check (gitignored)
+data/                       # SQLite database (not in git)
+include/
+  ├── db.h                  # Database interface, Job/JobRecord structs
+  ├── httplib.h             # HTTP server library (vendored)
+  ├── sqlite3.h             # SQLite header (vendored)
+  └── json.hpp              # nlohmann JSON (vendored)
+src/
+  ├── main.cpp              # Server, all API endpoints, config, HTTP helpers
+  ├── db.cpp                # Database operations
+  └── sqlite3.c             # SQLite amalgamation (vendored)
+frontend/
+  ├── index.html            # Main SPA entry point
+  ├── profile.html          # Candidate profile editor
+  ├── onboarding.html       # Onboarding wizard
+  ├── css/                  # Modular CSS files
+  └── js/                   # ES6 module JavaScript
+```
+
 ## 📁 Frontend Structure
 
 ### Directory Layout
 ```
 frontend/
 ├── index.html                    # Main entry point (single-page app)
-├── job_dashboard.html            # Original backup (monolithic, 1,467 lines)
 ├── css/                          # Modular CSS files
 │   ├── variables.css             # CSS custom properties (theme/colors)
 │   ├── base.css                  # Global reset & body styles
 │   ├── layouts/
 │   │   └── main.css              # Main flex layout structure
 │   ├── components/               # UI component styles
-│   │   ├── header.css            # Header, search, filters, status
-│   │   ├── sidebar.css           # Job list sidebar
-│   │   ├── detail-panel.css      # Job detail view
-│   │   ├── action-bar.css        # Action buttons
-│   │   ├── modal.css             # Settings modal
+│   │   ├── header.css
+│   │   ├── sidebar.css
+│   │   ├── detail-panel.css
+│   │   ├── action-bar.css
+│   │   ├── modal.css
 │   │   ├── console.css           # Dev console (dark terminal style)
-│   │   └── utilities.css         # Loaders, toast, empty states
+│   │   └── utilities.css
 │   └── features/                 # Feature-specific styles
-│       ├── fit-assessment.css    # Fit assessment grid
-│       ├── fit-verdict.css       # Fit badge, detail header, AI section
-│       ├── work-split.css        # Work distribution chart
-│       └── red-flags.css         # Warning indicators
-├── js/                           # ES6 Modular JavaScript
-│   ├── main.js                   # Entry point & initialization
-│   ├── api.js                    # API endpoints & skill constants
-│   ├── state.js                  # Global application state
-│   ├── utils/                    # Utility functions
-│   │   ├── formatting.js         # Date & icon formatting
-│   │   └── validation.js         # Skill matching validation
-│   └── components/               # UI component logic
-│       ├── header.js             # Search, filters, stats
-│       ├── job-list.js           # List rendering & selection
-│       ├── detail.js             # Job detail rendering
-│       ├── actions.js            # User actions & API operations
-│       ├── modal.js              # Settings modal functionality
-│       └── console.js            # Dev console (Ctrl+\ to toggle)
-└── components/                   # (Empty - HTML is inline in index.html)
+│       ├── fit-assessment.css
+│       ├── fit-verdict.css
+│       ├── work-split.css
+│       └── red-flags.css
+└── js/                           # ES6 Modular JavaScript
+    ├── main.js                   # Entry point & initialization
+    ├── api.js                    # API endpoint URLs & skill constants
+    ├── state.js                  # Global application state
+    ├── utils/
+    │   ├── formatting.js         # Date, icon formatting, escapeHtml()
+    │   └── validation.js         # Skill matching validation
+    └── components/
+        ├── header.js             # Search, filters, stats
+        ├── job-list.js           # List rendering & selection
+        ├── detail.js             # Job detail rendering
+        ├── actions.js            # User actions & API calls
+        ├── modal.js              # Settings modal (v2 config shape)
+        └── console.js            # Dev console (Ctrl+\ to toggle)
 ```
 
 ### Component Architecture
-- **CSS Components**: Organized by feature area with clear separation of concerns
-  - `variables.css`: Centralized theme colors and CSS custom properties (`--text`, `--text2`, `--text3` — no `--text1`)
-  - `base.css`: Global reset, typography, and base styles
-  - `layouts/`: Page-level structural CSS
-  - `components/`: Individual UI component styles (including `console.css` — dark terminal-style overlay)
-  - `features/`: Feature-specific styling (fit assessment, fit verdict, work split, red flags)
-- **JS Modules**: ES6 modules with clear dependencies
-  - `state.js`: Centralized reactive state (single source of truth, imported by console.js for job ID resolution)
-  - `api.js`: API endpoint URLs and skill preference constants
-  - `utils/`: Pure utility functions (formatting, validation)
-  - `components/`: UI logic separated by functional area
-  - `components/console.js`: Hidden dev console — toggled with `Ctrl+\`, uses partial job ID resolution via `state.allJobs`
-- **HTML**: Inline in `index.html` (no custom loader needed, event handlers work reliably)
-- **No Build Step**: Native ES6 modules, no bundler required
+- **CSS Variables**: All colors in `variables.css`. Text colors: `--text`, `--text2`, `--text3` — **no `--text1`**
+- **JS Modules**: ES6 modules, no bundler. `state.js` is single source of truth
+- **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `CURIOUS_SKILLS`, `AVOID_SKILLS`
+- **XSS**: All user/LLM data injected into innerHTML must go through `escapeHtml()` from `formatting.js`
+- **No build step**: native ES6 modules
 
-### Serving Configuration
-The backend serves `index.html` as the main entry point. The file structure allows for:
-- Independent caching of CSS/JS components
-- Easy component-based development
-- Improved maintainability and scalability
-
-## 🚀 Serving the Application
-
-### Development Server
-```bash
-# Serve from frontend directory
-cd frontend && python3 -m http.server 8000
-# Access at http://localhost:8000
-```
-
-### Production Deployment
-```bash
-# Build and copy frontend assets
-mkdir -p dist && cp -r frontend/* dist/
-```
-
-### Backend Configuration
-The C++ backend (src/main.cpp:554) serves the frontend:
-```cpp
-server.Get("/", [](const httplib::Request&, httplib::Response& res) {
-    std::ifstream file("../frontend/index.html");
-    res.set_content(std::string((std::istreambuf_iterator<char>(file)),
-                                 std::istreambuf_iterator<char>()), "text/html");
-});
-```
-
-### Admin Console API
-
-The dev console (`Ctrl+\` in browser) calls admin endpoints under `/api/admin/`. All destructive operations require client-side confirmation.
+### Admin Console
+Dev console (`Ctrl+\` in browser) calls admin endpoints under `/api/admin/`.
 
 | Endpoint | Method | Purpose |
 |---|---|---|
-| `/api/admin/jobs/:id` | DELETE | Delete a job completely |
+| `/api/admin/jobs/:id` | DELETE | Delete job |
 | `/api/admin/fitcheck/clear/:id` | POST | Clear fit data for one job |
 | `/api/admin/fitcheck/clear` | POST | Clear fit data for ALL jobs |
-| `/api/admin/fitcheck/recheck/:id` | POST | Clear fit data + recheck one job via LLM |
-| `/api/admin/fitcheck/recheck` | POST | Clear all fit data (jobs become eligible for batch fitcheck) |
+| `/api/admin/fitcheck/recheck/:id` | POST | Clear + recheck one job via LLM |
+| `/api/admin/fitcheck/recheck` | POST | Clear all fit data (re-queue for batch) |
 
-The console supports partial job IDs (e.g., last 8 chars shown in the UI) — `console.js` resolves them via `state.allJobs` suffix matching before sending to the API.
+Console resolves partial job IDs (last 8 chars) via `state.allJobs` suffix matching.
 
-### Fitcheck Prompt
+## 🚀 Build System
 
-The LLM fitcheck prompt is inline in `src/main.cpp` in 3 copies:
-- Batch fitcheck (`POST /api/fitcheck`)
-- Single-job fitcheck (`POST /api/jobs/:id/fitcheck`)
-- Admin recheck (`buildFitcheckPrompt` lambda)
-
-When updating the prompt, all 3 copies must be kept in sync. The prompt reads the candidate profile from `config/user_profile.md`.
-
-### Nginx Configuration Example
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-    root /path/to/Job-App/frontend;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Component and asset routes
-    location /components/ { try_files $uri =404; }
-    location /css/ { try_files $uri =404; }
-    location /js/ { try_files $uri =404; }
-
-    # API proxy to backend
-    location /api/ {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-## 🎨 Frontend Development
-
-### Component Creation
-1. Create new component HTML in `frontend/components/`
-2. Add component-specific CSS in `frontend/css/components/`
-3. Add component logic in `frontend/js/components/`
-4. Include component in main HTML using `<include src="/components/your-component.html">`
-
-### CSS Architecture
-- **CSS Variables**: All colors, spacing, and theme values in `variables.css` `:root`
-  - Text colors: `--text` (primary), `--text2` (muted), `--text3` (dimmed) — **no `--text1` exists**
-  - Use `var(--text)` for primary text, never `var(--text1)`
-- **Base styles**: Global reset, typography, and base styles in `base.css`
-- **Layouts**: Page-level structural CSS in `layouts/main.css`
-- **Component styles**: Separate files in `css/components/` with clear naming
-- **Feature styles**: Specific features (fit assessment, work split, red flags) in `css/features/`
-- **Naming**: Use component-specific class prefixes (e.g., `.header-`, `.job-item-`, `.detail-`)
-
-### JavaScript Modules
-- **State**: Centralized reactive state in `state.js`
-- **API layer**: `js/api.js` (endpoints, constants, CURIOUS_SKILLS/AVOID_SKILLS)
-- **Utilities**: Pure functions in `js/utils/` (formatting, validation)
-- **Component logic**: UI logic in `js/components/` by functional area
-- **Main app**: `js/main.js` (entry point, initialization, keyboard shortcuts)
-
-### Build Process
-No build step required for development. For production:
-1. Minify CSS and JavaScript files
-2. Optimize component loading
-3. Set up proper cache headers
-
-## 🔧 Build System
-
-### Build Commands
+### Build Directory
+The active build directory is `cmake-build-rework` (not `cmake-build-debug`).
 
 ```bash
+# Incremental build (normal workflow)
+cmake --build cmake-build-rework
+
 # Clean build
-rm -rf cmake-build-debug && mkdir cmake-build-debug && cd cmake-build-debug
-cmake .. && make
+rm -rf cmake-build-rework && mkdir cmake-build-rework
+cd cmake-build-rework && cmake .. && cd ..
+cmake --build cmake-build-rework
 
-# Incremental build
-cd cmake-build-debug && make
-
-# Release build (if needed)
-cd cmake-build-debug && cmake -DCMAKE_BUILD_TYPE=Release .. && make
+# Run server
+./cmake-build-rework/job_app
+# Access at http://localhost:8080
 ```
 
 ### Build Dependencies
 
 **Ubuntu/Debian:**
 ```bash
-sudo apt update && sudo apt install -y \
-    cmake \
-    g++ \
-    make \
-    libsqlite3-dev \
-    libcurl4-openssl-dev
+sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-openssl-dev
 ```
 
-**Windows (MSYS2/MinGW):**
-```bash
-pacman -S --needed \
-    mingw-w64-x86_64-cmake \
-    mingw-w64-x86_64-gcc \
-    mingw-w64-x86_64-curl \
-    mingw-w64-x86_64-sqlite3
-```
+## 🌐 API Endpoints
 
-## 🧪 Testing
+### V2 Pipeline (active)
 
-### Test Structure
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/jobs` | GET | Fetch all jobs (returns JobRecord array) |
+| `/api/jobs/update` | POST | Update user_status / rating / notes |
+| `/api/jobs/:id` | DELETE | Delete job |
+| `/api/jobs/:id/fitcheck` | POST | Fit-check single job via LLM |
+| `/api/scrape/jobs` | POST | Scrape jobs.ch for new listings |
+| `/api/scrape/details` | POST | Fetch job detail pages (template_text) |
+| `/api/fitcheck` | POST | Batch fit-check all jobs with no fit_label |
+| `/api/config` | GET | Read config_v2.json |
+| `/api/config` | POST | Validate + write config_v2.json, hot-reload |
+| `/api/profile` | GET | Read user_profile.md |
+| `/api/profile/save` | POST | Write user_profile.md |
+| `/api/onboarding/complete` | POST | Generate profile from 9 onboarding answers |
 
-The project uses a simple test approach with standalone test files. Tests are located in the `tests/` directory (create if needed).
-
-### Running Tests
-
-```bash
-# Run all tests (create test runner first)
-cd cmake-build-debug && ctest --output-on-failure
-
-# Run single test
-./cmake-build-debug/test_zip_validation
-./cmake-build-debug/test_scoring
-
-# Create and run a specific test
-cd tests && g++ -std=c++17 -I../include test_zip.cpp -o test_zip && ./test_zip
-```
-
-### Test Examples
-
-```cpp
-// tests/test_zip.cpp
-#include <iostream>
-#include <cassert>
-#include "../include/db.h"
-
-void test_zip_validation() {
-    assert(is_valid_swiss_zip("1000") == true);
-    assert(is_valid_swiss_zip("0999") == false);
-    assert(is_valid_swiss_zip("A100") == false);
-    std::cout << "✅ ZIP validation tests passed\n";
-}
-
-int main() {
-    test_zip_validation();
-    return 0;
+### Config Shape (config_v2.json)
+```json
+{
+  "scrape":   { "queries": [...], "rows": 50 },
+  "fitcheck": { "limit": 50, "model": "...", "base_url": "...", "max_tokens": 4000, "temperature": 1.0, "top_p": 0.95, "top_k": 64 },
+  "details":  { "refresh_days": 21 }
 }
 ```
 
-## 🎨 Code Style Guidelines
+## 🤖 LLM / Fitcheck
 
-### General Principles
+### Prompt
+`buildFitcheckPrompt` is a lambda defined once in `main()` and captured by all 3 fitcheck endpoints:
+- `POST /api/fitcheck` (batch)
+- `POST /api/jobs/:id/fitcheck` (single)
+- `POST /api/admin/fitcheck/recheck/:id` (admin recheck)
 
-1. **Do exactly what's needed, no more** - Keep code focused and minimal
-2. **Do it well** - Write robust, maintainable code
-3. **Single Responsibility** - Each function/class does one thing well
-4. **Explicit over implicit** - Make intentions clear
+When changing the prompt, only one place to update.
 
-### File Organization
+### HTTP Helpers
+- `httpGet(url)` — scraping, 120s timeout
+- `httpPost(url, key, body)` — generic POST, 120s timeout
+- `httpPostAI(url, key, body)` — AI inference, **600s timeout**, auto-retries once on empty response (handles Ollama Cloud cold-start drops)
 
-```
-include/        - Header files (.h)
-  ├── db.h      - Database interface and structures
-  ├── httplib.h - HTTP server library
-  ├── sqlite3.h - SQLite database library
-  └── json.hpp  - JSON parsing library
-src/            - Implementation files (.cpp)
-  ├── main.cpp  - Application entry point and server
-  └── db.cpp    - Database operations implementation
-tests/          - Test files (create this directory)
-config/         - Configuration files
-  ├── config.json        - Scoring thresholds and rules
-  ├── api_keys.json      - API keys (gitignored)
-  └── enrich_prompt.txt  - LLM enrichment prompt
-data/           - Data storage (not in git)
-frontend/       - Web interface files
-  ├── index.html         - Main SPA entry point
-  ├── job_dashboard.html - Original monolithic backup
-  ├── css/               - Stylesheets
-  └── js/                - JavaScript modules
-```
+### Streaming Response Parser
+`parseStreamingResponse` handles two formats:
+- **Ollama native NDJSON**: `{"message": {"content": "..."}, "done": false}`
+- **OpenAI-compatible SSE**: `data: {"choices": [{"delta": {"content": "..."}}]}`
+
+On empty parse result, logs first 500 chars of raw response for diagnosis.
+
+### Config Thread Safety
+`config_v2` and `config_v2_mutex` (`shared_mutex`) are declared before endpoint registration. All reads use `shared_lock`, POST /api/config uses `unique_lock`. All endpoints snapshot the fields they need before releasing the lock.
+
+## 🔒 Security Notes
+
+- All user/LLM data inserted into innerHTML must use `escapeHtml()` — no exceptions
+- `cleanTemplateText`: strips tags **before** entity-decode (prevents `&lt;script&gt;` bypass), then strips again after decode
+- `update_job_field`: whitelists allowed field names — do not expand without review
+- `detail_url` in frontend: only `http(s)://` URLs rendered as links, others fall back to `#`
+- API keys in `config/api_keys.json` (gitignored) — never commit
+
+## 🗄️ Database
+
+### Structs
+- `Job`: raw scraped data (job_id, title, company_name, place, zipcode, canton_code, employment_grade, application_url, detail_url, pub_date, end_date, template_text)
+- `JobRecord : Job`: adds v1 display fields (score, score_label, score_reasons, matched_skills, penalized_skills, enriched_data), user state (user_status, rating, notes, availability_status), v2 fit fields (fit_score, fit_label, fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash)
+
+### Key Functions
+- `db_init()` + `db_v2_init()` — create table + ALTER TABLE for fit columns (idempotent)
+- `insert_or_update_job()` — upsert with conflict resolution; preserves company_name if new value empty
+- `get_jobs_needing_fitcheck_v2(db, limit)` — jobs where `fit_label IS NULL AND template_text IS NOT NULL`
+- `save_fit_result_v2()` — writes fit_score, fit_label, fit_summary, fit_reasoning, fit_profile_hash
+
+## 🎨 Code Style
 
 ### Naming Conventions
 
-**Functions:**
-- `camelCase` for regular functions
-- `PascalCase` for constructors/types
-- Verbs for actions: `getJobs()`, `saveJob()`, `calculateScore()`
+**C++:**
+- Functions: `snake_case` (matches existing codebase: `get_all_jobs`, `insert_or_update_job`)
+- Structs/types: `PascalCase` (`JobRecord`, `ConfigV2`)
+- Constants: `UPPER_SNAKE_CASE` (`CONFIG_PATH`)
+- Local variables: `snake_case`
 
-**Variables:**
-- `camelCase` for local variables
-- `snake_case` for member variables (with `m_` prefix optional)
-- `UPPER_SNAKE_CASE` for constants
+**JavaScript:**
+- Functions/variables: `camelCase`
+- Exported constants: `UPPER_SNAKE_CASE` (URL constants in api.js)
 
-**Types/Classes:**
-- `PascalCase` for structs/classes
-- `PascalCase` for typedefs/enums
-
-**Examples:**
-```cpp
-// Good
-struct JobRecord {
-    std::string jobId;
-    int score;
-};
-
-std::vector<Job> getUnenrichedJobs(Database& db);
-const int MAX_RETRIES = 3;
-
-// Bad
-struct job_record {
-    std::string JobID;
-    int Score;
-};
-
-std::vector<job> Get_unenriched_jobs(database& db);
-```
-
-### Imports and Includes
-
-**Order:**
-1. Standard library headers
-2. Third-party library headers  
-3. Project headers
-
-**Grouping:**
-```cpp
-// Standard library
-#include <iostream>
-#include <vector>
-#include <string>
-
-// Third-party
-#include <curl/curl.h>
-#include <sqlite3.h>
-
-// Project
-#include "db.h"
-#include "config.h"
-```
-
-**Rules:**
-- Use angle brackets `<>` for system/library headers
-- Use quotes `""` for project headers
-- Don't include headers unnecessarily
-- Forward declare when possible
-
-### Formatting
-
-**Indentation:**
-- 4 spaces (no tabs)
-- Consistent indentation for all blocks
-
-**Braces:**
-- Opening brace on same line for functions
-- Opening brace on new line for classes/structs
-- Closing brace on new line
-
-**Good:**
-```cpp
-void processJob(Job job) {
-    if (job.isValid()) {
-        saveToDatabase(job);
-    }
-}
-
-struct JobRecord {
-    std::string id;
-    int score;
-};
-```
-
-**Spacing:**
-- Space after keywords (`if`, `for`, `while`)
-- Space around operators (`=`, `+`, `-`, `==`)
-- No space after function names
-- Space after commas
-
-**Good:**
-```cpp
-if (score > threshold && isValid) {
-    result = calculateScore(job, config);
-}
-
-for (int i = 0; i < jobs.size(); i++) {
-    processJob(jobs[i]);
-}
-```
-
-### Error Handling
-
-**Pattern:**
-```cpp
-try {
-    // Operation that might fail
-    auto result = makeApiRequest(url);
-    processResult(result);
-} catch (const std::exception& e) {
-    log(Error, "API request failed: " + std::string(e.what()));
-    // Handle error appropriately
-    return fallbackValue();
-}
-```
-
-**Rules:**
-- Use specific exception types when possible
-- Always catch by const reference
-- Include context in error messages
-- Don't swallow exceptions silently
-- Provide meaningful fallback behavior
-
-**Avoid:**
-```cpp
-// Bad - too broad
-try {
-    // ...
-} catch (...) {
-    // Silent failure
-}
-
-// Bad - no context
-try {
-    // ...
-} catch (const std::exception& e) {
-    throw; // No context added
-}
-```
-
-### Types and Modern C++
-
-**Use:**
-- `auto` for complex type deductions
-- `const` correctness
-- Smart pointers (`unique_ptr`, `shared_ptr`) over raw pointers
-- Range-based for loops
-- `nullptr` over `NULL` or `0`
-- `enum class` over plain `enum`
-
-**Examples:**
-```cpp
-// Good
-const auto& jobs = getAllJobs();
-for (const auto& job : jobs) {
-    processJob(job);
-}
-
-std::unique_ptr<Database> db = std::make_unique<SQLiteDatabase>();
-
-// Bad
-for (int i = 0; i < jobs.size(); i++) {
-    Job job = jobs[i];
-    processJob(job);
-}
-
-Database* db = new SQLiteDatabase();
-```
-
-### Functions
-
-**Rules:**
-- Keep functions short (aim for < 20 lines)
-- Single responsibility per function
-- Pure functions where possible (no side effects)
-- Input parameters: `const` and by reference when appropriate
-- Return values: prefer returning objects over modifying parameters
-
-**Good:**
-```cpp
-// Pure function - no side effects
-int calculateScore(const Job& job, const Config& config) {
-    // ... calculation only
-    return score;
-}
-
-// Single responsibility
-std::vector<std::string> extractSkills(const std::string& jobDescription) {
-    // ... extraction only
-}
-```
-
-**Bad:**
-```cpp
-// Too many responsibilities
-void processAndSaveJob(Job job, Database& db, Logger& log) {
-    // Extracts skills
-    // Calculates score
-    // Validates job
-    // Saves to database
-    // Logs result
-}
-```
-
-### Comments and Documentation
-
-**Rules:**
-- Code should be self-documenting first
-- Comments explain WHY, not WHAT
-- Document public interfaces
-- Avoid obvious comments
-
-**Good:**
-```cpp
-// Convert ZIP code to numeric value for Swiss postal codes
-// Swiss ZIPs are 4 digits in range 1000-9999
-// Returns 0 for invalid ZIP codes
-int parseSwissZip(const std::string& zipCode);
-
-// Use exponential backoff for API retries to avoid overwhelming
-// the server during temporary outages
-void makeApiRequestWithRetry(const std::string& url, int maxRetries);
-```
-
-**Bad:**
-```cpp
-// Increment i by 1
-i++;
-
-// Loop through jobs
-for (const auto& job : jobs) {
-    // Process job
-    processJob(job);
-}
-```
-
-### Database Operations
-
-**Pattern:**
-```cpp
-// Use RAII for database handles when possible
-void withDatabase(const std::function<void(sqlite3*)>& callback) {
-    sqlite3* db;
-    if (sqlite3_open("jobs.db", &db) != SQLITE_OK) {
-        throw std::runtime_error("Failed to open database");
-    }
-    
-    try {
-        callback(db);
-    } catch (...) {
-        sqlite3_close(db);
-        throw;
-    }
-    
-    sqlite3_close(db);
-}
-
-// Usage
-withDatabase([&](sqlite3* db) {
-    auto jobs = getAllJobs(db);
-    // ... work with jobs
-});
-```
-
-**Rules:**
-- Always check database operation results
-- Use transactions for multiple operations
-- Close resources properly (RAII pattern)
-- Sanitize inputs to prevent SQL injection
-
-### HTTP Operations
-
-**Pattern:**
-```cpp
-// Unified HTTP client with consistent error handling
-std::string httpRequest(
-    const std::string& url,
-    const std::string& method,
-    const std::vector<std::string>& headers = {},
-    const std::string& body = ""
-) {
-    CURL* curl = curl_easy_init();
-    if (!curl) {
-        throw std::runtime_error("Failed to initialize curl");
-    }
-    
-    // Setup omitted for brevity
-    // ...
-    
-    CURLcode res = curl_easy_perform(curl);
-    curl_easy_cleanup(curl);
-    
-    if (res != CURLE_OK) {
-        throw std::runtime_error("HTTP request failed: " + std::string(curl_easy_strerror(res)));
-    }
-    
-    return response;
-}
-```
-
-**Rules:**
-- Always initialize curl globalization with `curl_global_init()`
-- Check return codes for all curl operations
-- Set appropriate timeouts
-- Handle SSL properly
-- Clean up resources
-
-## 🤖 Agent-Specific Guidelines
-
-### Workflow for Agents
-
-1. **Understand First**: Read relevant files before making changes
-2. **Small Changes**: Make incremental, testable changes
-3. **Test**: Verify changes compile and work
-4. **Document**: Update comments/docs as needed
-5. **Clean Up**: Remove temporary files and debug code
-
-### Common Tasks
-
-**Adding a Feature:**
-1. Create header file in `include/`
-2. Implement in `src/`
-3. Add to CMakeLists.txt
-4. Write tests
-5. Update documentation
-
-**Fixing a Bug:**
-1. Reproduce the issue
-2. Write test case
-3. Fix the code
-4. Verify test passes
-5. Check for similar issues
-
-### File Patterns
-
-- **Headers**: `.h` files with include guards
-- **Implementation**: `.cpp` files matching header names
-- **Tests**: `test_*.cpp` in `tests/` directory
-- **Config**: JSON files in `config/`
-
-### Debugging Tips
-
-```bash
-# Debug compilation
-cd cmake-build-debug && make clean && cmake -DCMAKE_BUILD_TYPE=Debug .. && make
-
-# Run with gdb
-gdb --args ./Job_App
-
-# Memory checking
-valgrind --leak-check=full ./Job_App
-
-# Static analysis
-clang-tidy src/*.cpp --fix
-```
+### Key Rules
+- No unnecessary comments — names should be self-documenting
+- Guard clauses over nested conditionals
+- Snapshot `config_v2` fields under `shared_lock` before use — never hold lock across I/O
+- Handle errors at the level where they can be acted on; don't swallow silently
+- `catch (...)` blocks in `db_v2_ensure_tables` are intentional (ALTER TABLE idempotency)
 
 ## 📝 Commit Guidelines
 
-### Commit Messages
-- Use imperative mood: "Add feature" not "Added feature"
-- First line: short summary (< 50 chars)
-- Body: explanation of what and why (if needed)
-- Reference issues: "Fixes #123" or "Related to #456"
-
-### Example
-```
-Add ZIP code validation for Swiss postal codes
-
-- Fixes bug where ZIP codes starting with 0 were incorrectly rejected
-- Adds is_valid_swiss_zip() helper function
-- Updates scoring logic to use proper validation
-- Related to issue #42
-```
-
-## 🚀 Deployment
-
-### Local Development
-```bash
-# Run development server
-./cmake-build-debug/Job_App
-
-# Access at http://localhost:8080
-```
-
-### Production Considerations
-- Use release build (`-DCMAKE_BUILD_TYPE=Release`)
-- Set up proper logging
-- Configure monitoring
-- Set up backups for database
-- Implement proper security measures
-
-## 🔍 Code Review Checklist
-
-- [ ] Follows code style guidelines
-- [ ] Single responsibility principle
-- [ ] Proper error handling
-- [ ] No memory leaks
-- [ ] Thread safety (if applicable)
-- [ ] Tests added/updated
-- [ ] Documentation updated
-- [ ] No debug code left in
-- [ ] Builds without warnings
-- [ ] All tests pass
-
-## 📚 Additional Resources
-
-- C++ Core Guidelines: https://isocpp.github.io/CppCoreGuidelines/
-- Google C++ Style Guide: https://google.github.io/styleguide/cppguide.html
-- SQLite Documentation: https://www.sqlite.org/docs.html
-- libcurl Documentation: https://curl.se/libcurl/
+- Imperative mood: "fix: ..." "feat: ..." "refactor: ..."
+- Body explains why, not what
+- Build must be clean before commit
 
 ---
 
-*Last updated: 2026-04-18 (admin console + prompt improvements)*
-*Maintainer: Job-App Development Team*
+*Last updated: 2026-04-18 (V1 removal, v2-only pipeline, parser/timeout fixes)*
