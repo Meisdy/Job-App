@@ -7,6 +7,7 @@ This document provides build, test, and code style guidelines for agentic coding
 ```
 config/
   ├── config_v2.json        # Active config: scrape queries, fitcheck params, detail refresh
+  ├── system_prompt.txt     # LLM prompt template for fit-check ({{profile}}, {{jobText}} placeholders)
   ├── api_keys.json         # API keys (gitignored)
   └── user_profile.md       # Candidate profile for fit-check (gitignored)
 data/                       # SQLite database (not in git)
@@ -144,12 +145,12 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 ## 🤖 LLM / Fitcheck
 
 ### Prompt
-`buildFitcheckPrompt` is a lambda defined once in `main()` and captured by all 3 fitcheck endpoints:
+`buildFitcheckPrompt` is a lambda that performs `{{profile}}` / `{{jobText}}` substitution on `config/system_prompt.txt`, loaded once at startup. Captured by all 3 fitcheck endpoints:
 - `POST /api/fitcheck` (batch)
 - `POST /api/jobs/:id/fitcheck` (single)
 - `POST /api/admin/fitcheck/recheck/:id` (admin recheck)
 
-When changing the prompt, only one place to update.
+To change the prompt, edit `config/system_prompt.txt` and restart. Missing file or missing placeholders = hard error, server won't start.
 
 ### HTTP Helpers
 - `httpGet(url)` — scraping, 120s timeout

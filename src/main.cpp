@@ -17,6 +17,7 @@
 using json = nlohmann::json;
 
 static const std::string CONFIG_PATH = "../config/config_v2.json";
+static const std::string SYSTEM_PROMPT_PATH = "../config/system_prompt.txt";
 
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
@@ -366,6 +367,23 @@ int main() {
         std::cerr << "[WARN] Could not load config_v2.json: " << e.what() << std::endl;
     }
 
+    std::string system_prompt_template;
+    {
+        std::ifstream f(SYSTEM_PROMPT_PATH);
+        if (!f.is_open()) {
+            std::cerr << "[ERROR] Cannot open " << SYSTEM_PROMPT_PATH << std::endl;
+            return 1;
+        }
+        system_prompt_template.assign((std::istreambuf_iterator<char>(f)),
+                                       std::istreambuf_iterator<char>());
+        if (system_prompt_template.find("{{profile}}") == std::string::npos ||
+            system_prompt_template.find("{{jobText}}") == std::string::npos) {
+            std::cerr << "[ERROR] " << SYSTEM_PROMPT_PATH << " missing {{profile}} or {{jobText}} placeholders" << std::endl;
+            return 1;
+        }
+        std::cout << "System prompt loaded" << std::endl;
+    }
+
     // ── SERVER ───────────────────────────────────────────────────────────────
 
     httplib::Server server;
@@ -538,78 +556,14 @@ int main() {
         return content;
     };
 
-    auto buildFitcheckPrompt = [](const std::string& profile, const std::string& jobText) -> std::string {
-        return R"(You are an expert career advisor performing a job fit analysis.
-
-CANDIDATE PROFILE (use "you/your" in all responses, never use the candidate's name):
-)" + profile + R"(
-JOB POSTING:
-)" + jobText + R"(
-INSTRUCTIONS:
-
-1. Check for No-Go violations first. Cross-reference the job posting against
-   the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
-   set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
-
-2. Score the following dimensions (0-100 each). Be rigorous and specific:
-   - technical_match:  How well do the job's REQUIRED skills match what you
-     actually have proven experience with? Do NOT give partial credit for
-     adjacent skills — a job requiring "5 years Qt/QML" and you having "C++
-     basics" is NOT a strong match.
-   - seniority_match:  Does the job's expected experience level match yours?
-     Check the job for phrases like "mehrjährige Erfahrung", "senior",
-     "5+ years", "lead". Compare against your actual years of experience.
-     A job requiring "mehrjährige Erfahrung" for a mid-level role where you
-     have <1 year professional experience is a SIGNIFICANT gap, not a small one.
-   - motivation_fit:   Do the day-to-day tasks and work culture align with what
-     gives you energy? A job that is 80% UI development when you explicitly
-     want to avoid frontend work is a major motivation gap, even if the tech
-     stack overlaps.
-   - constraint_fit:   salary range, location, remote policy, travel, language
-     vs. your hard constraints
-   - growth_fit:       Do the "want to master" skills appear substantially in
-     this role, or only as minor side tasks?
-
-3. Compute fit_score as weighted average:
-   technical_match × 0.30
-   seniority_match × 0.20
-   motivation_fit  × 0.25
-   constraint_fit  × 0.15
-   growth_fit      × 0.10
-
-4. Assign fit_label from qualitative judgement, not mechanical score buckets.
-   A role with low technical match but exceptional motivation upside can be
-   "Experimental". A role scoring 75 but hitting a hard No-Go is "No Go".
-   The label is your honest characterization, not a score threshold.
-
-   Label definitions:
-   - Strong:       High match across all dimensions, no significant friction
-   - Decent:       Solid match, minor gaps or caveats, nothing deal-breaking
-   - Experimental: Contains things you dislike or clear mismatches, but offset
-                   by strong growth potential, unique upside, or rare opportunity
-                   worth the risk
-   - Weak:         More friction than value — possible but hard to recommend
-   - No Go:        Hard No-Go violation present, or fundamental mismatch on
-                   multiple axes simultaneously
-
-Respond ONLY in valid JSON, no additional text:
-{
-  "fit_score": 0-100,
-  "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
-  "fit_summary": "3-4 sentence plain-language verdict using you/your. Reference specific job requirements and how they match or conflict with your profile. Be concrete — name the actual skills, seniority expectations, or tasks that drive the assessment.",
-  "dimension_scores": {
-    "technical_match": 0-100,
-    "seniority_match": 0-100,
-    "motivation_fit": 0-100,
-    "constraint_fit": 0-100,
-    "growth_fit": 0-100
-  },
-  "no_go_violations": ["list any triggered No-Gos with the specific job text that triggered them, empty array if none"],
-  "strengths": ["top 3-5 specific reasons this role fits you, reference actual job requirements"],
-  "gaps": ["top 3-5 honest gaps or risks, be specific about what's missing or misaligned"],
-  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which don't, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
-  "verdict": "One direct sentence: apply now / apply with caveats / skip"
-})";
+    auto buildFitcheckPrompt = [&system_prompt_template](const std::string& profile, const std::string& jobText) -> std::string {
+        std::string result = system_prompt_template;
+        size_t pos;
+        while ((pos = result.find("{{profile}}")) != std::string::npos)
+            result.replace(pos, 11, profile);
+        while ((pos = result.find("{{jobText}}")) != std::string::npos)
+            result.replace(pos, 12, jobText);
+        return result;
     };
 
     auto parseStreamingResponse = [](const std::string& raw) -> std::string {

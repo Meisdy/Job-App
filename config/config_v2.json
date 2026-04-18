@@ -1,4 +1,16 @@
 {
+  "details": {
+    "refresh_days": 21
+  },
+  "fitcheck": {
+    "base_url": "https://ollama.com/api",
+    "limit": 10,
+    "max_tokens": 4000,
+    "model": "glm-5.1",
+    "temperature": 1,
+    "top_k": 64,
+    "top_p": 0.95
+  },
   "scrape": {
     "queries": [
       "Embedded Software Engineer",
@@ -11,18 +23,6 @@
       "Embedded Linux",
       "R&D Engineer"
     ],
-    "rows": 50
-  },
-  "fitcheck": {
-    "limit": 50,
-    "model": "deepseek-v3.2:cloud",
-    "base_url": "https://ollama.com/api",
-    "max_tokens": 4000,
-    "temperature": 1.0,
-    "top_p": 0.95,
-    "top_k": 64
-  },
-  "details": {
-    "refresh_days": 21
+    "rows": 10
   }
 }
