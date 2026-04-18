@@ -49,9 +49,10 @@ void rateLimitSleep() {
     std::this_thread::sleep_for(std::chrono::milliseconds(dist(rng)));
 }
 
-std::string httpRequest(const std::string& url, const std::string& method, 
-                       const std::vector<std::string>& headers = {}, 
-                       const std::string& postData = "") {
+std::string httpRequest(const std::string& url, const std::string& method,
+                       const std::vector<std::string>& headers = {},
+                       const std::string& postData = "",
+                       long timeoutSeconds = 120L) {
     CURL* curl = curl_easy_init();
     std::string response;
     if (curl) {
@@ -59,7 +60,7 @@ std::string httpRequest(const std::string& url, const std::string& method,
         for (const auto& header : headers) {
             headerList = curl_slist_append(headerList, header.c_str());
         }
-        
+
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerList);
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
@@ -67,16 +68,16 @@ std::string httpRequest(const std::string& url, const std::string& method,
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0");
         curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
-        
+        curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeoutSeconds);
+
         if (method == "POST") {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
         }
-        
+
         CURLcode res = curl_easy_perform(curl);
         if (res != CURLE_OK)
             std::cerr << "curl error for " << url << ": " << curl_easy_strerror(res) << std::endl;
-        
+
         curl_slist_free_all(headerList);
         curl_easy_cleanup(curl);
     }
@@ -98,6 +99,14 @@ std::string httpPost(const std::string& url, const std::string& apiKey, const st
         "Content-Type: application/json",
         "Authorization: Bearer " + apiKey
     }, body);
+}
+
+// AI inference calls need a longer timeout — model inference can take several minutes
+std::string httpPostAI(const std::string& url, const std::string& apiKey, const std::string& body) {
+    return httpRequest(url, "POST", {
+        "Content-Type: application/json",
+        "Authorization: Bearer " + apiKey
+    }, body, 600L);
 }
 
 
@@ -593,12 +602,28 @@ Respond ONLY in valid JSON, no additional text:
         std::string line, accumulated;
         while (std::getline(stream, line)) {
             if (line.empty()) continue;
+            // Strip SSE prefix if present ("data: {...}")
+            if (line.rfind("data: ", 0) == 0) line = line.substr(6);
+            if (line == "[DONE]") break;
             try {
                 json chunk = json::parse(line);
+                // Ollama native NDJSON: {"message": {"content": "..."}}
                 if (chunk.contains("message") && chunk["message"].contains("content"))
                     accumulated += chunk["message"]["content"].get<std::string>();
+                // OpenAI-compatible SSE: {"choices": [{"delta": {"content": "..."}}]}
+                else if (chunk.contains("choices") && chunk["choices"].is_array() && !chunk["choices"].empty()) {
+                    const auto& delta = chunk["choices"][0];
+                    if (delta.contains("delta") && delta["delta"].contains("content"))
+                        accumulated += delta["delta"]["content"].get<std::string>();
+                    else if (delta.contains("message") && delta["message"].contains("content"))
+                        accumulated += delta["message"]["content"].get<std::string>();
+                }
                 if (chunk.contains("done") && chunk["done"].get<bool>()) break;
             } catch (...) {}
+        }
+        if (accumulated.empty() && !raw.empty()) {
+            std::cerr << "[WARN] parseStreamingResponse: no content extracted. Raw (first 500 chars):\n"
+                      << raw.substr(0, std::min(raw.size(), size_t(500))) << std::endl;
         }
         return accumulated;
     };
@@ -765,7 +790,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "text"}}}
             };
 
-            std::string response = httpPost(ollama_base_url + "/chat",
+            std::string response = httpPostAI(ollama_base_url + "/chat",
                                             ollamaCloudApiKey, request.dump());
             
             // Parse streaming response - accumulate all chunks
@@ -939,7 +964,7 @@ then trigger a profile refresh to update the narrative.*
                     {"response_format", {{"type", "json_object"}}}
                 };
 
-                std::string response = httpPost(ollama_base_url + "/chat",
+                std::string response = httpPostAI(ollama_base_url + "/chat",
                                                 ollamaCloudApiKey, request.dump());
 
                 std::string accumulated = parseStreamingResponse(response);
@@ -1045,7 +1070,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "json_object"}}}
             };
 
-            std::string api_response = httpPost(ollama_base_url + "/chat",
+            std::string api_response = httpPostAI(ollama_base_url + "/chat",
                                                 ollamaCloudApiKey, request.dump());
             
             std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
@@ -1200,7 +1225,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "json_object"}}}
             };
 
-            std::string apiResponse = httpPost(ollama_base_url + "/chat",
+            std::string apiResponse = httpPostAI(ollama_base_url + "/chat",
                                                ollamaCloudApiKey, request.dump());
             std::string accumulated = parseStreamingResponse(apiResponse);
 
