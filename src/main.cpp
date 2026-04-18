@@ -72,7 +72,7 @@ std::string httpRequest(const std::string& url, const std::string& method,
         if (method == "POST") {
             curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData.c_str());
             curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 10L);
-            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 60L);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 120L);
         }
         
         CURLcode res = curl_easy_perform(curl);
@@ -1310,16 +1310,28 @@ JOB POSTING:
 )" + cleaned + R"(
 INSTRUCTIONS:
 
-1. Check for No-Go violations first (candidate's stated dealbreakers).
-   If any hard No-Go is present, set fit_score ≤ 20 and fit_label = "No Go"
-   regardless of all other factors. No exceptions.
+1. Check for No-Go violations first. Cross-reference the job posting against
+   the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
+   set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
 
-2. Score the following dimensions (0-100 each):
-   - technical_match:  required skills vs. your stack and experience
-   - seniority_match:  expected experience level vs. your current level
-   - motivation_fit:   role tasks and culture vs. your intrinsic motivators
-   - constraint_fit:   salary / location / remote / travel vs. your hard constraints
-   - growth_fit:       "want to master" skills vs. what this role actively develops
+2. Score the following dimensions (0-100 each). Be rigorous and specific:
+   - technical_match:  How well do the job's REQUIRED skills match what you
+     actually have proven experience with? Do NOT give partial credit for
+     adjacent skills — a job requiring "5 years Qt/QML" and you having "C++
+     basics" is NOT a strong match.
+   - seniority_match:  Does the job's expected experience level match yours?
+     Check the job for phrases like "mehrjährige Erfahrung", "senior",
+     "5+ years", "lead". Compare against your actual years of experience.
+     A job requiring "mehrjährige Erfahrung" for a mid-level role where you
+     have <1 year professional experience is a SIGNIFICANT gap, not a small one.
+   - motivation_fit:   Do the day-to-day tasks and work culture align with what
+     gives you energy? A job that is 80% UI development when you explicitly
+     want to avoid frontend work is a major motivation gap, even if the tech
+     stack overlaps.
+   - constraint_fit:   salary range, location, remote policy, travel, language
+     vs. your hard constraints
+   - growth_fit:       Do the "want to master" skills appear substantially in
+     this role, or only as minor side tasks?
 
 3. Compute fit_score as weighted average:
    technical_match × 0.30
@@ -1328,11 +1340,10 @@ INSTRUCTIONS:
    constraint_fit  × 0.15
    growth_fit      × 0.10
 
-4. Assign fit_label based on qualitative judgement using all available
-   context — not mechanically from fit_score. A role with low technical
-   match but exceptional motivation or growth upside can be "Experimental".
-   A role scoring 75 but hitting a No-Go is "No Go". The label is your
-   honest characterization of the nature of this fit, not a score bucket.
+4. Assign fit_label from qualitative judgement, not mechanical score buckets.
+   A role with low technical match but exceptional motivation upside can be
+   "Experimental". A role scoring 75 but hitting a hard No-Go is "No Go".
+   The label is your honest characterization, not a score threshold.
 
    Label definitions:
    - Strong:       High match across all dimensions, no significant friction
@@ -1348,7 +1359,7 @@ Respond ONLY in valid JSON, no additional text:
 {
   "fit_score": 0-100,
   "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
-  "fit_summary": "2-3 sentence plain-language verdict using you/your",
+  "fit_summary": "3-4 sentence plain-language verdict using you/your. Reference specific job requirements and how they match or conflict with your profile. Be concrete — name the actual skills, seniority expectations, or tasks that drive the assessment.",
   "dimension_scores": {
     "technical_match": 0-100,
     "seniority_match": 0-100,
@@ -1356,9 +1367,10 @@ Respond ONLY in valid JSON, no additional text:
     "constraint_fit": 0-100,
     "growth_fit": 0-100
   },
-  "no_go_violations": ["list any triggered No-Gos, empty array if none"],
-  "strengths": ["top 3 reasons this role fits you"],
-  "gaps": ["top 3 honest gaps or risks"],
+  "no_go_violations": ["list any triggered No-Gos with the specific job text that triggered them, empty array if none"],
+  "strengths": ["top 3-5 specific reasons this role fits you, reference actual job requirements"],
+  "gaps": ["top 3-5 honest gaps or risks, be specific about what's missing or misaligned"],
+  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which don't, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
   "verdict": "One direct sentence: apply now / apply with caveats / skip"
 })";
 
@@ -1531,16 +1543,28 @@ JOB POSTING:
 )" + cleaned + R"(
 INSTRUCTIONS:
 
-1. Check for No-Go violations first (candidate's stated dealbreakers).
-   If any hard No-Go is present, set fit_score ≤ 20 and fit_label = "No Go"
-   regardless of all other factors. No exceptions.
+1. Check for No-Go violations first. Cross-reference the job posting against
+   the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
+   set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
 
-2. Score the following dimensions (0-100 each):
-   - technical_match:  required skills vs. your stack and experience
-   - seniority_match:  expected experience level vs. your current level
-   - motivation_fit:   role tasks and culture vs. your intrinsic motivators
-   - constraint_fit:   salary / location / remote / travel vs. your hard constraints
-   - growth_fit:       "want to master" skills vs. what this role actively develops
+2. Score the following dimensions (0-100 each). Be rigorous and specific:
+   - technical_match:  How well do the job's REQUIRED skills match what you
+     actually have proven experience with? Do NOT give partial credit for
+     adjacent skills — a job requiring "5 years Qt/QML" and you having "C++
+     basics" is NOT a strong match.
+   - seniority_match:  Does the job's expected experience level match yours?
+     Check the job for phrases like "mehrjährige Erfahrung", "senior",
+     "5+ years", "lead". Compare against your actual years of experience.
+     A job requiring "mehrjährige Erfahrung" for a mid-level role where you
+     have <1 year professional experience is a SIGNIFICANT gap, not a small one.
+   - motivation_fit:   Do the day-to-day tasks and work culture align with what
+     gives you energy? A job that is 80% UI development when you explicitly
+     want to avoid frontend work is a major motivation gap, even if the tech
+     stack overlaps.
+   - constraint_fit:   salary range, location, remote policy, travel, language
+     vs. your hard constraints
+   - growth_fit:       Do the "want to master" skills appear substantially in
+     this role, or only as minor side tasks?
 
 3. Compute fit_score as weighted average:
    technical_match × 0.30
@@ -1549,11 +1573,10 @@ INSTRUCTIONS:
    constraint_fit  × 0.15
    growth_fit      × 0.10
 
-4. Assign fit_label based on qualitative judgement using all available
-   context — not mechanically from fit_score. A role with low technical
-   match but exceptional motivation or growth upside can be "Experimental".
-   A role scoring 75 but hitting a No-Go is "No Go". The label is your
-   honest characterization of the nature of this fit, not a score bucket.
+4. Assign fit_label from qualitative judgement, not mechanical score buckets.
+   A role with low technical match but exceptional motivation upside can be
+   "Experimental". A role scoring 75 but hitting a hard No-Go is "No Go".
+   The label is your honest characterization, not a score threshold.
 
    Label definitions:
    - Strong:       High match across all dimensions, no significant friction
@@ -1569,7 +1592,7 @@ Respond ONLY in valid JSON, no additional text:
 {
   "fit_score": 0-100,
   "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
-  "fit_summary": "2-3 sentence plain-language verdict using you/your",
+  "fit_summary": "3-4 sentence plain-language verdict using you/your. Reference specific job requirements and how they match or conflict with your profile. Be concrete — name the actual skills, seniority expectations, or tasks that drive the assessment.",
   "dimension_scores": {
     "technical_match": 0-100,
     "seniority_match": 0-100,
@@ -1577,9 +1600,10 @@ Respond ONLY in valid JSON, no additional text:
     "constraint_fit": 0-100,
     "growth_fit": 0-100
   },
-  "no_go_violations": ["list any triggered No-Gos, empty array if none"],
-  "strengths": ["top 3 reasons this role fits you"],
-  "gaps": ["top 3 honest gaps or risks"],
+  "no_go_violations": ["list any triggered No-Gos with the specific job text that triggered them, empty array if none"],
+  "strengths": ["top 3-5 specific reasons this role fits you, reference actual job requirements"],
+  "gaps": ["top 3-5 honest gaps or risks, be specific about what's missing or misaligned"],
+  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which don't, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
   "verdict": "One direct sentence: apply now / apply with caveats / skip"
 })";
 
@@ -1679,6 +1703,275 @@ Respond ONLY in valid JSON, no additional text:
         } catch (const std::exception& e) {
             res.status = 500;
             res.set_content(json{{"error", std::string("Fit-check failed: ") + e.what()}}.dump(), "application/json");
+        }
+    });
+
+    // ── ADMIN CONSOLE ENDPOINTS ────────────────────────────────────────────────
+
+    auto loadProfileMarkdown = []() -> std::string {
+        std::string markdownPath = "../config/user_profile.md";
+        std::ifstream file(markdownPath);
+        if (!file.is_open()) return "";
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+        return content;
+    };
+
+    auto buildFitcheckPrompt = [](const std::string& profile, const std::string& jobText) -> std::string {
+        return R"(You are an expert career advisor performing a job fit analysis.
+
+CANDIDATE PROFILE (use "you/your" in all responses, never use the candidate's name):
+)" + profile + R"(
+JOB POSTING:
+)" + jobText + R"(
+INSTRUCTIONS:
+
+1. Check for No-Go violations first. Cross-reference the job posting against
+   the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
+   set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
+
+2. Score the following dimensions (0-100 each). Be rigorous and specific:
+   - technical_match:  How well do the job's REQUIRED skills match what you
+     actually have proven experience with? Do NOT give partial credit for
+     adjacent skills — a job requiring "5 years Qt/QML" and you having "C++
+     basics" is NOT a strong match.
+   - seniority_match:  Does the job's expected experience level match yours?
+     Check the job for phrases like "mehrjährige Erfahrung", "senior",
+     "5+ years", "lead". Compare against your actual years of experience.
+     A job requiring "mehrjährige Erfahrung" for a mid-level role where you
+     have <1 year professional experience is a SIGNIFICANT gap, not a small one.
+   - motivation_fit:   Do the day-to-day tasks and work culture align with what
+     gives you energy? A job that is 80% UI development when you explicitly
+     want to avoid frontend work is a major motivation gap, even if the tech
+     stack overlaps.
+   - constraint_fit:   salary range, location, remote policy, travel, language
+     vs. your hard constraints
+   - growth_fit:       Do the "want to master" skills appear substantially in
+     this role, or only as minor side tasks?
+
+3. Compute fit_score as weighted average:
+   technical_match × 0.30
+   seniority_match × 0.20
+   motivation_fit  × 0.25
+   constraint_fit  × 0.15
+   growth_fit      × 0.10
+
+4. Assign fit_label from qualitative judgement, not mechanical score buckets.
+   A role with low technical match but exceptional motivation upside can be
+   "Experimental". A role scoring 75 but hitting a hard No-Go is "No Go".
+   The label is your honest characterization, not a score threshold.
+
+   Label definitions:
+   - Strong:       High match across all dimensions, no significant friction
+   - Decent:       Solid match, minor gaps or caveats, nothing deal-breaking
+   - Experimental: Contains things you dislike or clear mismatches, but offset
+                   by strong growth potential, unique upside, or rare opportunity
+                   worth the risk
+   - Weak:         More friction than value — possible but hard to recommend
+   - No Go:        Hard No-Go violation present, or fundamental mismatch on
+                   multiple axes simultaneously
+
+Respond ONLY in valid JSON, no additional text:
+{
+  "fit_score": 0-100,
+  "fit_label": "Strong" | "Decent" | "Experimental" | "Weak" | "No Go",
+  "fit_summary": "3-4 sentence plain-language verdict using you/your. Reference specific job requirements and how they match or conflict with your profile. Be concrete — name the actual skills, seniority expectations, or tasks that drive the assessment.",
+  "dimension_scores": {
+    "technical_match": 0-100,
+    "seniority_match": 0-100,
+    "motivation_fit": 0-100,
+    "constraint_fit": 0-100,
+    "growth_fit": 0-100
+  },
+  "no_go_violations": ["list any triggered No-Gos with the specific job text that triggered them, empty array if none"],
+  "strengths": ["top 3-5 specific reasons this role fits you, reference actual job requirements"],
+  "gaps": ["top 3-5 honest gaps or risks, be specific about what's missing or misaligned"],
+  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which don't, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
+  "verdict": "One direct sentence: apply now / apply with caveats / skip"
+})";
+    };
+
+    auto parseStreamingResponse = [](const std::string& raw) -> std::string {
+        std::istringstream stream(raw);
+        std::string line, accumulated;
+        while (std::getline(stream, line)) {
+            if (line.empty()) continue;
+            try {
+                json chunk = json::parse(line);
+                if (chunk.contains("message") && chunk["message"].contains("content"))
+                    accumulated += chunk["message"]["content"].get<std::string>();
+                if (chunk.contains("done") && chunk["done"].get<bool>()) break;
+            } catch (...) {}
+        }
+        return accumulated;
+    };
+
+    auto extractJsonFromResponse = [](const std::string& raw) -> json {
+        std::string content = raw;
+        size_t start = content.find("```json");
+        if (start != std::string::npos) {
+            content = content.substr(start + 7);
+            size_t end = content.find("```");
+            if (end != std::string::npos) content = content.substr(0, end);
+        } else {
+            start = content.find("```");
+            if (start != std::string::npos) {
+                content = content.substr(start + 3);
+                size_t end = content.find("```");
+                if (end != std::string::npos) content = content.substr(0, end);
+            }
+        }
+        while (!content.empty() && std::isspace(content.front())) content = content.substr(1);
+        while (!content.empty() && std::isspace(content.back())) content.pop_back();
+
+        try {
+            return json::parse(content);
+        } catch (...) {
+            size_t objStart = content.find("{");
+            size_t objEnd = content.rfind("}");
+            if (objStart != std::string::npos && objEnd != std::string::npos && objEnd > objStart)
+                return json::parse(content.substr(objStart, objEnd - objStart + 1));
+            throw std::runtime_error("No valid JSON found in response");
+        }
+    };
+
+    server.Delete("/api/admin/jobs/:id", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+        std::string job_id = req.path_params.at("id");
+        std::cout << "[ADMIN] DELETE /api/admin/jobs/" << job_id << std::endl;
+        try {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            delete_job(db, job_id);
+            std::cout << "[ADMIN] Deleted job " << job_id << std::endl;
+            res.set_content(json{{"ok", true}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ADMIN] Delete job failed: " << e.what() << std::endl;
+            res.status = 500;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Post("/api/admin/fitcheck/clear/:id", [&db, &db_write_mutex](const httplib::Request& req, httplib::Response& res) {
+        std::string job_id = req.path_params.at("id");
+        std::cout << "[ADMIN] POST /api/admin/fitcheck/clear/" << job_id << std::endl;
+        try {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            clear_fit_data(db, job_id);
+            std::cout << "[ADMIN] Cleared fit data for job " << job_id << std::endl;
+            res.set_content(json{{"ok", true}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ADMIN] Clear fit data failed: " << e.what() << std::endl;
+            res.status = 500;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Post("/api/admin/fitcheck/clear", [&db, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        std::cout << "[ADMIN] POST /api/admin/fitcheck/clear (all)" << std::endl;
+        try {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            clear_all_fit_data(db);
+            std::cout << "[ADMIN] Cleared all fit data" << std::endl;
+            res.set_content(json{{"ok", true}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            std::cerr << "[ADMIN] Clear all fit data failed: " << e.what() << std::endl;
+            res.status = 500;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &ollamaCloudApiKey, &db_write_mutex, &db,
+        &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
+    (const httplib::Request& req, httplib::Response& res) {
+        std::string job_id = req.path_params.at("id");
+
+        std::string profile = loadProfileMarkdown();
+        if (profile.empty()) {
+            res.status = 400;
+            res.set_content(json{{"error", "No profile found"}}.dump(), "application/json");
+            return;
+        }
+        if (ollamaCloudApiKey.empty()) {
+            res.status = 500;
+            res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
+            return;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            clear_fit_data(db, job_id);
+        }
+
+        std::string templateText;
+        {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            sqlite3_stmt* stmt;
+            const std::string sql = "SELECT template_text FROM jobs WHERE job_id = ?";
+            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
+                if (sqlite3_step(stmt) == SQLITE_ROW)
+                    templateText = getColumn(stmt, 0);
+                sqlite3_finalize(stmt);
+            }
+        }
+
+        if (templateText.empty()) {
+            res.status = 404;
+            res.set_content(json{{"error", "Job not found or has no description"}}.dump(), "application/json");
+            return;
+        }
+
+        try {
+            std::string cleaned = cleanTemplateText(templateText);
+            std::string prompt = buildFitcheckPrompt(profile, cleaned);
+
+            json request = {
+                {"model", config_v2.ollama_model},
+                {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
+                {"max_tokens", config_v2.ollama_max_tokens},
+                {"temperature", config_v2.ollama_temperature},
+                {"top_p", config_v2.ollama_top_p},
+                {"top_k", config_v2.ollama_top_k},
+                {"response_format", {{"type", "json_object"}}}
+            };
+
+            std::string apiResponse = httpPost(config_v2.ollama_base_url + "/chat",
+                                               ollamaCloudApiKey, request.dump());
+            std::string accumulated = parseStreamingResponse(apiResponse);
+
+            if (accumulated.empty()) {
+                res.status = 500;
+                res.set_content(json{{"error", "Empty response from AI"}}.dump(), "application/json");
+                return;
+            }
+
+            json fitData = extractJsonFromResponse(accumulated);
+
+            {
+                std::lock_guard<std::mutex> lock(db_write_mutex);
+                save_fit_result_v2(db, job_id,
+                                   fitData.value("fit_score", 0),
+                                   fitData.value("fit_label", "Unknown"),
+                                   fitData.value("fit_summary", ""),
+                                   fitData.value("fit_reasoning", ""),
+                                   "admin_recheck");
+            }
+
+            res.set_content(json{{"ok", true}, {"fit_score", fitData.value("fit_score", 0)}, {"fit_label", fitData.value("fit_label", "Unknown")}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content(json{{"error", std::string("Recheck failed: ") + e.what()}}.dump(), "application/json");
+        }
+    });
+
+    server.Post("/api/admin/fitcheck/recheck", [&db, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
+        try {
+            std::lock_guard<std::mutex> lock(db_write_mutex);
+            clear_all_fit_data(db);
+            res.set_content(json{{"ok", true}, {"message", "All fit data cleared. Trigger /api/fitcheck to recheck."}}.dump(), "application/json");
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
         }
     });
 

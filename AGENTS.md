@@ -20,9 +20,11 @@ frontend/
 │   │   ├── detail-panel.css      # Job detail view
 │   │   ├── action-bar.css        # Action buttons
 │   │   ├── modal.css             # Settings modal
+│   │   ├── console.css           # Dev console (dark terminal style)
 │   │   └── utilities.css         # Loaders, toast, empty states
 │   └── features/                 # Feature-specific styles
 │       ├── fit-assessment.css    # Fit assessment grid
+│       ├── fit-verdict.css       # Fit badge, detail header, AI section
 │       ├── work-split.css        # Work distribution chart
 │       └── red-flags.css         # Warning indicators
 ├── js/                           # ES6 Modular JavaScript
@@ -37,22 +39,24 @@ frontend/
 │       ├── job-list.js           # List rendering & selection
 │       ├── detail.js             # Job detail rendering
 │       ├── actions.js            # User actions & API operations
-│       └── modal.js              # Settings modal functionality
+│       ├── modal.js              # Settings modal functionality
+│       └── console.js            # Dev console (Ctrl+\ to toggle)
 └── components/                   # (Empty - HTML is inline in index.html)
 ```
 
 ### Component Architecture
 - **CSS Components**: Organized by feature area with clear separation of concerns
-  - `variables.css`: Centralized theme colors and CSS custom properties
+  - `variables.css`: Centralized theme colors and CSS custom properties (`--text`, `--text2`, `--text3` — no `--text1`)
   - `base.css`: Global reset, typography, and base styles
   - `layouts/`: Page-level structural CSS
-  - `components/`: Individual UI component styles
-  - `features/`: Feature-specific styling (fit assessment, work split, red flags)
+  - `components/`: Individual UI component styles (including `console.css` — dark terminal-style overlay)
+  - `features/`: Feature-specific styling (fit assessment, fit verdict, work split, red flags)
 - **JS Modules**: ES6 modules with clear dependencies
-  - `state.js`: Centralized reactive state (single source of truth)
+  - `state.js`: Centralized reactive state (single source of truth, imported by console.js for job ID resolution)
   - `api.js`: API endpoint URLs and skill preference constants
   - `utils/`: Pure utility functions (formatting, validation)
   - `components/`: UI logic separated by functional area
+  - `components/console.js`: Hidden dev console — toggled with `Ctrl+\`, uses partial job ID resolution via `state.allJobs`
 - **HTML**: Inline in `index.html` (no custom loader needed, event handlers work reliably)
 - **No Build Step**: Native ES6 modules, no bundler required
 
@@ -86,6 +90,29 @@ server.Get("/", [](const httplib::Request&, httplib::Response& res) {
                                  std::istreambuf_iterator<char>()), "text/html");
 });
 ```
+
+### Admin Console API
+
+The dev console (`Ctrl+\` in browser) calls admin endpoints under `/api/admin/`. All destructive operations require client-side confirmation.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/admin/jobs/:id` | DELETE | Delete a job completely |
+| `/api/admin/fitcheck/clear/:id` | POST | Clear fit data for one job |
+| `/api/admin/fitcheck/clear` | POST | Clear fit data for ALL jobs |
+| `/api/admin/fitcheck/recheck/:id` | POST | Clear fit data + recheck one job via LLM |
+| `/api/admin/fitcheck/recheck` | POST | Clear all fit data (jobs become eligible for batch fitcheck) |
+
+The console supports partial job IDs (e.g., last 8 chars shown in the UI) — `console.js` resolves them via `state.allJobs` suffix matching before sending to the API.
+
+### Fitcheck Prompt
+
+The LLM fitcheck prompt is inline in `src/main.cpp` in 3 copies:
+- Batch fitcheck (`POST /api/fitcheck`)
+- Single-job fitcheck (`POST /api/jobs/:id/fitcheck`)
+- Admin recheck (`buildFitcheckPrompt` lambda)
+
+When updating the prompt, all 3 copies must be kept in sync. The prompt reads the candidate profile from `config/user_profile.md`.
 
 ### Nginx Configuration Example
 ```nginx
@@ -123,6 +150,8 @@ server {
 
 ### CSS Architecture
 - **CSS Variables**: All colors, spacing, and theme values in `variables.css` `:root`
+  - Text colors: `--text` (primary), `--text2` (muted), `--text3` (dimmed) — **no `--text1` exists**
+  - Use `var(--text)` for primary text, never `var(--text1)`
 - **Base styles**: Global reset, typography, and base styles in `base.css`
 - **Layouts**: Page-level structural CSS in `layouts/main.css`
 - **Component styles**: Separate files in `css/components/` with clear naming
@@ -672,5 +701,5 @@ Add ZIP code validation for Swiss postal codes
 
 ---
 
-*Last updated: 2026-04-14 (v2 rework in progress)*
+*Last updated: 2026-04-18 (admin console + prompt improvements)*
 *Maintainer: Job-App Development Team*

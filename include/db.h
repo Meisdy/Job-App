@@ -121,6 +121,10 @@ void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
                         const std::string& reasoning, const std::string& profile_hash);
 std::vector<JobRecordV2> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
 
+// Admin operations
+void clear_fit_data(sqlite3* db, const std::string& job_id);
+void clear_all_fit_data(sqlite3* db);
+
 // ── DB HELPER ────────────────────────────────────────────────────────────────
 
 // db.h — just the signature

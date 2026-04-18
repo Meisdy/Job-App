@@ -4,6 +4,7 @@ import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, tog
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
 import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, fetchDetails, triggerFitCheck, openProfile, openOnboarding } from './components/actions.js';
+import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
   setConnectionStatus('loading');
@@ -138,6 +139,7 @@ document.addEventListener('keydown', e => {
 // Initialize app on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
   init();
+  initConsole();
 });
 
 // Expose critical functions to window for fallback
@@ -154,5 +156,6 @@ window.scrapeJobs = scrapeJobs;
 window.fetchDetails = fetchDetails;
 window.triggerFitCheck = triggerFitCheck;
 window.openProfile = openProfile;
+window.toggleConsole = toggleConsole;
 
 export { init, bindEvents };

@@ -23,6 +23,5 @@ data/*.csv
 /data/jobs.db-shm
 /data/jobs.db-wal
 *.db
-*.db
 *.db-shm
 *.db-wal

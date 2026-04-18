@@ -199,7 +199,7 @@ function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain,
 }
 
 function buildFitSection(job) {
-  if (!job.fit_reasoning) return '';
+  if (!job.fit_summary && !job.fit_reasoning) return '';
   
   return `
     <div class="fit-section">
@@ -208,7 +208,7 @@ function buildFitSection(job) {
         <span class="section-title">AI Fit Assessment</span>
       </div>
       ${job.fit_summary ? `<div class="fit-summary">${job.fit_summary}</div>` : ''}
-      <div class="fit-reasoning">${job.fit_reasoning}</div>
+      ${job.fit_reasoning ? `<div class="fit-reasoning">${job.fit_reasoning}</div>` : ''}
     </div>`;
 }
 
