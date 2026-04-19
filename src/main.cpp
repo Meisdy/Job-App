@@ -755,9 +755,9 @@ then trigger a profile refresh to update the narrative.*
                 {"max_tokens", ollama_max_tokens},
                 {"temperature", ollama_temperature},
                 {"top_p", ollama_top_p},
-                {"top_k", ollama_top_k},
                 {"response_format", {{"type", "text"}}}
             };
+            if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string response = httpPostAI(ai_endpoint,
                                             ollamaCloudApiKey, request.dump());
@@ -929,9 +929,9 @@ then trigger a profile refresh to update the narrative.*
                     {"max_tokens", ollama_max_tokens},
                     {"temperature", ollama_temperature},
                     {"top_p", ollama_top_p},
-                    {"top_k", ollama_top_k},
                     {"response_format", {{"type", "json_object"}}}
                 };
+                if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
                 std::string response = httpPostAI(ai_endpoint,
                                                 ollamaCloudApiKey, request.dump());
@@ -1036,9 +1036,9 @@ then trigger a profile refresh to update the narrative.*
                 {"max_tokens", ollama_max_tokens},
                 {"temperature", ollama_temperature},
                 {"top_p", ollama_top_p},
-                {"top_k", ollama_top_k},
                 {"response_format", {{"type", "json_object"}}}
             };
+            if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string api_response = httpPostAI(ai_endpoint,
                                                 ollamaCloudApiKey, request.dump());
@@ -1192,9 +1192,9 @@ then trigger a profile refresh to update the narrative.*
                 {"max_tokens", ollama_max_tokens},
                 {"temperature", ollama_temperature},
                 {"top_p", ollama_top_p},
-                {"top_k", ollama_top_k},
                 {"response_format", {{"type", "json_object"}}}
             };
+            if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string apiResponse = httpPostAI(ai_endpoint,
                                                ollamaCloudApiKey, request.dump());
