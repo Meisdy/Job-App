@@ -3,7 +3,7 @@
     "refresh_days": 21
   },
   "fitcheck": {
-    "base_url": "https://ollama.com/api",
+    "endpoint": "https://ollama.com/api/chat",
     "limit": 25,
     "max_tokens": 4000,
     "model": "gemma4:31b-cloud",

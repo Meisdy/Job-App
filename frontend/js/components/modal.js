@@ -104,13 +104,13 @@ function renderFitcheckSection(config) {
   const fields = [
     renderField('Job Limit', renderInput('cfg-fc-limit', fc.limit ?? 50)),
     renderField('Model', renderInput('cfg-fc-model', fc.model || '', 'text')),
-    renderField('Base URL', renderInput('cfg-fc-base-url', fc.base_url || '', 'text')),
+    renderField('Endpoint URL', renderInput('cfg-fc-endpoint', fc.endpoint || '', 'text')),
     renderField('Max Tokens', renderInput('cfg-fc-max-tokens', fc.max_tokens ?? 4000)),
     renderField('Temperature', renderInput('cfg-fc-temperature', fc.temperature ?? 1.0, 'number')),
     renderField('Top P', renderInput('cfg-fc-top-p', fc.top_p ?? 0.95, 'number')),
     renderField('Top K', renderInput('cfg-fc-top-k', fc.top_k ?? 64))
   ];
-  return renderSection('Fit-Check (Ollama)', renderGrid(fields));
+  return renderSection('Fit-Check (AI)', renderGrid(fields));
 }
 
 function renderDetailsSection(config) {
@@ -172,7 +172,7 @@ export async function saveSettings() {
     updated.fitcheck = {
       limit:       getIntValue('cfg-fc-limit', 50),
       model:       getStringValue('cfg-fc-model'),
-      base_url:    getStringValue('cfg-fc-base-url'),
+      endpoint:    getStringValue('cfg-fc-endpoint'),
       max_tokens:  getIntValue('cfg-fc-max-tokens', 4000),
       temperature: getFloatValue('cfg-fc-temperature', 1.0),
       top_p:       getFloatValue('cfg-fc-top-p', 0.95),

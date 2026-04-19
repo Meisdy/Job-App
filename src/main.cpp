@@ -136,7 +136,7 @@ struct ConfigV2 {
     // Fit-check
     int                      fitcheck_limit{};
     std::string              ollama_model{};
-    std::string              ollama_base_url{};
+    std::string              ai_endpoint{};
     int                      ollama_max_tokens{};
     double                   ollama_temperature{};
     double                   ollama_top_p{};
@@ -173,7 +173,7 @@ ConfigV2 loadConfigV2() {
     if (c.contains("fitcheck")) {
         cfg.fitcheck_limit = c["fitcheck"]["limit"].get<int>();
         cfg.ollama_model = c["fitcheck"]["model"].get<std::string>();
-        cfg.ollama_base_url = c["fitcheck"]["base_url"].get<std::string>();
+        cfg.ai_endpoint = c["fitcheck"]["endpoint"].get<std::string>();
         cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
         cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
         cfg.ollama_top_p = c["fitcheck"].value("top_p", 0.95);
@@ -736,13 +736,13 @@ then trigger a profile refresh to update the narrative.*
 
             prompt += fullProfile;
 
-            std::string ollama_model, ollama_base_url;
+            std::string ollama_model, ai_endpoint;
             int ollama_max_tokens;
             double ollama_temperature, ollama_top_p, ollama_top_k;
             {
                 std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
                 ollama_model       = config_v2.ollama_model;
-                ollama_base_url    = config_v2.ollama_base_url;
+                ai_endpoint    = config_v2.ai_endpoint;
                 ollama_max_tokens  = config_v2.ollama_max_tokens;
                 ollama_temperature = config_v2.ollama_temperature;
                 ollama_top_p       = config_v2.ollama_top_p;
@@ -759,7 +759,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "text"}}}
             };
 
-            std::string response = httpPostAI(ollama_base_url + "/chat",
+            std::string response = httpPostAI(ai_endpoint,
                                             ollamaCloudApiKey, request.dump());
             
             // Parse streaming response - accumulate all chunks
@@ -889,14 +889,14 @@ then trigger a profile refresh to update the narrative.*
         }
 
         int fitcheck_limit;
-        std::string ollama_model, ollama_base_url;
+        std::string ollama_model, ai_endpoint;
         int ollama_max_tokens;
         double ollama_temperature, ollama_top_p, ollama_top_k;
         {
             std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
             fitcheck_limit     = config_v2.fitcheck_limit;
             ollama_model       = config_v2.ollama_model;
-            ollama_base_url    = config_v2.ollama_base_url;
+            ai_endpoint    = config_v2.ai_endpoint;
             ollama_max_tokens  = config_v2.ollama_max_tokens;
             ollama_temperature = config_v2.ollama_temperature;
             ollama_top_p       = config_v2.ollama_top_p;
@@ -933,7 +933,7 @@ then trigger a profile refresh to update the narrative.*
                     {"response_format", {{"type", "json_object"}}}
                 };
 
-                std::string response = httpPostAI(ollama_base_url + "/chat",
+                std::string response = httpPostAI(ai_endpoint,
                                                 ollamaCloudApiKey, request.dump());
 
                 std::string accumulated = parseStreamingResponse(response);
@@ -1017,13 +1017,13 @@ then trigger a profile refresh to update the narrative.*
             // Build prompt
             std::string prompt = buildFitcheckPrompt(profileContent, cleaned);
 
-            std::string ollama_model, ollama_base_url;
+            std::string ollama_model, ai_endpoint;
             int ollama_max_tokens;
             double ollama_temperature, ollama_top_p, ollama_top_k;
             {
                 std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
                 ollama_model       = config_v2.ollama_model;
-                ollama_base_url    = config_v2.ollama_base_url;
+                ai_endpoint    = config_v2.ai_endpoint;
                 ollama_max_tokens  = config_v2.ollama_max_tokens;
                 ollama_temperature = config_v2.ollama_temperature;
                 ollama_top_p       = config_v2.ollama_top_p;
@@ -1040,7 +1040,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "json_object"}}}
             };
 
-            std::string api_response = httpPostAI(ollama_base_url + "/chat",
+            std::string api_response = httpPostAI(ai_endpoint,
                                                 ollamaCloudApiKey, request.dump());
             
             std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
@@ -1169,13 +1169,13 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        std::string ollama_model, ollama_base_url;
+        std::string ollama_model, ai_endpoint;
         int ollama_max_tokens;
         double ollama_temperature, ollama_top_p, ollama_top_k;
         {
             std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
             ollama_model       = config_v2.ollama_model;
-            ollama_base_url    = config_v2.ollama_base_url;
+            ai_endpoint    = config_v2.ai_endpoint;
             ollama_max_tokens  = config_v2.ollama_max_tokens;
             ollama_temperature = config_v2.ollama_temperature;
             ollama_top_p       = config_v2.ollama_top_p;
@@ -1196,7 +1196,7 @@ then trigger a profile refresh to update the narrative.*
                 {"response_format", {{"type", "json_object"}}}
             };
 
-            std::string apiResponse = httpPostAI(ollama_base_url + "/chat",
+            std::string apiResponse = httpPostAI(ai_endpoint,
                                                ollamaCloudApiKey, request.dump());
             std::string accumulated = parseStreamingResponse(apiResponse);
 
