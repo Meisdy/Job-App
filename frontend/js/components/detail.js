@@ -145,7 +145,7 @@ function cleanTemplateText(text) {
   return cleaned;
 }
 
-function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain, jobTypeDisplay, salLabel, displayScore, displayLabel) {
+function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain, jobTypeDisplay, salLabel, displayScore, displayLabel, starsHtml) {
   const zip = escapeHtml(job.zipcode || '');
   const remote = data.location?.remote || 'none';
   const safeDetailUrl = /^https?:\/\//.test(job.detail_url || '') ? escapeHtml(job.detail_url) : '#';
@@ -156,6 +156,7 @@ function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain,
         <div class="fit-badge ${escapeHtml(displayLabel.toLowerCase().replace(' ', ''))}">
           <div class="fit-badge-label">${escapeHtml(displayLabel)}</div>
           <div class="fit-badge-score">${displayScore}</div>
+          <div class="fit-badge-stars" id="badge-rating-stars">${starsHtml}</div>
         </div>
       </div>
 
@@ -263,7 +264,7 @@ function buildSecondaryInfo(job, data, redFlags, skillsHtml, workSplitHtml, resp
     </div>`;
 }
 
-function setupActionBar(status, starsHtml) {
+function setupActionBar(status) {
   const actionBar = document.getElementById('action-bar');
   if (!actionBar) return;
   
@@ -272,9 +273,6 @@ function setupActionBar(status, starsHtml) {
     <div class="ab-left">
       <button class="ab ai" id="btn-i" data-status="interested">✦ Star</button>
       <button class="ab aa" id="btn-a" data-status="applied">✓ Applied</button>
-    </div>
-    <div class="ab-rating">
-      <span class="ab-rating-stars" id="action-rating-stars">${starsHtml}</span>
     </div>
     <div class="ab-right">
       <button class="ab as" id="btn-s" data-status="skipped">✕ Skip</button>
@@ -363,6 +361,8 @@ export function renderDetail() {
   const fitVerdict = getFitVerdict(job);
   const templateText = cleanTemplateText(job.template_text);
   
+  const starsHtml = generateStarsHtml(job.rating);
+
   document.getElementById('detail-scroll').innerHTML = 
     buildHeader(
       job, data, city, mapsUrl, getRemoteLabel(remote), 
@@ -371,7 +371,8 @@ export function renderDetail() {
       data.job_type || '',
       salLabel,
       fitVerdict.score,
-      fitVerdict.label
+      fitVerdict.label,
+      starsHtml
     ) + 
     buildFitSection(job) + 
     buildTemplateSection(templateText) + 
@@ -381,8 +382,8 @@ export function renderDetail() {
       generateResponsibilitiesHtml(data.responsibilities || [])
     );
   
-  setupActionBar(status, generateStarsHtml(job.rating));
-  setupEventHandlers(status, document.getElementById('action-rating-stars'));
+  setupActionBar(status);
+  setupEventHandlers(status, document.getElementById('badge-rating-stars'));
   setupRecheckButton();
   
   const saveNotesBtn = document.getElementById('save-notes-btn');

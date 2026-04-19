@@ -22,34 +22,6 @@
   gap: 8px;
 }
 
-/* === RATING === */
-
-.ab-rating {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.ab-rating-stars {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.ab-rating-stars .star {
-  font-size: 20px;
-  line-height: 1;
-  color: var(--border2);
-  cursor: pointer;
-  transition: color 0.15s;
-  display: flex;
-  align-items: center;
-}
-
-.ab-rating-stars .star.filled { color: var(--yellow); }
-.ab-rating-stars .star:hover { color: var(--yellow); }
-
 .ab-divider {
   width: 1px;
   height: 24px;
