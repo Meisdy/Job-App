@@ -11,7 +11,8 @@ INSTRUCTIONS:
 1. Check for No-Go violations first. Cross-reference the job posting against
    the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
    set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
-   Careful to not use the users preferences of or dislikes as No-Gos. Only No-Gos stated with this specific wording are real no-gos.
+   Only items explicitly marked as "No-Go" in the profile count — preferences,
+   dislikes, and soft reservations do NOT qualify as hard No-Gos.
 
 2. Score the following dimensions (0-100 each). Be rigorous and specific:
    - technical_match:  How well do the job's REQUIRED skills match what you
@@ -28,7 +29,7 @@ INSTRUCTIONS:
      want to avoid frontend work is a major motivation gap, even if the tech
      stack overlaps.
    - constraint_fit:   salary range, location, remote policy, travel, language
-     vs. your hard constraints
+     vs. your hard constraints.
    - growth_fit:       Do the "want to master" skills appear substantially in
      this role, or only as minor side tasks?
 
@@ -54,6 +55,18 @@ INSTRUCTIONS:
    - No Go:        Hard No-Go violation present, or fundamental mismatch on
                    multiple axes simultaneously
 
+5. Estimate hiring chances. This is speculative but must be grounded in
+   concrete reasoning. Consider:
+   - Your gap profile vs. the stated requirements (technical, seniority)
+   - How competitive this role typically is in the current job market
+   - Whether your profile is a realistic candidate pool match
+   - If you have web search access, look up the role title + region to assess
+     demand, typical candidate profiles, and how saturated the market is.
+     Summarise what you found in hiring_market_context.
+   Express the result as a qualitative estimate with honest reasoning —
+   not an inflated number. A junior applying to a senior role is realistically
+   10-20%, not 50%.
+
 Respond ONLY in valid JSON, no additional text:
 {
   "fit_score": 0-100,
@@ -68,7 +81,13 @@ Respond ONLY in valid JSON, no additional text:
   },
   "no_go_violations": ["list any triggered No-Gos with the specific job text that triggered them, empty array if none"],
   "strengths": ["top 3-5 specific reasons this role fits you, reference actual job requirements"],
-  "gaps": ["top 3-5 honest gaps or risks, be specific about what's missing or misaligned"],
-  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which don't, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
+  "gaps": ["top 3-5 honest gaps or risks, be specific about what is missing or misaligned"],
+  "fit_reasoning": "4-6 sentence detailed explanation: which specific job requirements match your strengths, which do not, whether the seniority level is appropriate for your experience, and what the day-to-day reality of this role would mean for you. Use you/your.",
+  "hiring_chances": {
+    "estimate": "Low" | "Realistic" | "Good" | "Strong",
+    "percentage_range": "e.g. 15-25%",
+    "reasoning": "2-3 sentences explaining what drives this estimate: your gap profile, seniority fit, and how competitive this role typically is for candidates like you."
+  },
+  "hiring_market_context": "1-2 sentences on current market demand for this role/region if web search was available, otherwise state that no live data was retrieved and give a general assessment based on training knowledge.",
   "verdict": "One direct sentence: apply now / apply with caveats / skip"
 }
