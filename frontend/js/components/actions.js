@@ -215,25 +215,34 @@ async function runBackgroundJob(options) {
 }
 
 export async function scrapeJobs() {
-  await runBackgroundJob({
-    buttonId: 'scrape-btn',
-    loadingText: 'Scraping...',
-    originalText: '⊕ Scrape Jobs',
-    apiUrl: SCRAPE_URL,
-    successMessage: (data) => `Scraped ${data.count} jobs — reloading...`,
-    sortBy: 'score'
-  });
-}
+  const button = setButtonLoading('scrape-btn', 'Scraping...', '⊕ Scrape');
+  if (!button) return;
 
-export async function fetchDetails() {
-  await runBackgroundJob({
-    buttonId: 'details-btn',
-    loadingText: 'Fetching...',
-    originalText: '⇩ Fetch Details',
-    apiUrl: DETAILS_URL,
-    successMessage: (data) => `Fetched details for ${data.updated} jobs — reloading...`,
-    sortBy: 'score'
-  });
+  let scrapedCount = 0;
+  try {
+    const scrapeRes = await fetch(SCRAPE_URL, { method: 'POST' });
+    const scrapeData = await scrapeRes.json();
+    if (!scrapeRes.ok) throw new Error(scrapeData.error || 'Scrape failed');
+    scrapedCount = scrapeData.count;
+
+    if (scrapedCount > 0) {
+      button.innerHTML = '<span class="spin">⟳</span> Fetching details...';
+      const detailsRes = await fetch(DETAILS_URL, { method: 'POST' });
+      const detailsData = await detailsRes.json();
+      if (!detailsRes.ok) throw new Error(detailsData.error || 'Details fetch failed');
+      showToast(`Scraped ${scrapedCount} jobs, fetched details for ${detailsData.updated}`);
+    } else {
+      showToast('No new jobs found');
+    }
+
+    setTimeout(async () => {
+      resetButton(button, '⊕ Scrape');
+      await refreshJobs('score');
+    }, 2000);
+  } catch (error) {
+    showToast(`Scrape failed: ${error.message}`, true);
+    resetButton(button, '⊕ Scrape');
+  }
 }
 
 export async function triggerFitCheck() {

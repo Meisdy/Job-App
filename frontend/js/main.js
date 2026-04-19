@@ -3,7 +3,7 @@ import { GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, fetchDetails, triggerFitCheck, openProfile, openOnboarding } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding } from './components/actions.js';
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
@@ -50,7 +50,6 @@ function bindEvents() {
 
   // Tool buttons
   onClick('scrape-btn', scrapeJobs);
-  onClick('details-btn', fetchDetails);
   onClick('profile-btn', openProfile);
   onClick('onboard-btn', openOnboarding);
   onClick('fitcheck-btn', triggerFitCheck);
@@ -153,7 +152,6 @@ window.openSettings = openSettings;
 window.closeSettings = closeSettings;
 window.saveSettings = saveSettings;
 window.scrapeJobs = scrapeJobs;
-window.fetchDetails = fetchDetails;
 window.triggerFitCheck = triggerFitCheck;
 window.openProfile = openProfile;
 window.toggleConsole = toggleConsole;

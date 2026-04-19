@@ -4,9 +4,9 @@
   },
   "fitcheck": {
     "base_url": "https://ollama.com/api",
-    "limit": 10,
+    "limit": 25,
     "max_tokens": 4000,
-    "model": "glm-5.1",
+    "model": "gemma4:31b-cloud",
     "temperature": 1,
     "top_k": 64,
     "top_p": 0.95
@@ -23,6 +23,6 @@
       "Embedded Linux",
       "R&D Engineer"
     ],
-    "rows": 10
+    "rows": 50
   }
 }

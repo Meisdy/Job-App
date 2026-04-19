@@ -167,7 +167,7 @@ function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain,
             <a href="${safeDetailUrl}" class="view-job-btn" target="_blank" rel="noopener">
               View on jobs.ch ↗
             </a>
-            <button class="recheck-btn" id="recheck-btn" title="Re-check this job">🔄 Re-Check</button>
+            <button class="recheck-btn" id="recheck-btn" title="Re-check this job">🔄 Redo Fit-Check</button>
           </div>
         </div>
 
@@ -338,7 +338,7 @@ function setupRecheckButton() {
     } finally {
       recheckBtn.disabled = false;
       recheckBtn.classList.remove('running');
-      recheckBtn.innerHTML = '🔄 Re-Check';
+      recheckBtn.innerHTML = '🔄 Redo Fit-Check';
     }
   };
 }
