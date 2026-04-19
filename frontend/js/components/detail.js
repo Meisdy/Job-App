@@ -273,8 +273,6 @@ function setupActionBar(status) {
     <div class="ab-left">
       <button class="ab ai" id="btn-i" data-status="interested">✦ Star</button>
       <button class="ab aa" id="btn-a" data-status="applied">✓ Applied</button>
-    </div>
-    <div class="ab-right">
       <button class="ab as" id="btn-s" data-status="skipped">✕ Skip</button>
       <button class="ab ae" id="btn-e">🗑️ Delete</button>
     </div>
