@@ -310,9 +310,10 @@ function setupRecheckButton() {
   if (!recheckBtn) return;
   
   recheckBtn.onclick = async () => {
-    if (!state.currentJob) return;
+    if (!state.currentJob || recheckBtn.classList.contains('running')) return;
     
     recheckBtn.disabled = true;
+    recheckBtn.classList.add('running');
     recheckBtn.innerHTML = '<span class="spin">⟳</span> Checking...';
     
     try {
@@ -336,6 +337,7 @@ function setupRecheckButton() {
       showToast('Fit-check failed: ' + e.message, true);
     } finally {
       recheckBtn.disabled = false;
+      recheckBtn.classList.remove('running');
       recheckBtn.innerHTML = '🔄 Re-Check';
     }
   };
