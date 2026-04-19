@@ -42,10 +42,10 @@
 }
 
 /* Button variants */
-.ab.ai:hover, .ab.ai.act { border-color: var(--green); color: white; background: var(--green); }
-.ab.aa:hover, .ab.aa.act { border-color: var(--yellow); color: #333; background: var(--yellow); }
-.ab.as:hover, .ab.as.act { border-color: #fb923c; color: white; background: #fb923c; }
-.ab.ae:hover, .ab.ae.act { border-color: var(--red); color: white; background: var(--red); }
+.ab.ai:hover, .ab.ai.act { border-color: rgba(52,211,153,0.4); color: var(--green); background: var(--green-dim); }
+.ab.aa:hover, .ab.aa.act { border-color: rgba(251,191,36,0.4); color: var(--yellow); background: var(--yellow-dim); }
+.ab.as:hover, .ab.as.act { border-color: rgba(249,115,22,0.4); color: var(--orange); background: var(--orange-dim); }
+.ab.ae:hover, .ab.ae.act { border-color: rgba(248,113,113,0.35); color: var(--red); background: var(--red-dim); }
 
 /* === TOOL BUTTONS (header) === */
 
@@ -81,5 +81,4 @@
 /* Tool button variants */
 .rescore-btn:hover, .rescore-btn.running { border-color: rgba(251, 191, 36, 0.45); color: var(--yellow); background: var(--yellow-dim); }
 .scrape-btn:hover, .scrape-btn.running { border-color: rgba(52, 211, 153, 0.45); color: var(--green); background: var(--green-dim); }
-.details-btn:hover, .details-btn.running { border-color: rgba(96, 165, 250, 0.45); color: var(--accent); background: var(--accent-dim); }
 .enrich-btn:hover, .enrich-btn.running { border-color: rgba(139, 92, 246, 0.45); color: #a78bfa; background: rgba(139, 92, 246, 0.08); }
