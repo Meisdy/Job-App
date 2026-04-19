@@ -11,6 +11,7 @@ INSTRUCTIONS:
 1. Check for No-Go violations first. Cross-reference the job posting against
    the candidate's stated dealbreakers (No-Gos). If any hard No-Go is present,
    set fit_score ≤ 20 and fit_label = "No Go" regardless of all other factors.
+   Careful to not use the users preferences of or dislikes as No-Gos. Only No-Gos stated with this specific wording are real no-gos.
 
 2. Score the following dimensions (0-100 each). Be rigorous and specific:
    - technical_match:  How well do the job's REQUIRED skills match what you

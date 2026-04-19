@@ -338,11 +338,11 @@ int main() {
     // Initialize curl globalization
     curl_global_init(CURL_GLOBAL_ALL);
 
-    std::string ollamaCloudApiKey;
+    std::string ApiKey;
     try {
         std::ifstream f("../config/api_keys.json");
         json keys = json::parse(f);
-        ollamaCloudApiKey = keys.value("ollama_cloud_api_key", "");
+        ApiKey = keys.value("api_key", "");
         std::cout << "API keys loaded" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[WARN] Could not load API keys: " << e.what() << std::endl;
@@ -628,7 +628,7 @@ int main() {
 
     // ── V2 API ENDPOINTS ───────────────────────────────────────────────────────
 
-    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &ollamaCloudApiKey](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &ApiKey](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             
@@ -638,7 +638,7 @@ int main() {
                 return;
             }
             
-            if (ollamaCloudApiKey.empty()) {
+            if (ApiKey.empty()) {
                 res.status = 500;
                 res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
                 return;
@@ -760,7 +760,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string response = httpPostAI(ai_endpoint,
-                                            ollamaCloudApiKey, request.dump());
+                                            ApiKey, request.dump());
             
             // Parse streaming response - accumulate all chunks
             std::string accumulatedResponse;
@@ -868,7 +868,7 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &ollamaCloudApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
         std::string markdownPath = "../config/user_profile.md";
         std::ifstream file(markdownPath);
         
@@ -882,7 +882,7 @@ then trigger a profile refresh to update the narrative.*
                             std::istreambuf_iterator<char>());
         file.close();
         
-        if (ollamaCloudApiKey.empty()) {
+        if (ApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -934,7 +934,7 @@ then trigger a profile refresh to update the narrative.*
                 if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
                 std::string response = httpPostAI(ai_endpoint,
-                                                ollamaCloudApiKey, request.dump());
+                                                ApiKey, request.dump());
 
                 std::string accumulated = parseStreamingResponse(response);
                 if (accumulated.empty()) throw std::runtime_error("Empty response from API");
@@ -961,7 +961,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
-    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &ollamaCloudApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
         
@@ -978,7 +978,7 @@ then trigger a profile refresh to update the narrative.*
                                    std::istreambuf_iterator<char>());
         file.close();
         
-        if (ollamaCloudApiKey.empty()) {
+        if (ApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -1041,7 +1041,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string api_response = httpPostAI(ai_endpoint,
-                                                ollamaCloudApiKey, request.dump());
+                                                ApiKey, request.dump());
             
             std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
             
@@ -1127,7 +1127,7 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &config_v2_mutex, &ollamaCloudApiKey, &db_write_mutex, &db,
+    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db,
         &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
@@ -1139,7 +1139,7 @@ then trigger a profile refresh to update the narrative.*
             res.set_content(json{{"error", "No profile found"}}.dump(), "application/json");
             return;
         }
-        if (ollamaCloudApiKey.empty()) {
+        if (ApiKey.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -1197,7 +1197,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string apiResponse = httpPostAI(ai_endpoint,
-                                               ollamaCloudApiKey, request.dump());
+                                               ApiKey, request.dump());
             std::string accumulated = parseStreamingResponse(apiResponse);
 
             if (accumulated.empty()) {

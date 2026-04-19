@@ -32,29 +32,20 @@
 
 <header>
   <div class="logo">Job Master</div>
-  <div class="filters">
-    <button class="filter-btn active" id="filter-all" data-filter="all">All</button>
-    <button class="filter-btn" id="filter-strong" data-filter="Strong">Strong</button>
-    <button class="filter-btn" id="filter-decent" data-filter="decent">Decent</button>
-    <button class="filter-btn" id="filter-experimental" data-filter="experimental">Experimental</button>
-    <button class="filter-btn" id="filter-weak" data-filter="weak">Weak</button>
-    <button class="filter-btn" id="filter-unseen" data-filter="unseen">New</button>
-    <button class="filter-btn" id="filter-interested" data-filter="interested">Starred</button>
-    <button class="filter-btn" id="filter-applied" data-filter="applied">Applied</button>
-  </div>
-  <div class="search-wrap">
-    <span class="search-icon">⌕</span>
-    <input class="search-input" id="search-input" type="text" placeholder="Search title, company, city...">
-    <button class="search-clear" id="search-clear" aria-label="Clear search">✕</button>
-  </div>
-  <button class="tool-btn scrape-btn" id="scrape-btn">⊕ Scrape</button>
-  <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
-  <button class="tool-btn profile-btn" id="profile-btn">👤 Profile</button>
-  <button class="tool-btn settings-btn" id="settings-btn">⚙ Settings</button>
   <div class="status-dot-wrap">
     <div class="status-dot" id="status-dot"></div>
     <span id="status-label">—</span>
   </div>
+  <div class="search-wrap">
+    <span class="search-icon">⌕</span>
+    <input class="search-input" id="search-input" type="text" placeholder="Search Job title, Company, or City...">
+    <span class="search-hint">Ctrl + K</span>
+    <button class="search-clear" id="search-clear" aria-label="Clear search">✕</button>
+  </div>
+  <button class="tool-btn scrape-btn" id="scrape-btn" style="margin-left:auto">⊕ Scrape</button>
+  <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
+  <button class="tool-btn profile-btn" id="profile-btn">👤 Profile</button>
+  <button class="tool-btn settings-btn" id="settings-btn">⚙ Settings</button>
 </header>
 
 <div class="main">
@@ -62,6 +53,19 @@
     <div class="sb-header">
       <span class="sb-label">Positions</span>
       <div style="display:flex;align-items:center;gap:8px">
+        <div class="filter-dropdown" id="filter-dropdown">
+          <button id="filter-dropdown-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter positions">⊞ ALL</button>
+          <div class="filter-dropdown-menu" id="filter-dropdown-menu" role="listbox">
+            <button class="filter-btn active" id="filter-all" data-filter="all">All</button>
+            <button class="filter-btn" id="filter-strong" data-filter="Strong">Strong</button>
+            <button class="filter-btn" id="filter-decent" data-filter="decent">Decent</button>
+            <button class="filter-btn" id="filter-experimental" data-filter="experimental">Experimental</button>
+            <button class="filter-btn" id="filter-weak" data-filter="weak">Weak</button>
+            <button class="filter-btn" id="filter-unseen" data-filter="unseen">New</button>
+            <button class="filter-btn" id="filter-interested" data-filter="interested">Starred</button>
+            <button class="filter-btn" id="filter-applied" data-filter="applied">Applied</button>
+          </div>
+        </div>
         <button id="sort-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
         <span class="sb-count" id="list-count">—</span>
       </div>

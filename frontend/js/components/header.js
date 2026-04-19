@@ -108,14 +108,27 @@ export function updateStats() {
 // Filter & Sort
 // ============================================================================
 
+const filterLabels = {
+  all: 'ALL', Strong: 'STRONG', decent: 'DECENT',
+  experimental: 'EXP', weak: 'WEAK', unseen: 'NEW',
+  interested: 'STARRED', applied: 'APPLIED'
+};
+
 export function setFilter(button, filterName) {
   state.currentFilter = filterName;
-  
-  document.querySelectorAll('.filter-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  
+
+  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
   button.classList.add('active');
+
+  const dropdownBtn = document.getElementById('filter-dropdown-btn');
+  if (dropdownBtn) {
+    dropdownBtn.textContent = `⊞ ${filterLabels[filterName] ?? filterName.toUpperCase()}`;
+    dropdownBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  const menu = document.getElementById('filter-dropdown-menu');
+  if (menu) menu.classList.remove('open');
+
   renderList();
 }
 

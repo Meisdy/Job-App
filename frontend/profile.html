@@ -178,7 +178,10 @@
         card.innerHTML = `
           <div class="header">
             <h1>My Profile</h1>
-            <a href="/onboarding.html?redo=true" class="btn">🔄 Re-do Onboarding</a>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-size:11px;color:var(--text3)">Edit <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-family:'JetBrains Mono',monospace;font-size:10px">config/user_profile.md</code> directly or</span>
+              <a href="/onboarding.html?redo=true" class="btn">🔄 Re-do Onboarding</a>
+            </div>
           </div>
           
           <div class="section">

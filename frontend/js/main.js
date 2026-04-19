@@ -34,7 +34,23 @@ function onClick(id, handler) {
 
 // Bind all UI events
 function bindEvents() {
-  // Filter buttons
+  // Filter dropdown toggle
+  const filterDropdownBtn = document.getElementById('filter-dropdown-btn');
+  const filterDropdownMenu = document.getElementById('filter-dropdown-menu');
+  if (filterDropdownBtn && filterDropdownMenu) {
+    filterDropdownBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = filterDropdownMenu.classList.contains('open');
+      filterDropdownMenu.classList.toggle('open', !isOpen);
+      filterDropdownBtn.setAttribute('aria-expanded', String(!isOpen));
+    });
+    document.addEventListener('click', () => {
+      filterDropdownMenu.classList.remove('open');
+      filterDropdownBtn.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // Filter buttons (inside dropdown)
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       setFilter(btn, btn.dataset.filter);
@@ -124,7 +140,13 @@ function bindEvents() {
 
 // Keyboard listeners
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeSettings();
+  if (e.key === 'Escape') {
+    closeSettings();
+    const menu = document.getElementById('filter-dropdown-menu');
+    const btn = document.getElementById('filter-dropdown-btn');
+    if (menu) menu.classList.remove('open');
+    if (btn) btn.setAttribute('aria-expanded', 'false');
+  }
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
     e.preventDefault();
     const searchInput = document.getElementById('search-input');

@@ -60,7 +60,7 @@ frontend/
     │   ├── formatting.js         # Date, icon formatting, escapeHtml()
     │   └── validation.js         # Skill matching validation
     └── components/
-        ├── header.js             # Search, filters, stats
+        ├── header.js             # Search, filter logic (setFilter, updateStats), stats
         ├── job-list.js           # List rendering & selection
         ├── detail.js             # Job detail rendering
         ├── actions.js            # User actions & API calls
@@ -74,6 +74,16 @@ frontend/
 - **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `CURIOUS_SKILLS`, `AVOID_SKILLS`
 - **XSS**: All user/LLM data injected into innerHTML must go through `escapeHtml()` from `formatting.js`
 - **No build step**: native ES6 modules
+
+### Header Layout
+Header (left → right): logo, status dot (`margin-left:auto` scrape btn), absolutely-centered search (`.search-wrap` with `position:absolute; left:50%; transform:translateX(-50%)`), fit-check, profile, settings. Search has right-aligned `Ctrl + K` hint (`.search-hint`). No filter buttons or `.filters` div in header.
+
+### Filter Dropdown
+Filters live in the sidebar header (`.sb-header`), between the "Positions" label and the `⇅ SCORE` sort button. Structure:
+- `#filter-dropdown-btn` — trigger button, same style as sort btn; label updates to active filter (e.g. `⊞ STRONG`)
+- `#filter-dropdown-menu` — dropdown panel with `.filter-btn` items; toggled via `.open` class
+- Logic in `header.js`: `setFilter` updates `state.currentFilter`, active class, dropdown label, and closes menu; `updateStats` updates button text with counts by ID (`filter-all`, `filter-strong`, etc.)
+- Open/close wired in `main.js` `bindEvents`: click trigger (stopPropagation), click-outside on document, Escape key
 
 ### Admin Console
 Dev console (`Ctrl+\` in browser) calls admin endpoints under `/api/admin/`.
@@ -216,4 +226,4 @@ On empty parse result, logs first 500 chars of raw response for diagnosis.
 
 ---
 
-*Last updated: 2026-04-18 (V1 removal, v2-only pipeline, parser/timeout fixes)*
+*Last updated: 2026-04-19 (header: status dot after logo, search absolutely centered w/ Ctrl+K hint; profile: edit-path hint)*
