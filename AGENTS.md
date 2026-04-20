@@ -71,12 +71,14 @@ frontend/
 ### Component Architecture
 - **CSS Variables**: All colors in `variables.css`. Text colors: `--text`, `--text2`, `--text3` — **no `--text1`**
 - **JS Modules**: ES6 modules, no bundler. `state.js` is single source of truth
-- **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `CURIOUS_SKILLS`, `AVOID_SKILLS`
+- **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `IMPORT_TEXT_URL`, `CURIOUS_SKILLS`, `AVOID_SKILLS`
 - **XSS**: All user/LLM data injected into innerHTML must go through `escapeHtml()` from `formatting.js`
 - **No build step**: native ES6 modules
 
 ### Header Layout
-Header (left → right): logo, status dot (`margin-left:auto` scrape btn), absolutely-centered search (`.search-wrap` with `position:absolute; left:50%; transform:translateX(-50%)`), fit-check, profile, settings. Search has right-aligned `Ctrl + K` hint (`.search-hint`). No filter buttons or `.filters` div in header.
+Header (left → right): logo, status dot, `.search-group` (absolutely centered), profile, settings.
+`.search-group` contains: search bar (center), scrape, add job, fit-check — all with 8px gaps.
+Profile has `margin-left:auto`. Header gap is 8px. No filter buttons in header.
 
 ### Filter Dropdown
 Filters live in the sidebar header (`.sb-header`), between the "Positions" label and the `⇅ SCORE` sort button. Structure:
@@ -134,6 +136,7 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 | `/api/jobs/update` | POST | Update user_status / rating / notes |
 | `/api/jobs/:id` | DELETE | Delete job |
 | `/api/jobs/:id/fitcheck` | POST | Fit-check single job via LLM |
+| `/api/jobs/import-text` | POST | Import job from pasted text (AI extracts fields, auto fit-check) |
 | `/api/scrape/jobs` | POST | Scrape jobs.ch for new listings |
 | `/api/scrape/details` | POST | Fetch job detail pages (template_text) |
 | `/api/fitcheck` | POST | Batch fit-check all jobs with no fit_label |
@@ -165,7 +168,7 @@ To change the prompt, edit `config/system_prompt.txt` and restart. Missing file 
 ### HTTP Helpers
 - `httpGet(url)` — scraping, 120s timeout
 - `httpPost(url, key, body)` — generic POST, 120s timeout
-- `httpPostAI(url, key, body)` — AI inference, **600s timeout**, auto-retries once on empty response (handles Ollama Cloud cold-start drops)
+- `httpPostAI(url, key, body)` — AI inference, **600s timeout**, auto-retries once on empty response or 5xx error (handles Ollama Cloud cold-start and temporary outages)
 
 ### Streaming Response Parser
 `parseStreamingResponse` handles two formats:
@@ -226,4 +229,4 @@ On empty parse result, logs first 500 chars of raw response for diagnosis.
 
 ---
 
-*Last updated: 2026-04-19 (header: status dot after logo, search absolutely centered w/ Ctrl+K hint; profile: edit-path hint)*
+*Last updated: 2026-04-20 (header: centered search-group with scrape/add/fit-check; import-text endpoint; 503 retry on AI calls)*
