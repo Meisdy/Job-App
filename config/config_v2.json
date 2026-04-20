@@ -4,7 +4,7 @@
   },
   "fitcheck": {
     "endpoint": "https://ollama.com/api/chat",
-    "limit": 25,
+    "limit": 50,
     "max_tokens": 4000,
     "model": "gemma4:31b-cloud",
     "temperature": 1,
@@ -14,15 +14,15 @@
   "scrape": {
     "queries": [
       "Embedded Software Engineer",
-      "Robotics Engineer",
       "Robotik Ingenieur",
       "Test Engineer",
       "Software Engineer",
       "Mechatronics Engineer",
       "Development Engineer",
       "Embedded Linux",
-      "R&D Engineer"
+      "R&D Engineer",
+      "AI Engineer"
     ],
-    "rows": 50
+    "rows": 100
   }
 }

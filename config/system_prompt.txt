@@ -65,7 +65,7 @@ INSTRUCTIONS:
      Summarise what you found in hiring_market_context.
    Express the result as a qualitative estimate with honest reasoning —
    not an inflated number. A junior applying to a senior role is realistically
-   10-20%, not 50%.
+   10-20%, not 50%. Add this information at the end of the fit reasoning.
 
 Respond ONLY in valid JSON, no additional text:
 {
