@@ -36,16 +36,18 @@
     <div class="status-dot" id="status-dot"></div>
     <span id="status-label">—</span>
   </div>
-  <div class="search-wrap">
-    <span class="search-icon">⌕</span>
-    <input class="search-input" id="search-input" type="text" placeholder="Search Job title, Company, or City...">
-    <span class="search-hint">Ctrl + K</span>
-    <button class="search-clear" id="search-clear" aria-label="Clear search">✕</button>
+<div class="search-group">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" id="search-input" type="text" placeholder="Search Job title, Company, or City...">
+      <span class="search-hint">Ctrl + K</span>
+      <button class="search-clear" id="search-clear" aria-label="Clear search">✕</button>
+    </div>
+    <button class="tool-btn scrape-btn" id="scrape-btn">⊕ Scrape jobs.ch</button>
+    <button class="tool-btn" id="import-job-btn">⊕ Add Job manually</button>
+    <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
   </div>
-  <button class="tool-btn scrape-btn" id="scrape-btn" style="margin-left:auto">⊕ Scrape jobs.ch</button>
-  <button class="tool-btn" id="import-job-btn">⊕ Add Job manually</button>
-  <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
-  <button class="tool-btn profile-btn" id="profile-btn">👤 Profile</button>
+  <button class="tool-btn profile-btn" id="profile-btn" style="margin-left:auto">👤 Profile</button>
   <button class="tool-btn settings-btn" id="settings-btn">⚙ Settings</button>
 </header>
 

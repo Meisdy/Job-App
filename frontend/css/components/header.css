@@ -21,7 +21,17 @@ header {
   flex-shrink:0;
 }
 
-.search-wrap { max-width:360px; width:360px; position:absolute; left:50%; transform:translateX(-50%); }
+/* Centered search group with tools */
+.search-group {
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.search-wrap { width:360px; position:relative; }
 .search-input {
   width:100%;
   background:transparent;
