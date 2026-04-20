@@ -148,7 +148,10 @@ function cleanTemplateText(text) {
 function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain, jobTypeDisplay, salLabel, displayScore, displayLabel, starsHtml) {
   const zip = escapeHtml(job.zipcode || '');
   const remote = data.location?.remote || 'none';
-  const safeDetailUrl = /^https?:\/\//.test(job.detail_url || '') ? escapeHtml(job.detail_url) : '#';
+  const detailUrl = /^https?:\/\//.test(job.detail_url || '') ? job.detail_url : '';
+  const appUrl = /^https?:\/\//.test(job.application_url || '') ? job.application_url : '';
+  const safeJobUrl = detailUrl || appUrl;
+  const jobUrlLabel = detailUrl ? 'View on jobs.ch ↗' : 'View Job ↗';
 
   return `
     <div class="detail-header">
@@ -164,9 +167,7 @@ function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain,
         <div class="title-row">
           <h1 class="job-title">${escapeHtml(job.title || 'Unknown')}</h1>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-            <a href="${safeDetailUrl}" class="view-job-btn" target="_blank" rel="noopener">
-              View on jobs.ch ↗
-            </a>
+            ${safeJobUrl ? `<a href="${escapeHtml(safeJobUrl)}" class="view-job-btn" target="_blank" rel="noopener">${jobUrlLabel}</a>` : ''}
             <button class="recheck-btn" id="recheck-btn" title="Re-check this job">🔄 Redo Fit-Check</button>
           </div>
         </div>

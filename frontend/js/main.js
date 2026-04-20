@@ -3,7 +3,7 @@ import { GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding, importJobFromText, openImportModal, closeImportModal } from './components/actions.js';
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
@@ -66,6 +66,7 @@ function bindEvents() {
 
   // Tool buttons
   onClick('scrape-btn', scrapeJobs);
+  onClick('import-job-btn', openImportModal);
   onClick('profile-btn', openProfile);
   onClick('onboard-btn', openOnboarding);
   onClick('fitcheck-btn', triggerFitCheck);
@@ -96,6 +97,11 @@ function bindEvents() {
   onClick('modal-cancel-btn', closeSettings);
   onClick('modal-save-btn', saveSettings);
 
+  // Import modal buttons
+  onClick('import-close', closeImportModal);
+  onClick('import-cancel-btn', closeImportModal);
+  onClick('import-btn', importJobFromText);
+
   // Modal overlay click
   const modalOverlay = document.getElementById('settings-overlay');
   if (modalOverlay) {
@@ -105,6 +111,19 @@ function bindEvents() {
     modalOverlay.addEventListener('click', e => {
       if (e.target === modalOverlay && state._modalMousedownTarget === modalOverlay) {
         closeSettings();
+      }
+    });
+  }
+
+  // Import modal overlay click
+  const importOverlay = document.getElementById('import-overlay');
+  if (importOverlay) {
+    importOverlay.addEventListener('mousedown', e => {
+      state._importModalMousedownTarget = e.target;
+    });
+    importOverlay.addEventListener('click', e => {
+      if (e.target === importOverlay && state._importModalMousedownTarget === importOverlay) {
+        closeImportModal();
       }
     });
   }
@@ -142,6 +161,7 @@ function bindEvents() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeSettings();
+    closeImportModal();
     const menu = document.getElementById('filter-dropdown-menu');
     const btn = document.getElementById('filter-dropdown-btn');
     if (menu) menu.classList.remove('open');
@@ -176,6 +196,8 @@ window.saveSettings = saveSettings;
 window.scrapeJobs = scrapeJobs;
 window.triggerFitCheck = triggerFitCheck;
 window.openProfile = openProfile;
+window.openImportModal = openImportModal;
+window.closeImportModal = closeImportModal;
 window.toggleConsole = toggleConsole;
 
 export { init, bindEvents };

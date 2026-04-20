@@ -7,7 +7,7 @@
     "limit": 50,
     "max_tokens": 4000,
     "model": "gemma4:31b-cloud",
-    "temperature": 1,
+    "temperature": 0.8,
     "top_k": 65,
     "top_p": 0.95
   },

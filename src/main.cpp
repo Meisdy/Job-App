@@ -51,9 +51,9 @@ void rateLimitSleep() {
 }
 
 std::string httpRequest(const std::string& url, const std::string& method,
-                       const std::vector<std::string>& headers = {},
-                       const std::string& postData = "",
-                       long timeoutSeconds = 120L) {
+                        const std::vector<std::string>& headers = {},
+                        const std::string& postData = "",
+                        long timeoutSeconds = 120L) {
     CURL* curl = curl_easy_init();
     std::string response;
     if (curl) {
@@ -117,9 +117,9 @@ std::string httpPostAI(const std::string& url, const std::string& apiKey, const 
         "Authorization: Bearer " + apiKey
     };
     std::string response = httpRequest(url, "POST", headers, body, 600L);
-    if (response.empty()) {
-        std::cerr << "[WARN] httpPostAI: empty response, retrying in 3s..." << std::endl;
-        std::this_thread::sleep_for(std::chrono::seconds(3));
+    if (response.empty() || response.find("\"error\"") != std::string::npos) {
+        std::cerr << "[WARN] httpPostAI: empty/error response, retrying in 5s..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(5));
         response = httpRequest(url, "POST", headers, body, 600L);
     }
     return response;
@@ -1078,6 +1078,180 @@ then trigger a profile refresh to update the narrative.*
         } catch (const std::exception& e) {
             res.status = 500;
             res.set_content(json{{"error", std::string("Fit-check failed: ") + e.what()}}.dump(), "application/json");
+        }
+    });
+
+    // ── IMPORT JOB FROM TEXT ──────────────────────────────────────────────────
+
+    auto generateManualJobId = [](const std::string& text) -> std::string {
+        size_t hash = std::hash<std::string>{}(text.substr(0, 500));
+        std::stringstream ss;
+        ss << "m" << std::hex << hash;
+        return ss.str();
+    };
+
+    server.Post("/api/jobs/import-text", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db,
+        &generateManualJobId, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
+    (const httplib::Request& req, httplib::Response& res) {
+        std::cout << "[INFO] POST /api/jobs/import-text — request received (" << req.body.size() << " bytes)" << std::endl;
+
+        json body;
+        try {
+            body = json::parse(req.body);
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Import: invalid JSON body" << std::endl;
+            res.status = 400;
+            res.set_content(json{{"error", "Invalid JSON body"}}.dump(), "application/json");
+            return;
+        }
+
+        std::string text = body.value("text", "");
+        if (text.size() < 50) {
+            std::cerr << "[ERROR] Import: text too short (" << text.size() << " chars)" << std::endl;
+            res.status = 400;
+            res.set_content(json{{"error", "Text too short — paste a full job posting"}}.dump(), "application/json");
+            return;
+        }
+
+        if (ApiKey.empty()) {
+            std::cerr << "[ERROR] Import: API key not configured" << std::endl;
+            res.status = 500;
+            res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
+            return;
+        }
+
+        std::string ollama_model, ai_endpoint;
+        int ollama_max_tokens;
+        double ollama_temperature, ollama_top_p, ollama_top_k;
+        {
+            std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
+            ollama_model       = config_v2.ollama_model;
+            ai_endpoint        = config_v2.ai_endpoint;
+            ollama_max_tokens  = config_v2.ollama_max_tokens;
+            ollama_temperature = config_v2.ollama_temperature;
+            ollama_top_p       = config_v2.ollama_top_p;
+            ollama_top_k       = config_v2.ollama_top_k;
+        }
+
+        std::string jobId = generateManualJobId(text);
+        std::cout << "[INFO] Import: generated job_id=" << jobId << " from " << text.size() << " chars" << std::endl;
+
+        std::string truncated = text.substr(0, 8000);
+        std::string extractPrompt =
+            "Extract job posting details from the text below. Return ONLY valid JSON with these exact keys:\n"
+            "title, company_name, place, zipcode, employment_grade (integer percent, 0 if unknown),\n"
+            "application_url, pub_date (YYYY-MM-DD or empty), end_date (YYYY-MM-DD or empty)\n"
+            "Unknown fields: empty string. Do NOT include any other keys.\n\nText:\n" + truncated;
+
+        try {
+            std::cout << "[INFO] Import: calling AI to extract fields..." << std::endl;
+            json extractRequest = {
+                {"model", ollama_model},
+                {"messages", json::array({{{"role", "user"}, {"content", extractPrompt}}})},
+                {"max_tokens", ollama_max_tokens},
+                {"temperature", 0.3},
+                {"top_p", ollama_top_p},
+                {"response_format", {{"type", "json_object"}}}
+            };
+            if (ollama_top_k > 0) extractRequest["top_k"] = ollama_top_k;
+
+            std::string extractResponse = httpPostAI(ai_endpoint, ApiKey, extractRequest.dump());
+            std::string accumulated = parseStreamingResponse(extractResponse);
+            if (accumulated.empty()) throw std::runtime_error("Empty response from extraction AI");
+            std::cout << "[INFO] Import: extraction AI responded (" << accumulated.size() << " chars)" << std::endl;
+            std::cout << "[DEBUG] Import: extraction raw (first 500): " << accumulated.substr(0, 500) << std::endl;
+
+            json extracted;
+            try {
+                extracted = extractJsonFromResponse(accumulated);
+            } catch (const std::exception& e) {
+                std::cerr << "[ERROR] Import: extraction JSON parse failed: " << e.what() << std::endl;
+                try { extracted = json::parse(accumulated); } catch (...) {
+                    throw std::runtime_error(std::string("Extraction parse failed: ") + e.what());
+                }
+            }
+
+            Job job;
+            job.job_id           = jobId;
+            job.title            = extracted.value("title", "");
+            job.company_name     = extracted.value("company_name", "");
+            job.place            = extracted.value("place", "");
+            job.zipcode          = extracted.value("zipcode", "");
+            job.canton_code      = "N/A";
+            job.employment_grade = extracted.value("employment_grade", 0);
+            job.application_url  = extracted.value("application_url", "");
+            job.detail_url       = "";
+            job.pub_date         = extracted.value("pub_date", "");
+            if (job.pub_date.empty()) {
+                std::time_t now = std::time(nullptr);
+                std::tm* tm = std::localtime(&now);
+                char buf[11];
+                std::strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
+                job.pub_date = buf;
+            }
+            job.end_date         = extracted.value("end_date", "");
+            job.template_text    = text;
+
+            {
+                std::lock_guard<std::mutex> lock(db_write_mutex);
+                insert_or_update_job(db, job);
+            }
+
+            std::cout << "[INFO] Import: job inserted — " << jobId << " — " << job.title << std::endl;
+
+            std::string profilePath = "../config/user_profile.md";
+            std::ifstream profileFile(profilePath);
+            if (profileFile.is_open()) {
+                std::string profileContent((std::istreambuf_iterator<char>(profileFile)),
+                                           std::istreambuf_iterator<char>());
+                profileFile.close();
+
+                if (!profileContent.empty()) {
+                    std::cout << "[INFO] Import: running fit-check for " << jobId << "..." << std::endl;
+                    std::string cleaned = cleanTemplateText(job.template_text);
+                    if (!cleaned.empty()) {
+                        std::string fitPrompt = buildFitcheckPrompt(profileContent, cleaned);
+                        json fitRequest = {
+                            {"model", ollama_model},
+                            {"messages", json::array({{{"role", "user"}, {"content", fitPrompt}}})},
+                            {"max_tokens", ollama_max_tokens},
+                            {"temperature", ollama_temperature},
+                            {"top_p", ollama_top_p},
+                            {"response_format", {{"type", "json_object"}}}
+                        };
+                        if (ollama_top_k > 0) fitRequest["top_k"] = ollama_top_k;
+
+                        std::string fitResponse = httpPostAI(ai_endpoint, ApiKey, fitRequest.dump());
+                        std::string fitAccumulated = parseStreamingResponse(fitResponse);
+                        if (!fitAccumulated.empty()) {
+                            try {
+                                json fitData = extractJsonFromResponse(fitAccumulated);
+                                std::lock_guard<std::mutex> lock(db_write_mutex);
+                                save_fit_result_v2(db, jobId,
+                                    fitData.value("fit_score", 0),
+                                    fitData.value("fit_label", "Unknown"),
+                                    fitData.value("fit_summary", ""),
+                                    fitData.value("fit_reasoning", ""),
+                                    "md_file_profile");
+                                std::cout << "[INFO] Import: fit-check complete for " << jobId << " — " << fitData.value("fit_label", "?") << " (" << fitData.value("fit_score", 0) << ")" << std::endl;
+                            } catch (const std::exception& e2) {
+                                std::cerr << "[WARN] Import: fit-check JSON parse failed for " << jobId << ": " << e2.what() << std::endl;
+                                std::cerr << "[DEBUG] Fit-check raw (first 500): " << fitAccumulated.substr(0, 500) << std::endl;
+                            }
+                        } else {
+                            std::cerr << "[WARN] Import: fit-check returned empty for " << jobId << std::endl;
+                        }
+                    }
+                }
+            }
+
+            std::cout << "[INFO] Import: complete — " << jobId << " — " << job.title << std::endl;
+            res.set_content(json{{"ok", true}, {"job_id", jobId}, {"title", job.title}}.dump(), "application/json");
+
+        } catch (const std::exception& e) {
+            std::cerr << "[ERROR] Import failed: " << e.what() << std::endl;
+            res.status = 500;
+            res.set_content(json{{"error", std::string("Import failed: ") + e.what()}}.dump(), "application/json");
         }
     });
 

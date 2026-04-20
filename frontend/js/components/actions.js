@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, IMPORT_TEXT_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -266,4 +266,60 @@ export function openProfile() {
 
 export function openOnboarding() {
   window.open('/onboarding.html', '_blank');
+}
+
+let importInProgress = false;
+
+export async function importJobFromText() {
+  if (importInProgress) return;
+
+  const textarea = document.getElementById('import-textarea');
+  const text = textarea?.value?.trim();
+  if (!text) {
+    showToast('Paste a job posting first', true);
+    return;
+  }
+
+  importInProgress = true;
+  const button = setButtonLoading('import-btn', 'Extracting...', 'Import');
+  const cancelBtn = document.getElementById('import-cancel-btn');
+  if (!button) { importInProgress = false; return; }
+  if (cancelBtn) cancelBtn.disabled = true;
+  textarea.disabled = true;
+
+  try {
+    button.innerHTML = '<span class="spin">⟳</span> Extracting fields...';
+    const response = await fetch(IMPORT_TEXT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Import failed');
+
+    button.innerHTML = '<span class="spin">⟳</span> Fit-checking...';
+    showToast(`Imported: ${data.title || data.job_id}`);
+    closeImportModal();
+    await refreshJobs('fit');
+    showToast('Import complete ✓');
+  } catch (error) {
+    showToast(`Import failed: ${error.message}`, true);
+  } finally {
+    resetButton(button, 'Import');
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (textarea) textarea.disabled = false;
+    importInProgress = false;
+  }
+}
+
+export function openImportModal() {
+  const overlay = document.getElementById('import-overlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+export function closeImportModal() {
+  const overlay = document.getElementById('import-overlay');
+  const textarea = document.getElementById('import-textarea');
+  if (overlay) overlay.classList.remove('open');
+  if (textarea) textarea.value = '';
 }

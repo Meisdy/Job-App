@@ -9,6 +9,7 @@ const CONFIG_POST_URL = '/api/config';
 const PROFILE_GET_URL = '/api/profile';
 const PROFILE_SAVE_URL = '/api/profile/save';
 const FITCHECK_URL = '/api/fitcheck';
+const IMPORT_TEXT_URL = '/api/jobs/import-text';
 
 // Personal Skill Preferences
 // Dashed blue — curious / would enjoy learning (no point effect)
@@ -34,5 +35,6 @@ export {
   AVOID_SKILLS,
   PROFILE_GET_URL,
   PROFILE_SAVE_URL,
-  FITCHECK_URL
+  FITCHECK_URL,
+  IMPORT_TEXT_URL
 };
