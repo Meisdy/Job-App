@@ -5,7 +5,7 @@ header {
   padding:0 20px;
   background:var(--surface);
   border-bottom:1px solid var(--border);
-  gap:16px;
+  gap:8px;
   flex-shrink:0;
   position:relative;
 }
