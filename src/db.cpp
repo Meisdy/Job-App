@@ -28,6 +28,22 @@ namespace {
         sqlite3_finalize(stmt);
     }
 
+    bool column_exists(sqlite3* db, const std::string& table, const std::string& col) {
+        sqlite3_stmt* stmt;
+        std::string sql = "PRAGMA table_info(" + table + ")";
+        int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) return false;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            const char* name = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+            if (name && col == std::string(name)) {
+                sqlite3_finalize(stmt);
+                return true;
+            }
+        }
+        sqlite3_finalize(stmt);
+        return false;
+    }
+
     void exec_query(sqlite3* db, const std::string& sql, const std::function<void(sqlite3_stmt*)> &callback, const std::vector<std::string>& params = {}) {
         sqlite3_stmt* stmt;
         int rc = sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr);
@@ -242,12 +258,12 @@ void db_v2_init(sqlite3* db) {
 }
 
 void db_v2_ensure_tables(sqlite3* db) {
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_score INTEGER;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_label TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_summary TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;"); } catch (...) {}
-    try { exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;"); } catch (...) {}
+    if (!column_exists(db, "jobs", "fit_score"))      exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_score INTEGER;");
+    if (!column_exists(db, "jobs", "fit_label"))      exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_label TEXT;");
+    if (!column_exists(db, "jobs", "fit_summary"))   exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_summary TEXT;");
+    if (!column_exists(db, "jobs", "fit_reasoning")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;");
+    if (!column_exists(db, "jobs", "fit_checked_at")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;");
+    if (!column_exists(db, "jobs", "fit_profile_hash")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;");
 }
 
 void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
