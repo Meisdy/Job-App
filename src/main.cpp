@@ -409,9 +409,24 @@ int main() {
             std::string job_id = body["job_id"];
 
             std::lock_guard<std::mutex> lock(db_write_mutex);
-            if (body.contains("notes"))       update_job_field(db, job_id, "notes", body["notes"]);
-            if (body.contains("user_status")) update_job_field(db, job_id, "user_status", body["user_status"]);
-            if (body.contains("rating"))      update_job_field(db, job_id, "rating", std::to_string(body["rating"].get<int>()));
+            if (body.contains("user_status")) {
+                std::string status = body["user_status"];
+                if (status != "unseen" && status != "interested" && status != "applied" && status != "skipped")
+                    throw std::runtime_error("Invalid user_status: " + status);
+                update_job_field(db, job_id, "user_status", status);
+            }
+            if (body.contains("rating")) {
+                int rating = body["rating"].get<int>();
+                if (rating < 0 || rating > 5)
+                    throw std::runtime_error("Rating must be 0-5, got: " + std::to_string(rating));
+                update_job_field(db, job_id, "rating", std::to_string(rating));
+            }
+            if (body.contains("notes")) {
+                std::string notes = body["notes"];
+                if (notes.size() > 10000)
+                    throw std::runtime_error("Notes too long (max 10000 chars)");
+                update_job_field(db, job_id, "notes", notes);
+            }
 
             res.set_content(json{{"ok", true}}.dump(), "application/json");
         } catch (const std::exception& e) {
@@ -851,7 +866,10 @@ then trigger a profile refresh to update the narrative.*
         try {
             json body = json::parse(req.body);
             std::string content = body.value("content", "");
-            
+
+            if (content.size() > 128 * 1024)
+                throw std::runtime_error("Profile too large (max 128 KB)");
+
             std::string markdownPath = "../config/user_profile.md";
             std::ofstream file(markdownPath);
             if (!file.is_open()) {
