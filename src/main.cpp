@@ -1202,9 +1202,14 @@ then trigger a profile refresh to update the narrative.*
             job.pub_date         = extracted.value("pub_date", "");
             if (job.pub_date.empty()) {
                 std::time_t now = std::time(nullptr);
-                std::tm* tm = std::localtime(&now);
+                std::tm tm_buf{};
+#ifdef _MSC_VER
+                localtime_s(&tm_buf, &now);
+#else
+                localtime_r(&now, &tm_buf);
+#endif
                 char buf[11];
-                std::strftime(buf, sizeof(buf), "%Y-%m-%d", tm);
+                std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_buf);
                 job.pub_date = buf;
             }
             job.end_date         = extracted.value("end_date", "");
