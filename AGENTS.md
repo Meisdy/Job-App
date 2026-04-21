@@ -150,8 +150,7 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 ```json
 {
   "scrape":   { "queries": [...], "rows": 50 },
-  "fitcheck": { "limit": 50, "model": "...", "base_url": "...", "max_tokens": 4000, "temperature": 1.0, "top_p": 0.95, "top_k": 64 },
-  "details":  { "refresh_days": 21 }
+  "fitcheck": { "limit": 50, "model": "...", "endpoint": "...", "max_tokens": 4000, "temperature": 1.0, "top_p": 0.95, "top_k": 64 }
 }
 ```
 

@@ -113,19 +113,10 @@ function renderFitcheckSection(config) {
   return renderSection('Fit-Check (AI)', renderGrid(fields));
 }
 
-function renderDetailsSection(config) {
-  const details = config.details || {};
-  const fields = [
-    renderField('Detail Refresh Days', renderInput('cfg-refresh-days', details.refresh_days ?? 21))
-  ];
-  return renderSection('Details', renderGrid(fields));
-}
-
 export function renderConfigForm(config) {
   return [
     renderScrapeSection(config),
-    renderFitcheckSection(config),
-    renderDetailsSection(config)
+    renderFitcheckSection(config)
   ].join('');
 }
 
@@ -177,10 +168,6 @@ export async function saveSettings() {
       temperature: getFloatValue('cfg-fc-temperature', 1.0),
       top_p:       getFloatValue('cfg-fc-top-p', 0.95),
       top_k:       getIntValue('cfg-fc-top-k', 64)
-    };
-
-    updated.details = {
-      refresh_days: getIntValue('cfg-refresh-days', 21)
     };
 
     const response = await fetch(CONFIG_POST_URL, {

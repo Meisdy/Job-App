@@ -61,7 +61,7 @@ void delete_expired_jobs(sqlite3* db);
 
 // Job queries
 std::vector<JobRecord> get_all_jobs(sqlite3* db);
-std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days);
+std::vector<Job> get_jobs_needing_details(sqlite3* db);
 std::vector<JobRecord> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
 
 // Job updates

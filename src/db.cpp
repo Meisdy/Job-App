@@ -168,7 +168,7 @@ void update_job_details(sqlite3* db, const Job& job) {
     });
 }
 
-std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days) {
+std::vector<Job> get_jobs_needing_details(sqlite3* db) {
     std::vector<Job> jobs;
     const std::string sql = 
         "SELECT job_id, title, company_name, place, zipcode, canton_code, "
@@ -194,7 +194,7 @@ std::vector<Job> get_jobs_needing_details(sqlite3* db, int refresh_days) {
         job.end_date = getColumn(stmt, 10);
         job.template_text = getColumn(stmt, 11);
         jobs.push_back(job);
-    }, {std::to_string(refresh_days)});
+    }, {});
     
     return jobs;
 }

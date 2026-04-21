@@ -1,7 +1,4 @@
 {
-  "details": {
-    "refresh_days": 21
-  },
   "fitcheck": {
     "endpoint": "https://ollama.com/api/chat",
     "limit": 50,

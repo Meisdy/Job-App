@@ -141,10 +141,6 @@ struct ConfigV2 {
     double                   ollama_temperature{};
     double                   ollama_top_p{};
     int                      ollama_top_k{};
-
-    // Details
-    int                      detail_refresh_days{};
-
 };
 
 void validateConfigV2(const json& c) {
@@ -181,7 +177,7 @@ ConfigV2 loadConfigV2() {
     }
 
     if (c.contains("details")) {
-        cfg.detail_refresh_days = c["details"]["refresh_days"].get<int>();
+        cfg.ai_endpoint = c["details"].value("ai_endpoint", "");
     }
 
     return cfg;
@@ -490,13 +486,7 @@ int main() {
     });
 
     server.Post("/api/scrape/details", [&db, &config_v2, &config_v2_mutex, &db_write_mutex](const httplib::Request&, httplib::Response& res) {
-        int refresh_days;
-        {
-            std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-            refresh_days = config_v2.detail_refresh_days;
-        }
-        
-        std::vector<Job> jobs_needing_details = get_jobs_needing_details(db, refresh_days);
+        std::vector<Job> jobs_needing_details = get_jobs_needing_details(db);
         std::cout << "[INFO] Fetching details for " << jobs_needing_details.size() << " jobs" << std::endl;
 
         int updated = 0, failed = 0;

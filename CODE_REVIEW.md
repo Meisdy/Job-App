@@ -52,7 +52,7 @@ No other critical issues found.
 | `src/main.cpp` | `POST /api/profile/save` writes arbitrary-length content to `../config/user_profile.md` with no size limit. Add max-content check (e.g. 64 KB). | ✅ FIXED — 64 KB limit added (`main.cpp:870-871`) |
 | `src/main.cpp` | Admin endpoints (`DELETE /api/admin/jobs/:id`, `POST /api/admin/fitcheck/clear`, `.../recheck`) have no authentication. Any localhost process can mutate data. Add at minimum a static bearer-token check. | Unauthorized access |
 | `src/main.cpp` | `/api/jobs/import-text` uses `std::localtime` (not thread-safe) inside httplib request handlers, which run in a thread pool. Use `localtime_r` or `std::chrono`. | ✅ FIXED — `localtime_r`/`localtime_s` with `_MSC_VER` guard (`main.cpp:1206-1211`) |
-| `src/db.cpp` | `get_jobs_needing_details()` accepts `refresh_days` parameter but never uses it in the SQL query (no `?` placeholder). Passes it to `exec_query` as an unused bound value. Remove dead param or add `WHERE scraped_at < date('now', '-' \|\| ? \|\| ' days')`. | Dead code / logic bug |
+| `src/db.cpp` | `get_jobs_needing_details()` accepts `refresh_days` parameter but never uses it in the SQL query (no `?` placeholder). Passes it to `exec_query` as an unused bound value. Remove dead param or add `WHERE scraped_at < date('now', '-' \|\| ? \|\| ' days')`. | ✅ FIXED — dead param removed; `detail_refresh_days` removed from `ConfigV2`, `config_v2.json`, `modal.js` |
 | `frontend/js/utils/validation.js` | `tokenMatches`: for tokens > 3 chars, bidirectional substring match (`t.includes(skillLabel)`) means a 50-char token matches a 2-char skill label substring (e.g. `"javascript"` matching `"java"`). Use word-boundary or tokenization matching. | False-positive matching |
 
 ### 🟠 Medium
