@@ -56,7 +56,7 @@
 |---|---|---|
 | `src/main.cpp` | `rateLimitSleep()` is called **after** `httpGet` in the `/api/scrape/details` loop (line 512), not before. The first request is un-throttled. Move sleep before the HTTP call. | ✅ FIXED — `rateLimitSleep()` moved before `httpGet` (`main.cpp:512`) |
 | `src/main.cpp` | Duplicate inline JSON request construction in 4 endpoints (batch fitcheck, single fitcheck, admin recheck, import-text fit). Extract a helper to reduce duplication and ease maintenance. | **Open** |
-| `src/main.cpp` | Onboarding endpoint duplicates markdown-block extraction logic (lines 810-825). Re-use or align with `extractJsonFromResponse`. | **Open** |
+| `src/main.cpp` | Onboarding endpoint duplicates markdown-block extraction logic (lines 810-825). Re-use or align with `extractJsonFromResponse`. | ✅ FIXED — extracted `extractBlock` lambda; `extractJsonFromResponse` and onboarding both use it (`main.cpp:622-649`) |
 | `frontend/js/components/actions.js` | `DELETE /api/jobs/{id}` and single-fitcheck `fetch` URLs do not URL-encode `job_id`. Malformed IDs break routing. Use `encodeURIComponent`. | **Open** |
 | `frontend/js/components/job-list.js` | `buildJobItemHtml` injects `job.title`, `job.company_name`, `job.job_id`, `fitInfo.label`, and `secondaryInfo.value` into `innerHTML` without escaping. Apply `escapeHtml()` to all dynamic fields. | **Open** |
 | `frontend/js/components/job-list.js` | `parseEnrichedData` throws an unhandled exception if `job.enriched_data` is a malformed JSON string, crashing the entire render pipeline. Wrap in `try/catch`. | **Open** |

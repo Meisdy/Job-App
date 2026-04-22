@@ -619,11 +619,12 @@ int main() {
         return accumulated;
     };
 
-    auto extractJsonFromResponse = [](const std::string& raw) -> json {
+    auto extractBlock = [](const std::string& raw, const std::string& lang) -> std::string {
         std::string content = raw;
-        size_t start = content.find("```json");
+        std::string open = "```" + lang;
+        size_t start = content.find(open);
         if (start != std::string::npos) {
-            content = content.substr(start + 7);
+            content = content.substr(start + open.size());
             size_t end = content.find("```");
             if (end != std::string::npos) content = content.substr(0, end);
         } else {
@@ -636,7 +637,11 @@ int main() {
         }
         while (!content.empty() && std::isspace(content.front())) content = content.substr(1);
         while (!content.empty() && std::isspace(content.back())) content.pop_back();
+        return content;
+    };
 
+    auto extractJsonFromResponse = [&](const std::string& raw) -> json {
+        std::string content = extractBlock(raw, "json");
         try {
             return json::parse(content);
         } catch (...) {
@@ -650,7 +655,7 @@ int main() {
 
     // ── V2 API ENDPOINTS ───────────────────────────────────────────────────────
 
-    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &ApiKey](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &ApiKey, &extractBlock](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             
@@ -813,25 +818,7 @@ then trigger a profile refresh to update the narrative.*
                 throw std::runtime_error("Empty response from API");
             }
             
-            // Extract markdown from code blocks if present
-            std::string markdownContent = accumulatedResponse;
-            size_t mdStart = markdownContent.find("```markdown");
-            if (mdStart != std::string::npos) {
-                markdownContent = markdownContent.substr(mdStart + 11);
-                size_t mdEnd = markdownContent.find("```");
-                if (mdEnd != std::string::npos) {
-                    markdownContent = markdownContent.substr(0, mdEnd);
-                }
-            } else {
-                size_t start = markdownContent.find("```");
-                if (start != std::string::npos) {
-                    markdownContent = markdownContent.substr(start + 3);
-                    size_t end = markdownContent.find("```");
-                    if (end != std::string::npos) {
-                        markdownContent = markdownContent.substr(0, end);
-                    }
-                }
-            }
+            std::string markdownContent = extractBlock(accumulatedResponse, "markdown");
             
             // Save to file
             std::string markdownPath = base_dir + "/config/user_profile.md";
