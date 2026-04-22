@@ -215,7 +215,7 @@ async function runBackgroundJob(options) {
 }
 
 export async function scrapeJobs() {
-  const button = setButtonLoading('scrape-btn', 'Scraping...', '⊕ Scrape');
+  const button = setButtonLoading('scrape-btn', 'Scraping...', '⊕ Scrape Jobs.ch');
   if (!button) return;
 
   let scrapedCount = 0;
@@ -236,12 +236,12 @@ export async function scrapeJobs() {
     }
 
     setTimeout(async () => {
-      resetButton(button, '⊕ Scrape');
+      resetButton(button, '⊕ Scrape Jobs.ch');
       await refreshJobs('score');
     }, 2000);
   } catch (error) {
     showToast(`Scrape failed: ${error.message}`, true);
-    resetButton(button, '⊕ Scrape');
+    resetButton(button, '⊕ Scrape Jobs.ch');
   }
 }
 
