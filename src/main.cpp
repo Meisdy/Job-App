@@ -509,8 +509,8 @@ int main() {
         int updated = 0, failed = 0;
          for (const auto& job : jobs_needing_details) {
             try {
-                json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + urlEncode(job.job_id)));
                 rateLimitSleep();
+                json detail = json::parse(httpGet("https://www.jobs.ch/api/v1/public/search/job/" + urlEncode(job.job_id)));
 
                 Job updated_job = job_from_json(detail);
                 updated_job.job_id = job.job_id;
