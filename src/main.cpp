@@ -153,7 +153,6 @@ void validateConfigV2(const json& c) {
     };
     require("scrape");
     require("fitcheck");
-    require("details");
 }
 
 ConfigV2 loadConfigV2() {
@@ -177,10 +176,6 @@ ConfigV2 loadConfigV2() {
         cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
         cfg.ollama_top_p = c["fitcheck"].value("top_p", 0.95);
         cfg.ollama_top_k = c["fitcheck"].value("top_k", 64);
-    }
-
-    if (c.contains("details")) {
-        cfg.ai_endpoint = c["details"].value("ai_endpoint", "");
     }
 
     return cfg;
