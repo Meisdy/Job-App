@@ -60,7 +60,7 @@ No other critical issues found.
 | Location | Issue | Risk |
 |---|---|---|
 | `src/main.cpp` | `rateLimitSleep()` is called **after** `httpGet` in the `/api/scrape/details` loop (line 506), not before. The first request is un-throttled. Move sleep before the HTTP call. | Rate-limit evasion |
-| `src/main.cpp` | `httpPostAI` triggers a retry when response body contains the substring `"error"` anywhere (line 120). A valid JSON response containing the word "error" in a field value causes an unnecessary retry. Parse JSON and check top-level `error` key instead. | Waste / false retry |
+| `src/main.cpp` | `httpPostAI` triggers a retry when response body contains the substring `"error"` anywhere (line 120). A valid JSON response containing the word "error" in a field value causes an unnecessary retry. Parse JSON and check top-level `error` key instead. | ✅ FIXED — `hasTopLevelError` lambda parses JSON and checks `j.contains("error"`) (`main.cpp:125-132`) |
 | `src/main.cpp` | Duplicate inline JSON request construction in 4 endpoints (batch fitcheck, single fitcheck, admin recheck, import-text fit). Extract a helper to reduce duplication and ease maintenance. | DRY violation |
 | `src/main.cpp` | Onboarding endpoint duplicates markdown-block extraction logic that is similar to `extractJsonFromResponse`. Re-use or align parsers. | DRY violation |
 | `frontend/js/components/actions.js` | `DELETE /api/jobs/{id}` and single-fitcheck `fetch` URLs do not URL-encode `job_id`. Malformed IDs break routing. Use `encodeURIComponent`. | Routing error |

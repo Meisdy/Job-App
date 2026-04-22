@@ -119,8 +119,16 @@ std::string httpPostAI(const std::string& url, const std::string& apiKey, const 
         "Content-Type: application/json",
         "Authorization: Bearer " + apiKey
     };
+    auto hasTopLevelError = [](const std::string& raw) -> bool {
+        try {
+            json j = json::parse(raw);
+            return j.contains("error");
+        } catch (...) {
+            return true; // Non-JSON (e.g. HTML 5xx) counts as error
+        }
+    };
     std::string response = httpRequest(url, "POST", headers, body, 600L);
-    if (response.empty() || response.find("\"error\"") != std::string::npos) {
+    if (response.empty() || hasTopLevelError(response)) {
         std::cerr << "[WARN] httpPostAI: empty/error response, retrying in 5s..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
         response = httpRequest(url, "POST", headers, body, 600L);
