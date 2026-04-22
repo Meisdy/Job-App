@@ -183,21 +183,4 @@ document.addEventListener('DOMContentLoaded', () => {
   initConsole();
 });
 
-// Expose critical functions to window for fallback
-window.setFilter = setFilter;
-window.toggleSort = toggleSort;
-window.selectJob = selectJob;
-window.setStatus = setStatus;
-window.setExpired = setExpired;
-window.saveNotes = saveNotes;
-window.openSettings = openSettings;
-window.closeSettings = closeSettings;
-window.saveSettings = saveSettings;
-window.scrapeJobs = scrapeJobs;
-window.triggerFitCheck = triggerFitCheck;
-window.openProfile = openProfile;
-window.openImportModal = openImportModal;
-window.closeImportModal = closeImportModal;
-window.toggleConsole = toggleConsole;
-
 export { init, bindEvents };

@@ -71,7 +71,7 @@ No other critical issues found.
 
 | Location | Issue | Risk |
 |---|---|---|
-| `frontend/js/main.js` | 15 `window.*` exports defeat ES6 module encapsulation. `bindEvents()` wires all UI via `addEventListener`; these globals are unused dead code. Remove. | Dead code |
+| `frontend/js/main.js` | 15 `window.*` exports defeat ES6 module encapsulation. `bindEvents()` wires all UI via `addEventListener`; these globals are unused dead code. Remove. | ✅ FIXED — removed all 15 `window.*` assignments (`main.js:186-201`) |
 | `frontend/onboarding.html` | Inline `onclick="prevQuestion()"` / `onclick="nextQuestion()"` inconsistent with main app using `addEventListener`. Switch to `addEventListener`. | Consistency |
 | `CMakeLists.txt` | `src/sqlite3.c` and `include/httplib.h` listed as source files — third-party amalgamations (~250 K lines). Move to `vendor/` or use `find_package`. | Build hygiene |
 | `src/db.cpp` | `db_init` discards `errMsg` on `CREATE TABLE` failure, only logging "create db failed" without details. Include `errMsg` in the exception message. | Debuggability |
