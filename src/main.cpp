@@ -8,6 +8,7 @@
 #include <random>
 #include <mutex>
 #include <shared_mutex>
+#include <filesystem>
 #include <curl/curl.h>
 #include "httplib.h"
 #include "sqlite3.h"
@@ -15,9 +16,11 @@
 #include "db.h"
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
-static const std::string CONFIG_PATH = "../config/config_v2.json";
-static const std::string SYSTEM_PROMPT_PATH = "../config/system_prompt.txt";
+static std::string base_dir;
+static std::string CONFIG_PATH;
+static std::string SYSTEM_PROMPT_PATH;
 
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
@@ -334,9 +337,20 @@ int main() {
     // Initialize curl globalization
     curl_global_init(CURL_GLOBAL_ALL);
 
+    // Resolve project root directory
+    fs::path root = fs::current_path();
+    std::string folder_name = root.filename().string();
+    if (folder_name.rfind("cmake-build-", 0) == 0) {
+        root = root.parent_path();
+    }
+    base_dir = root.string();
+
+    CONFIG_PATH = base_dir + "/config/config_v2.json";
+    SYSTEM_PROMPT_PATH = base_dir + "/config/system_prompt.txt";
+
     std::string ApiKey;
     try {
-        std::ifstream f("../config/api_keys.json");
+        std::ifstream f(base_dir + "/config/api_keys.json");
         json keys = json::parse(f);
         ApiKey = keys.value("api_key", "");
         std::cout << "API keys loaded" << std::endl;
@@ -345,7 +359,7 @@ int main() {
     }
 
     sqlite3* db;
-    if (sqlite3_open("../data/jobs_v2.db", &db) != SQLITE_OK) {
+    if (sqlite3_open((base_dir + "/data/jobs_v2.db").c_str(), &db) != SQLITE_OK) {
         std::cerr << "Cannot open database v2: " << sqlite3_errmsg(db) << std::endl;
         return 1;
     }
@@ -385,7 +399,7 @@ int main() {
     httplib::Server server;
 
     // Serve static files (CSS, JS)
-    server.set_mount_point("/", "../frontend");
+    server.set_mount_point("/", (base_dir + "/frontend").c_str());
     
     // Serve index.html for root path
     server.Get("/", [](const httplib::Request&, httplib::Response& res) {
@@ -552,7 +566,7 @@ int main() {
     // ── V2 SHARED HELPERS ──────────────────────────────────────────────────────
 
     auto loadProfileMarkdown = []() -> std::string {
-        std::string markdownPath = "../config/user_profile.md";
+        std::string markdownPath = base_dir + "/config/user_profile.md";
         std::ifstream file(markdownPath);
         if (!file.is_open()) return "";
         std::string content((std::istreambuf_iterator<char>(file)),
@@ -817,7 +831,7 @@ then trigger a profile refresh to update the narrative.*
             }
             
             // Save to file
-            std::string markdownPath = "../config/user_profile.md";
+            std::string markdownPath = base_dir + "/config/user_profile.md";
             std::ofstream outfile(markdownPath);
             if (!outfile.is_open()) {
                 throw std::runtime_error("Failed to open file: " + markdownPath);
@@ -860,7 +874,7 @@ then trigger a profile refresh to update the narrative.*
             if (content.size() > 128 * 1024)
                 throw std::runtime_error("Profile too large (max 128 KB)");
 
-            std::string markdownPath = "../config/user_profile.md";
+            std::string markdownPath = base_dir + "/config/user_profile.md";
             std::ofstream file(markdownPath);
             if (!file.is_open()) {
                 throw std::runtime_error("Failed to open file: " + markdownPath);
@@ -1212,7 +1226,7 @@ then trigger a profile refresh to update the narrative.*
 
             std::cout << "[INFO] Import: job inserted — " << jobId << " — " << job.title << std::endl;
 
-            std::string profilePath = "../config/user_profile.md";
+            std::string profilePath = base_dir + "/config/user_profile.md";
             std::ifstream profileFile(profilePath);
             if (profileFile.is_open()) {
                 std::string profileContent((std::istreambuf_iterator<char>(profileFile)),
