@@ -47,7 +47,7 @@ No other critical issues found.
 
 | Location | Issue | Risk |
 |---|---|---|
-| `src/main.cpp` | Hardcoded `../config/` and `../data/` paths throughout. If binary runs from another cwd, file I/O silently fails. Derive base path from executable location or accept CLI arg. | Usability / failure |
+| `src/main.cpp` | Hardcoded `../config/` and `../data/` paths throughout. If binary runs from another cwd, file I/O silently fails. Derive base path from executable location or accept CLI arg. | ✅ FIXED — implemented `base_dir` resolution via `std::filesystem::current_path()` with `cmake-build-rework` check (`main.cpp:342-348`) |
 | `src/main.cpp` | `job.job_id` injected into detail fetch URL without encoding: `"https://www.jobs.ch/api/v1/public/search/job/" + job.job_id`. Path traversal / malformed request if ID contains special chars. Use `urlEncode()`. | Injection / fetch fail |
 | `src/main.cpp` | `POST /api/profile/save` writes arbitrary-length content to `../config/user_profile.md` with no size limit. Add max-content check (e.g. 64 KB). | ✅ FIXED — 64 KB limit added (`main.cpp:870-871`) |
 | `src/main.cpp` | Admin endpoints (`DELETE /api/admin/jobs/:id`, `POST /api/admin/fitcheck/clear`, `.../recheck`) have no authentication. Any localhost process can mutate data. Add at minimum a static bearer-token check. | Unauthorized access |
