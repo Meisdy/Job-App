@@ -2,7 +2,7 @@
 set -e
 
 git clone https://github.com/Meisdy/Job-App
-cd job-app
+cd Job-App
 
 cat > config/api_keys.json << 'EOF'
 {
