@@ -19,8 +19,10 @@ using json = nlohmann::json;
 namespace fs = std::filesystem;
 
 static std::string base_dir;
-static std::string CONFIG_PATH;
-static std::string SYSTEM_PROMPT_PATH;
+static std::string s_config_path;
+static std::string s_system_prompt_path;
+static const std::string& configPath() { return s_config_path; }
+static const std::string& systemPromptPath() { return s_system_prompt_path; }
 
 // ── HTTP HELPERS ─────────────────────────────────────────────────────────────
 
@@ -56,7 +58,8 @@ void rateLimitSleep() {
 std::string httpRequest(const std::string& url, const std::string& method,
                         const std::vector<std::string>& headers = {},
                         const std::string& postData = "",
-                        long timeoutSeconds = 120L) {
+                        long timeoutSeconds = 120L,
+                        long* out_status = nullptr) {
     CURL* curl = curl_easy_init();
     std::string response;
     if (curl) {
@@ -84,6 +87,7 @@ std::string httpRequest(const std::string& url, const std::string& method,
         } else {
             long httpCode = 0;
             curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+            if (out_status) *out_status = httpCode;
             if (httpCode >= 400)
                 std::cerr << "[HTTP] " << url << " returned " << httpCode
                           << " — body: " << response.substr(0, 500) << std::endl;
@@ -127,9 +131,11 @@ std::string httpPostAI(const std::string& url, const std::string& apiKey, const 
             return true; // Non-JSON (e.g. HTML 5xx) counts as error
         }
     };
-    std::string response = httpRequest(url, "POST", headers, body, 600L);
-    if (response.empty() || hasTopLevelError(response)) {
-        std::cerr << "[WARN] httpPostAI: empty/error response, retrying in 5s..." << std::endl;
+    long http_status = 0;
+    std::string response = httpRequest(url, "POST", headers, body, 600L, &http_status);
+    const bool is_server_failure = response.empty() || (http_status >= 500 && hasTopLevelError(response));
+    if (is_server_failure) {
+        std::cerr << "[WARN] httpPostAI: empty/server error response, retrying in 5s..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
         response = httpRequest(url, "POST", headers, body, 600L);
     }
@@ -164,27 +170,24 @@ void validateConfigV2(const json& c) {
 }
 
 ConfigV2 loadConfigV2() {
-    std::ifstream file(CONFIG_PATH);
+    std::ifstream file(configPath());
     if (!file.is_open())
         throw std::runtime_error("Could not open config_v2.json");
 
     json c = json::parse(file);
+    validateConfigV2(c);
     ConfigV2 cfg;
 
-    if (c.contains("scrape")) {
-        cfg.scrape_queries = c["scrape"]["queries"].get<std::vector<std::string>>();
-        cfg.scrape_rows = c["scrape"]["rows"].get<int>();
-    }
+    cfg.scrape_queries    = c["scrape"]["queries"].get<std::vector<std::string>>();
+    cfg.scrape_rows       = c["scrape"]["rows"].get<int>();
 
-    if (c.contains("fitcheck")) {
-        cfg.fitcheck_limit = c["fitcheck"]["limit"].get<int>();
-        cfg.ollama_model = c["fitcheck"]["model"].get<std::string>();
-        cfg.ai_endpoint = c["fitcheck"]["endpoint"].get<std::string>();
-        cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
-        cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
-        cfg.ollama_top_p = c["fitcheck"].value("top_p", 0.95);
-        cfg.ollama_top_k = c["fitcheck"].value("top_k", 64);
-    }
+    cfg.fitcheck_limit    = c["fitcheck"]["limit"].get<int>();
+    cfg.ollama_model      = c["fitcheck"]["model"].get<std::string>();
+    cfg.ai_endpoint       = c["fitcheck"]["endpoint"].get<std::string>();
+    cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
+    cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
+    cfg.ollama_top_p      = c["fitcheck"].value("top_p", 0.95);
+    cfg.ollama_top_k      = c["fitcheck"].value("top_k", 64);
 
     return cfg;
 }
@@ -327,14 +330,14 @@ int main() {
     }
     base_dir = root.string();
 
-    CONFIG_PATH = base_dir + "/config/config_v2.json";
-    SYSTEM_PROMPT_PATH = base_dir + "/config/system_prompt.txt";
+    s_config_path = base_dir + "/config/config_v2.json";
+    s_system_prompt_path = base_dir + "/config/system_prompt.txt";
 
-    std::string ApiKey;
+    std::string api_key;
     try {
         std::ifstream f(base_dir + "/config/api_keys.json");
         json keys = json::parse(f);
-        ApiKey = keys.value("api_key", "");
+        api_key = keys.value("api_key", "");
         std::cout << "API keys loaded" << std::endl;
     } catch (const std::exception& e) {
         std::cerr << "[WARN] Could not load API keys: " << e.what() << std::endl;
@@ -361,16 +364,16 @@ int main() {
 
     std::string system_prompt_template;
     {
-        std::ifstream f(SYSTEM_PROMPT_PATH);
+        std::ifstream f(systemPromptPath());
         if (!f.is_open()) {
-            std::cerr << "[ERROR] Cannot open " << SYSTEM_PROMPT_PATH << std::endl;
+            std::cerr << "[ERROR] Cannot open " << systemPromptPath() << std::endl;
             return 1;
         }
         system_prompt_template.assign((std::istreambuf_iterator<char>(f)),
                                        std::istreambuf_iterator<char>());
         if (system_prompt_template.find("{{profile}}") == std::string::npos ||
             system_prompt_template.find("{{jobText}}") == std::string::npos) {
-            std::cerr << "[ERROR] " << SYSTEM_PROMPT_PATH << " missing {{profile}} or {{jobText}} placeholders" << std::endl;
+            std::cerr << "[ERROR] " << systemPromptPath() << " missing {{profile}} or {{jobText}} placeholders" << std::endl;
             return 1;
         }
         std::cout << "System prompt loaded" << std::endl;
@@ -513,7 +516,7 @@ int main() {
 
     server.Get("/api/config", [](const httplib::Request&, httplib::Response& res) {
         try {
-            std::ifstream f(CONFIG_PATH);
+            std::ifstream f(configPath());
             if (!f.is_open()) throw std::runtime_error("Could not open config_v2.json");
             std::string body((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
             res.set_content(body, "application/json");
@@ -528,7 +531,7 @@ int main() {
             json incoming = json::parse(req.body);
             validateConfigV2(incoming);
 
-            std::ofstream f(CONFIG_PATH);
+            std::ofstream f(configPath());
             if (!f.is_open()) throw std::runtime_error("Could not write config_v2.json");
             f << incoming.dump(2);
             f.close();
@@ -634,7 +637,7 @@ int main() {
 
     // ── V2 API ENDPOINTS ───────────────────────────────────────────────────────
 
-    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &ApiKey, &extractBlock](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &api_key, &extractBlock](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             
@@ -644,7 +647,7 @@ int main() {
                 return;
             }
             
-            if (ApiKey.empty()) {
+            if (api_key.empty()) {
                 res.status = 500;
                 res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
                 return;
@@ -766,7 +769,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string response = httpPostAI(ai_endpoint,
-                                            ApiKey, request.dump());
+                                            api_key, request.dump());
             
             // Parse streaming response - accumulate all chunks
             std::string accumulatedResponse;
@@ -859,7 +862,7 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
         std::string markdownPath = "../config/user_profile.md";
         std::ifstream file(markdownPath);
         
@@ -873,7 +876,7 @@ then trigger a profile refresh to update the narrative.*
                             std::istreambuf_iterator<char>());
         file.close();
         
-        if (ApiKey.empty()) {
+        if (api_key.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -925,7 +928,7 @@ then trigger a profile refresh to update the narrative.*
                 if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
                 std::string response = httpPostAI(ai_endpoint,
-                                                ApiKey, request.dump());
+                                                api_key, request.dump());
 
                 std::string accumulated = parseStreamingResponse(response);
                 if (accumulated.empty()) throw std::runtime_error("Empty response from API");
@@ -952,7 +955,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
-    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
         
@@ -969,7 +972,7 @@ then trigger a profile refresh to update the narrative.*
                                    std::istreambuf_iterator<char>());
         file.close();
         
-        if (ApiKey.empty()) {
+        if (api_key.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -1032,7 +1035,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string api_response = httpPostAI(ai_endpoint,
-                                                ApiKey, request.dump());
+                                                api_key, request.dump());
             
             std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
             
@@ -1081,7 +1084,7 @@ then trigger a profile refresh to update the narrative.*
         return ss.str();
     };
 
-    server.Post("/api/jobs/import-text", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db,
+    server.Post("/api/jobs/import-text", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db,
         &generateManualJobId, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::cout << "[INFO] POST /api/jobs/import-text — request received (" << req.body.size() << " bytes)" << std::endl;
@@ -1104,7 +1107,7 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        if (ApiKey.empty()) {
+        if (api_key.empty()) {
             std::cerr << "[ERROR] Import: API key not configured" << std::endl;
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
@@ -1146,7 +1149,7 @@ then trigger a profile refresh to update the narrative.*
             };
             if (ollama_top_k > 0) extractRequest["top_k"] = ollama_top_k;
 
-            std::string extractResponse = httpPostAI(ai_endpoint, ApiKey, extractRequest.dump());
+            std::string extractResponse = httpPostAI(ai_endpoint, api_key, extractRequest.dump());
             std::string accumulated = parseStreamingResponse(extractResponse);
             if (accumulated.empty()) throw std::runtime_error("Empty response from extraction AI");
             std::cout << "[INFO] Import: extraction AI responded (" << accumulated.size() << " chars)" << std::endl;
@@ -1217,7 +1220,7 @@ then trigger a profile refresh to update the narrative.*
                         };
                         if (ollama_top_k > 0) fitRequest["top_k"] = ollama_top_k;
 
-                        std::string fitResponse = httpPostAI(ai_endpoint, ApiKey, fitRequest.dump());
+                        std::string fitResponse = httpPostAI(ai_endpoint, api_key, fitRequest.dump());
                         std::string fitAccumulated = parseStreamingResponse(fitResponse);
                         if (!fitAccumulated.empty()) {
                             try {
@@ -1297,7 +1300,7 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &config_v2_mutex, &ApiKey, &db_write_mutex, &db,
+    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db,
         &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
@@ -1309,7 +1312,7 @@ then trigger a profile refresh to update the narrative.*
             res.set_content(json{{"error", "No profile found"}}.dump(), "application/json");
             return;
         }
-        if (ApiKey.empty()) {
+        if (api_key.empty()) {
             res.status = 500;
             res.set_content(json{{"error", "Ollama API key not configured"}}.dump(), "application/json");
             return;
@@ -1367,7 +1370,7 @@ then trigger a profile refresh to update the narrative.*
             if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
 
             std::string apiResponse = httpPostAI(ai_endpoint,
-                                               ApiKey, request.dump());
+                                               api_key, request.dump());
             std::string accumulated = parseStreamingResponse(apiResponse);
 
             if (accumulated.empty()) {

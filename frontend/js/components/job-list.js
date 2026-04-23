@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { fmtDate, getStatusIcon } from '../utils/formatting.js';
+import { fmtDate, getStatusIcon, escapeHtml } from '../utils/formatting.js';
 import { renderDetail } from './detail.js';
 
 // ============================================================================
@@ -87,10 +87,10 @@ function buildJobItemHtml(job) {
       class="job-item${isActive ? ' active' : ''} status-${status}"
       data-id="${job.job_id}"
     >
-      <div class="ji-title">${job.title || 'Unknown'}</div>
-      <div class="ji-co">${job.company_name || '—'}</div>
+      <div class="ji-title">${escapeHtml(job.title || 'Unknown')}</div>
+      <div class="ji-co">${escapeHtml(job.company_name || '—')}</div>
       <div class="ji-foot">
-        <span class="stag ${fitInfo.cssClass}">${fitInfo.label} | ${fitInfo.score}</span>
+        <span class="stag ${fitInfo.cssClass}">${escapeHtml(fitInfo.label)} | ${fitInfo.score}</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="ji-meta">${job.place || '—'}</span>
           ${getStatusIcon(status)}

@@ -185,7 +185,7 @@ function setupRecheckButton() {
     recheckBtn.innerHTML = '<span class="spin">⟳</span> Checking...';
 
     try {
-      const response = await fetch(`/api/jobs/${state.currentJob.job_id}/fitcheck`, {
+      const response = await fetch(`/api/jobs/${encodeURIComponent(state.currentJob.job_id)}/fitcheck`, {
         method: 'POST'
       });
       const data = await response.json();

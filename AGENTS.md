@@ -47,19 +47,19 @@ Console resolves partial job IDs (last 8 chars) via `state.allJobs` suffix match
 
 ## 🚀 Build System
 
-Build directory is `cmake-build-rework`.
+Build directory is `cmake-build-debug`.
 
 ```bash
 # Incremental build
-cmake --build cmake-build-rework
+cmake --build cmake-build-debug
 
 # Clean build
-rm -rf cmake-build-rework && mkdir cmake-build-rework
-cd cmake-build-rework && cmake .. && cd ..
-cmake --build cmake-build-rework
+rm -rf cmake-build-debug && mkdir cmake-build-debug
+cd cmake-build-debug && cmake .. && cd ..
+cmake --build cmake-build-debug
 
 # Run
-./cmake-build-rework/Job_App
+./cmake-build-debug/Job_App
 # Access at http://localhost:8080
 ```
 
