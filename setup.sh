@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-git clone https://github.com/SandyMeister/job-app.git
+git clone https://github.com/Meisdy/Job-App
 cd job-app
 
 cat > config/api_keys.json << 'EOF'
