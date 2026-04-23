@@ -252,8 +252,8 @@ void db_v2_ensure_tables(sqlite3* db) {
     if (!column_exists(db, "jobs", "fit_profile_hash")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;");
 }
 
-std::string get_job_template_text(sqlite3* db, const std::string& job_id) {
-    std::string result;
+std::optional<std::string> get_job_template_text(sqlite3* db, const std::string& job_id) {
+    std::optional<std::string> result;
     exec_query(db, "SELECT template_text FROM jobs WHERE job_id = ?",
         [&](sqlite3_stmt* stmt) { result = getColumn(stmt, 0); },
         {job_id});

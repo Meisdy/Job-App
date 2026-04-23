@@ -45,6 +45,15 @@
 - `CONFIG_PATH`/`SYSTEM_PROMPT_PATH` mutable globals replaced with `configPath()`/`systemPromptPath()` const getters
 - `ApiKey` renamed to `api_key` throughout `main.cpp` (snake_case per project convention)
 - `AGENTS.md` build dir corrected: `cmake-build-rework` → `cmake-build-debug` (matches CLion default)
+- `buildAiRequest()` helper extracted — 5 duplicate JSON request blocks replaced
+- `get_job_template_text()` added to `db.cpp`/`db.h`; raw sqlite3 calls removed from 2 endpoints; returns `std::optional<std::string>` to distinguish "not found" (404) from "no description" (400)
+- `db_init` errMsg now included in exception message; `sqlite3_free` called on both paths
+- `onboarding.html` inline `onclick` attrs replaced with `addEventListener`
+- CMakeLists.txt header-only files removed from `add_executable`; trailing newline added
+- `modal.js` `renderInput`/`renderTextarea`: `escapeHtml()` applied to all injected values
+- `job-list.js` `buildJobItemHtml`: `escapeHtml()` applied to `data-id`, `job.place`
+- `double ollama_top_k` corrected to `int` in all 5 config snapshot blocks
+- Hardcoded `../config/user_profile.md` replaced with `base_dir + "/config/user_profile.md"` in 3 endpoints
 
 ---
 
@@ -78,10 +87,9 @@
 
 | Severity | Count | Fixed | Remaining |
 |---|---|---|---|
-| 🔴 Critical | 1 | 0 | 1 |
-| 🟡 High | 7 | 5 | 2 |
+| 🟡 High | 7 | 6 | 1 |
 | 🟠 Medium | 9 | 9 | 0 |
 | 🔵 Low | 8 | 8 | 0 |
-| **Total** | **25** | **22** | **3** |
+| **Total** | **24** | **23** | **1** |
 
 **Priority:** Admin endpoint auth (🟡 High — any localhost process can mutate data).

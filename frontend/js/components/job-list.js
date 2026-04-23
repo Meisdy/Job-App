@@ -85,14 +85,14 @@ function buildJobItemHtml(job) {
   return `
     <div
       class="job-item${isActive ? ' active' : ''} status-${status}"
-      data-id="${job.job_id}"
+      data-id="${escapeHtml(job.job_id)}"
     >
       <div class="ji-title">${escapeHtml(job.title || 'Unknown')}</div>
       <div class="ji-co">${escapeHtml(job.company_name || '—')}</div>
       <div class="ji-foot">
         <span class="stag ${fitInfo.cssClass}">${escapeHtml(fitInfo.label)} | ${fitInfo.score}</span>
         <div style="display:flex;align-items:center;gap:6px">
-          <span class="ji-meta">${job.place || '—'}</span>
+          <span class="ji-meta">${escapeHtml(job.place || '—')}</span>
           ${getStatusIcon(status)}
         </div>
       </div>

@@ -760,7 +760,7 @@ then trigger a profile refresh to update the narrative.*
 
             std::string ollama_model, ai_endpoint;
             int ollama_max_tokens;
-            double ollama_temperature, ollama_top_p, ollama_top_k;
+            double ollama_temperature, ollama_top_p; int ollama_top_k;
             {
                 std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
                 ollama_model       = config_v2.ollama_model;
@@ -833,7 +833,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     server.Get("/api/profile", [](const httplib::Request&, httplib::Response& res) {
-        std::string markdownPath = "../config/user_profile.md";
+        std::string markdownPath = base_dir + "/config/user_profile.md";
         std::ifstream file(markdownPath);
         
         if (!file.is_open()) {
@@ -876,7 +876,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
-        std::string markdownPath = "../config/user_profile.md";
+        std::string markdownPath = base_dir + "/config/user_profile.md";
         std::ifstream file(markdownPath);
         
         if (!file.is_open()) {
@@ -898,7 +898,7 @@ then trigger a profile refresh to update the narrative.*
         int fitcheck_limit;
         std::string ollama_model, ai_endpoint;
         int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p, ollama_top_k;
+        double ollama_temperature, ollama_top_p; int ollama_top_k;
         {
             std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
             fitcheck_limit     = config_v2.fitcheck_limit;
@@ -966,7 +966,7 @@ then trigger a profile refresh to update the narrative.*
         std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
         
         // Read profile from markdown file
-        std::string markdownPath = "../config/user_profile.md";
+        std::string markdownPath = base_dir + "/config/user_profile.md";
         std::ifstream file(markdownPath);
         if (!file.is_open()) {
             res.status = 400;
@@ -984,20 +984,20 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        std::string template_text;
+        std::optional<std::string> template_text;
         {
             std::lock_guard<std::mutex> lock(db_write_mutex);
             template_text = get_job_template_text(db, job_id);
         }
 
-        if (template_text.empty()) {
+        if (!template_text) {
             res.status = 404;
-            res.set_content(json{{"error", "Job not found or has no description"}}.dump(), "application/json");
+            res.set_content(json{{"error", "Job not found"}}.dump(), "application/json");
             return;
         }
 
         try {
-            std::string cleaned = cleanTemplateText(template_text);
+            std::string cleaned = cleanTemplateText(*template_text);
             if (cleaned.empty()) {
                 res.status = 400;
                 res.set_content(json{{"error", "Job has no description text"}}.dump(), "application/json");
@@ -1009,7 +1009,7 @@ then trigger a profile refresh to update the narrative.*
 
             std::string ollama_model, ai_endpoint;
             int ollama_max_tokens;
-            double ollama_temperature, ollama_top_p, ollama_top_k;
+            double ollama_temperature, ollama_top_p; int ollama_top_k;
             {
                 std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
                 ollama_model       = config_v2.ollama_model;
@@ -1105,7 +1105,7 @@ then trigger a profile refresh to update the narrative.*
 
         std::string ollama_model, ai_endpoint;
         int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p, ollama_top_k;
+        double ollama_temperature, ollama_top_p; int ollama_top_k;
         {
             std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
             ollama_model       = config_v2.ollama_model;
@@ -1298,21 +1298,21 @@ then trigger a profile refresh to update the narrative.*
             clear_fit_data(db, job_id);
         }
 
-        std::string templateText;
+        std::optional<std::string> templateText;
         {
             std::lock_guard<std::mutex> lock(db_write_mutex);
             templateText = get_job_template_text(db, job_id);
         }
 
-        if (templateText.empty()) {
+        if (!templateText) {
             res.status = 404;
-            res.set_content(json{{"error", "Job not found or has no description"}}.dump(), "application/json");
+            res.set_content(json{{"error", "Job not found"}}.dump(), "application/json");
             return;
         }
 
         std::string ollama_model, ai_endpoint;
         int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p, ollama_top_k;
+        double ollama_temperature, ollama_top_p; int ollama_top_k;
         {
             std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
             ollama_model       = config_v2.ollama_model;
@@ -1324,7 +1324,7 @@ then trigger a profile refresh to update the narrative.*
         }
 
         try {
-            std::string cleaned = cleanTemplateText(templateText);
+            std::string cleaned = cleanTemplateText(*templateText);
             std::string prompt = buildFitcheckPrompt(profile, cleaned);
 
             json request = buildAiRequest(ollama_model, prompt, ollama_max_tokens,
