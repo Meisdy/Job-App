@@ -13,7 +13,8 @@ Build, test, and code-style guidance for agentic coding in the Job-App repositor
 | `config/config_v2.json` | Active scrape & fitcheck config |
 | `config/system_prompt.txt` | LLM prompt template (`{{profile}}`, `{{jobText}}` placeholders) |
 | `config/api_keys.json` | API keys (gitignored) |
-| `config/user_profile.md` | Candidate profile for fit-check (gitignored) |
+| `setup.sh` | One-liner Docker setup (creates `api_keys.json` template) |
+| `Dockerfile` / `docker-compose.yml` | Multi-stage Debian build, mounts `./data` and `./config` |
 | `src/main.cpp` | Server, all API endpoints, config, HTTP helpers |
 | `src/db.cpp` | Database operations (SQLite) |
 | `frontend/index.html` | Main SPA |
@@ -29,7 +30,7 @@ Build, test, and code-style guidance for agentic coding in the Job-App repositor
 - **XSS**: All user/LLM data inserted into `innerHTML` must go through `escapeHtml()` from `formatting.js`
 - **Header Layout**: Logo, status dot, `.search-group` (absolutely centered), profile, settings (left → right). Profile has `margin-left: auto`. Header gap is 8px. No filter buttons in header.
 - **Filter Dropdown**: Lives in `.sb-header` between "Positions" label and `⇅ SCORE` sort button. `#filter-dropdown-btn` triggers `#filter-dropdown-menu` (`.open` class toggle). Open/close wired in `main.js` `bindEvents` (click trigger + document click-outside + Escape key).
-- **Inline onclick handlers exist on `index.html` only**; they call functions imported inside `main.js` (not exposed on `window`).
+- **No inline onclick handlers:** All event wiring is in `main.js` `bindEvents()`. Elements have `id` attributes; handlers attach via `addEventListener`.
 
 ### Admin Console
 
@@ -140,4 +141,4 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 
 ---
 
-*Last updated: 2026-04-23 (removed V1 scoring fields; removed dead skill-matching code)*
+*Last updated: 2026-04-23 (fixed stale build dir; removed V1 scoring fields; removed dead skill-matching code)*

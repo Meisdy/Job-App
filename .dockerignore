@@ -6,3 +6,5 @@ build/
 data/
 config/api_keys.json
 config/user_profile.md
+AGENTS.md
+CODE_REVIEW.md
