@@ -1,5 +1,6 @@
 services:
   job-app:
+    container_name: job-app
     build: .
     ports:
       - "8080:8080"

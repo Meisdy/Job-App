@@ -10,16 +10,8 @@
   },
   "scrape": {
     "queries": [
-      "Embedded Software Engineer",
-      "Robotik Ingenieur",
-      "Test Engineer",
-      "Software Engineer",
-      "Mechatronics Engineer",
-      "Development Engineer",
-      "Embedded Linux",
-      "R&D Engineer",
-      "AI Engineer"
+      "Robotics Engineer"
     ],
-    "rows": 100
+    "rows": 5
   }
 }
