@@ -1373,8 +1373,8 @@ then trigger a profile refresh to update the narrative.*
 
     // ── END V2 API ─────────────────────────────────────────────────────────────
 
-    std::cout << "Server running on http://localhost:8080" << std::endl;
-    server.listen("localhost", 8080);
+    std::cout << "Server running on http://0.0.0.0:8080" << std::endl;
+    server.listen("0.0.0.0", 8080);
     sqlite3_close(db);
     
     // Cleanup curl globalization
