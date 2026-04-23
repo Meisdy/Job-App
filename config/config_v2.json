@@ -1,7 +1,7 @@
 {
   "fitcheck": {
     "endpoint": "https://ollama.com/api/chat",
-    "limit": 50,
+    "limit": 10,
     "max_tokens": 4000,
     "model": "gemma4:31b-cloud",
     "temperature": 0.8,
@@ -12,6 +12,6 @@
     "queries": [
       "Robotics Engineer"
     ],
-    "rows": 5
+    "rows": 10
   }
 }
