@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-sudo apt-get update -qq && sudo apt-get install -y unzip > /dev/null
+if ! command -v unzip &> /dev/null; then
+  sudo apt-get update -qq && sudo apt-get install -y unzip > /dev/null
+fi
 
 if ! command -v docker &> /dev/null; then
   curl -fsSL https://get.docker.com | sudo sh
