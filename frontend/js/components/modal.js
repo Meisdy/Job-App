@@ -1,6 +1,7 @@
 import state from '../state.js';
 import { CONFIG_GET_URL, CONFIG_POST_URL } from '../api.js';
 import { showToast } from './actions.js';
+import { escapeHtml } from '../utils/formatting.js';
 
 let rawConfig = null;
 
@@ -74,11 +75,11 @@ function renderField(label, inputHtml) {
 
 function renderTextarea(id, value, options = {}) {
   const { minHeight = '60px', placeholder = '' } = options;
-  return `<textarea class="cfg-textarea" id="${id}" placeholder="${placeholder}" style="min-height:${minHeight}">${value}</textarea>`;
+  return `<textarea class="cfg-textarea" id="${id}" placeholder="${escapeHtml(placeholder)}" style="min-height:${minHeight}">${escapeHtml(String(value))}</textarea>`;
 }
 
 function renderInput(id, value, type = 'number') {
-  return `<input class="cfg-input" id="${id}" type="${type}" value="${value}">`;
+  return `<input class="cfg-input" id="${id}" type="${type}" value="${escapeHtml(String(value))}">`;
 }
 
 function renderGrid(fields) {

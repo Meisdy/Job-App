@@ -1,6 +1,6 @@
 # Code Review: Job-App
 
-**Date:** 2026-04-21
+**Date:** 2026-04-23
 **Reviewer:** Full-project audit (C++ backend, frontend JS/CSS/HTML, config)
 **Scope:** All source files per `AGENTS.md` architecture
 
@@ -38,6 +38,13 @@
 - `window.*` dead exports removed from `main.js`
 - `POST /api/profile/save` 64 KB size limit added (`main.cpp:870-871`)
 - Config save regression fixed: removed stale `require("details")` in `validateConfigV2` (`main.cpp:154`)
+- `escapeHtml()` applied to `job.title`, `job.company_name`, `fitInfo.label` in `buildJobItemHtml` (`job-list.js`)
+- `encodeURIComponent` applied to `job_id` in DELETE (`actions.js`) and single fitcheck (`detail.js`) fetch URLs
+- `httpPostAI` retry no longer fires on 4xx (e.g. 429 rate-limit); only retries on empty response or HTTP 5xx
+- `loadConfigV2` now calls `validateConfigV2` at parse time; removed dead `if (c.contains(...))` guards
+- `CONFIG_PATH`/`SYSTEM_PROMPT_PATH` mutable globals replaced with `configPath()`/`systemPromptPath()` const getters
+- `ApiKey` renamed to `api_key` throughout `main.cpp` (snake_case per project convention)
+- `AGENTS.md` build dir corrected: `cmake-build-rework` → `cmake-build-debug` (matches CLion default)
 
 ---
 
@@ -53,26 +60,17 @@
 
 | Location | Issue | Status |
 |---|---|---|
-| `src/main.cpp` | `rateLimitSleep()` is called **after** `httpGet` in the `/api/scrape/details` loop (line 512), not before. The first request is un-throttled. Move sleep before the HTTP call. | ✅ FIXED — `rateLimitSleep()` moved before `httpGet` (`main.cpp:512`) |
-| `src/main.cpp` | Duplicate inline JSON request construction in 4 endpoints (batch fitcheck, single fitcheck, admin recheck, import-text fit). Extract a helper to reduce duplication and ease maintenance. | **Open** |
-| `src/main.cpp` | Onboarding endpoint duplicates markdown-block extraction logic (lines 810-825). Re-use or align with `extractJsonFromResponse`. | ✅ FIXED — extracted `extractBlock` lambda; `extractJsonFromResponse` and onboarding both use it (`main.cpp:622-649`) |
-| `src/main.cpp` | `validateConfigV2` required `"scrape"`/`"fitcheck"` keys but `loadConfigV2` guarded both blocks with `if (c.contains(...))`, making validation dead code at load time. | ✅ FIXED — `loadConfigV2` now calls `validateConfigV2(c)` and removes the guards |
-| `src/main.cpp` | `httpPostAI` retried on any top-level `"error"` key, including 4xx responses (e.g. 429 rate-limit). | ✅ FIXED — retry only on empty response or HTTP 5xx; 4xx responses are not retried |
-| `frontend/js/components/actions.js` | `DELETE /api/jobs/{id}` and single-fitcheck `fetch` URLs do not URL-encode `job_id`. Malformed IDs break routing. Use `encodeURIComponent`. | ✅ FIXED — `encodeURIComponent` applied in `actions.js:131` and `detail.js:188` |
-| `frontend/js/components/job-list.js` | `buildJobItemHtml` injects `job.title`, `job.company_name`, `fitInfo.label` into `innerHTML` without escaping. Apply `escapeHtml()` to all dynamic fields. | ✅ FIXED — `escapeHtml()` applied to all three fields; `escapeHtml` imported from `formatting.js` |
-| `frontend/js/components/job-list.js` | `parseEnrichedData` throws an unhandled exception if `job.enriched_data` is a malformed JSON string, crashing the entire render pipeline. Wrap in `try/catch`. | ✅ RESOLVED — `parseEnrichedData` no longer exists in `job-list.js` (removed during V2 migration) |
+| `src/main.cpp` | Duplicate inline JSON request construction in 4 endpoints (batch fitcheck, single fitcheck, admin recheck, import-text fit). Extract a helper to reduce duplication and ease maintenance. | ✅ FIXED — `buildAiRequest()` free function extracted; all 5 call sites replaced |
 
 ### 🔵 Low
 
 | Location | Issue | Status |
 |---|---|---|
-| `frontend/onboarding.html` | Inline `onclick="prevQuestion()"` / `onclick="nextQuestion()"` inconsistent with main app using `addEventListener`. Switch to `addEventListener`. | **Open** |
-| `CMakeLists.txt` | `src/sqlite3.c` and `include/httplib.h` listed as source files — third-party amalgamations (~250 K lines). Move to `vendor/` or use `find_package`. | **Open** |
-| `src/db.cpp` | `db_init` discards `errMsg` on `CREATE TABLE` failure, only logging "create db failed" without details. Include `errMsg` in the exception message. | **Open** |
-| `src/main.cpp` | `ApiKey` variable uses `PascalCase`. Per AGENTS.md C++ naming, locals should be `snake_case` (`api_key`). | ✅ FIXED — renamed to `api_key` throughout `main.cpp` |
-| `src/main.cpp` | `CONFIG_PATH`/`SYSTEM_PROMPT_PATH` were mutable globals set once at startup. Added `configPath()`/`systemPromptPath()` const getters; backing vars renamed `s_config_path`/`s_system_prompt_path`. | ✅ FIXED |
-| `src/main.cpp` | `/api/jobs/:id/fitcheck` endpoint directly calls `sqlite3_prepare_v2`/`sqlite3_bind_text` instead of using DB abstraction (`db.cpp`). Breaks separation of concerns. | **Open** |
-| `frontend/js/components/modal.js` | `renderInput` and `renderTextarea` inject config values into HTML attributes/content without escaping. Low risk because config is server-controlled, but inconsistent with XSS hardening elsewhere. | **Open** |
+| `frontend/onboarding.html` | Inline `onclick="prevQuestion()"` / `onclick="nextQuestion()"` inconsistent with main app using `addEventListener`. Switch to `addEventListener`. | ✅ FIXED — all `onclick` attrs removed; wired via `addEventListener` in script |
+| `CMakeLists.txt` | `src/sqlite3.c` and `include/httplib.h` listed as source files — third-party amalgamations (~250 K lines). Move to `vendor/` or use `find_package`. | ✅ FIXED — header-only files removed from `add_executable`; only compiled sources remain |
+| `src/db.cpp` | `db_init` discards `errMsg` on `CREATE TABLE` failure, only logging "create db failed" without details. Include `errMsg` in the exception message. | ✅ FIXED — `errMsg` included in exception message; `sqlite3_free` called on both paths |
+| `src/main.cpp` | `/api/jobs/:id/fitcheck` and `/api/admin/fitcheck/recheck/:id` directly call `sqlite3_prepare_v2`/`sqlite3_bind_text`. Breaks separation of concerns. | ✅ FIXED — `get_job_template_text()` added to `db.cpp`/`db.h`; both endpoints use it |
+| `frontend/js/components/modal.js` | `renderInput` and `renderTextarea` inject config values into HTML attributes/content without escaping. Low risk because config is server-controlled, but inconsistent with XSS hardening elsewhere. | ✅ FIXED — `escapeHtml()` applied to all injected values in both functions |
 
 ---
 
@@ -82,8 +80,8 @@
 |---|---|---|---|
 | 🔴 Critical | 1 | 0 | 1 |
 | 🟡 High | 7 | 5 | 2 |
-| 🟠 Medium | 9 | 7 | 2 |
-| 🔵 Low | 8 | 6 | 2 |
-| **Total** | **25** | **18** | **7** |
+| 🟠 Medium | 9 | 9 | 0 |
+| 🔵 Low | 8 | 8 | 0 |
+| **Total** | **25** | **22** | **3** |
 
-**Priority:** Admin endpoint auth. Then raw SQLite in `/api/jobs/:id/fitcheck`. Then `modal.js` config escaping.
+**Priority:** Admin endpoint auth (🟡 High — any localhost process can mutate data).

@@ -155,15 +155,15 @@
       <p class="question-subtitle" id="question-subtitle"></p>
       <textarea id="answer-input" placeholder="Type your answer here..."></textarea>
       <div class="button-row">
-        <button class="btn-secondary" id="prev-btn" onclick="prevQuestion()" style="display:none">Previous</button>
-        <button class="btn-primary" id="next-btn" onclick="nextQuestion()">Next</button>
+        <button class="btn-secondary" id="prev-btn" style="display:none">Previous</button>
+        <button class="btn-primary" id="next-btn">Next</button>
       </div>
     </div>
     
     <div class="complete-screen" id="complete-screen">
       <h2>✅ Profile Complete!</h2>
       <p>Your profile has been generated. Check /config/user_profile.md to view or edit.</p>
-      <button class="btn-primary" onclick="goToDashboard()">Go to Dashboard</button>
+      <button class="btn-primary" id="go-dashboard-btn">Go to Dashboard</button>
     </div>
     
     <div class="complete-screen" id="loading-screen" style="display: none;">
@@ -295,6 +295,10 @@
     function goToDashboard() {
       window.location.href = '/';
     }
+
+    document.getElementById('prev-btn').addEventListener('click', prevQuestion);
+    document.getElementById('next-btn').addEventListener('click', nextQuestion);
+    document.getElementById('go-dashboard-btn').addEventListener('click', goToDashboard);
 
     init();
   </script>

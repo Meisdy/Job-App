@@ -142,6 +142,19 @@ std::string httpPostAI(const std::string& url, const std::string& apiKey, const 
     return response;
 }
 
+json buildAiRequest(const std::string& model, const std::string& prompt,
+                    int max_tokens, double temperature, double top_p, int top_k) {
+    json req = {
+        {"model", model},
+        {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
+        {"max_tokens", max_tokens},
+        {"temperature", temperature},
+        {"top_p", top_p},
+        {"response_format", {{"type", "json_object"}}}
+    };
+    if (top_k > 0) req["top_k"] = top_k;
+    return req;
+}
 
 // ── CONFIG ───────────────────────────────────────────────────────────────────
 
@@ -917,15 +930,8 @@ then trigger a profile refresh to update the narrative.*
 
                 std::string prompt = buildFitcheckPrompt(content, cleaned);
 
-                json request = {
-                    {"model", ollama_model},
-                    {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
-                    {"max_tokens", ollama_max_tokens},
-                    {"temperature", ollama_temperature},
-                    {"top_p", ollama_top_p},
-                    {"response_format", {{"type", "json_object"}}}
-                };
-                if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
+                json request = buildAiRequest(ollama_model, prompt, ollama_max_tokens,
+                                              ollama_temperature, ollama_top_p, ollama_top_k);
 
                 std::string response = httpPostAI(ai_endpoint,
                                                 api_key, request.dump());
@@ -978,30 +984,20 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        // Get the specific job
-        JobRecord job;
+        std::string template_text;
         {
             std::lock_guard<std::mutex> lock(db_write_mutex);
-            sqlite3_stmt* stmt;
-            const std::string sql = "SELECT template_text FROM jobs WHERE job_id = ?";
-            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
-                if (sqlite3_step(stmt) == SQLITE_ROW) {
-                    job.job_id = job_id;
-                    job.template_text = getColumn(stmt, 0);
-                }
-                sqlite3_finalize(stmt);
-            }
+            template_text = get_job_template_text(db, job_id);
         }
 
-        if (job.job_id.empty() || job.template_text.empty()) {
+        if (template_text.empty()) {
             res.status = 404;
             res.set_content(json{{"error", "Job not found or has no description"}}.dump(), "application/json");
             return;
         }
 
         try {
-            std::string cleaned = cleanTemplateText(job.template_text);
+            std::string cleaned = cleanTemplateText(template_text);
             if (cleaned.empty()) {
                 res.status = 400;
                 res.set_content(json{{"error", "Job has no description text"}}.dump(), "application/json");
@@ -1024,15 +1020,8 @@ then trigger a profile refresh to update the narrative.*
                 ollama_top_k       = config_v2.ollama_top_k;
             }
 
-            json request = {
-                {"model", ollama_model},
-                {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
-                {"max_tokens", ollama_max_tokens},
-                {"temperature", ollama_temperature},
-                {"top_p", ollama_top_p},
-                {"response_format", {{"type", "json_object"}}}
-            };
-            if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
+            json request = buildAiRequest(ollama_model, prompt, ollama_max_tokens,
+                                          ollama_temperature, ollama_top_p, ollama_top_k);
 
             std::string api_response = httpPostAI(ai_endpoint,
                                                 api_key, request.dump());
@@ -1139,15 +1128,8 @@ then trigger a profile refresh to update the narrative.*
 
         try {
             std::cout << "[INFO] Import: calling AI to extract fields..." << std::endl;
-            json extractRequest = {
-                {"model", ollama_model},
-                {"messages", json::array({{{"role", "user"}, {"content", extractPrompt}}})},
-                {"max_tokens", ollama_max_tokens},
-                {"temperature", 0.3},
-                {"top_p", ollama_top_p},
-                {"response_format", {{"type", "json_object"}}}
-            };
-            if (ollama_top_k > 0) extractRequest["top_k"] = ollama_top_k;
+            json extractRequest = buildAiRequest(ollama_model, extractPrompt, ollama_max_tokens,
+                                                  0.3, ollama_top_p, ollama_top_k);
 
             std::string extractResponse = httpPostAI(ai_endpoint, api_key, extractRequest.dump());
             std::string accumulated = parseStreamingResponse(extractResponse);
@@ -1210,15 +1192,8 @@ then trigger a profile refresh to update the narrative.*
                     std::string cleaned = cleanTemplateText(job.template_text);
                     if (!cleaned.empty()) {
                         std::string fitPrompt = buildFitcheckPrompt(profileContent, cleaned);
-                        json fitRequest = {
-                            {"model", ollama_model},
-                            {"messages", json::array({{{"role", "user"}, {"content", fitPrompt}}})},
-                            {"max_tokens", ollama_max_tokens},
-                            {"temperature", ollama_temperature},
-                            {"top_p", ollama_top_p},
-                            {"response_format", {{"type", "json_object"}}}
-                        };
-                        if (ollama_top_k > 0) fitRequest["top_k"] = ollama_top_k;
+                        json fitRequest = buildAiRequest(ollama_model, fitPrompt, ollama_max_tokens,
+                                                        ollama_temperature, ollama_top_p, ollama_top_k);
 
                         std::string fitResponse = httpPostAI(ai_endpoint, api_key, fitRequest.dump());
                         std::string fitAccumulated = parseStreamingResponse(fitResponse);
@@ -1326,14 +1301,7 @@ then trigger a profile refresh to update the narrative.*
         std::string templateText;
         {
             std::lock_guard<std::mutex> lock(db_write_mutex);
-            sqlite3_stmt* stmt;
-            const std::string sql = "SELECT template_text FROM jobs WHERE job_id = ?";
-            if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                sqlite3_bind_text(stmt, 1, job_id.c_str(), -1, SQLITE_TRANSIENT);
-                if (sqlite3_step(stmt) == SQLITE_ROW)
-                    templateText = getColumn(stmt, 0);
-                sqlite3_finalize(stmt);
-            }
+            templateText = get_job_template_text(db, job_id);
         }
 
         if (templateText.empty()) {
@@ -1359,15 +1327,8 @@ then trigger a profile refresh to update the narrative.*
             std::string cleaned = cleanTemplateText(templateText);
             std::string prompt = buildFitcheckPrompt(profile, cleaned);
 
-            json request = {
-                {"model", ollama_model},
-                {"messages", json::array({{{"role", "user"}, {"content", prompt}}})},
-                {"max_tokens", ollama_max_tokens},
-                {"temperature", ollama_temperature},
-                {"top_p", ollama_top_p},
-                {"response_format", {{"type", "json_object"}}}
-            };
-            if (ollama_top_k > 0) request["top_k"] = ollama_top_k;
+            json request = buildAiRequest(ollama_model, prompt, ollama_max_tokens,
+                                          ollama_temperature, ollama_top_p, ollama_top_k);
 
             std::string apiResponse = httpPostAI(ai_endpoint,
                                                api_key, request.dump());

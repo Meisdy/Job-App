@@ -141,9 +141,11 @@ void db_init(sqlite3 *db) {
         );
     )", nullptr, nullptr, &errMsg);
     if (rc != SQLITE_OK) {
-        throw std::runtime_error("create db failed");
+        std::string msg = errMsg ? errMsg : "unknown error";
+        sqlite3_free(errMsg);
+        throw std::runtime_error("create db failed: " + msg);
     }
-
+    sqlite3_free(errMsg);
 }
 
 void update_job_details(sqlite3* db, const Job& job) {
@@ -248,6 +250,14 @@ void db_v2_ensure_tables(sqlite3* db) {
     if (!column_exists(db, "jobs", "fit_reasoning")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_reasoning TEXT;");
     if (!column_exists(db, "jobs", "fit_checked_at")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_checked_at TEXT;");
     if (!column_exists(db, "jobs", "fit_profile_hash")) exec_write(db, "ALTER TABLE jobs ADD COLUMN fit_profile_hash TEXT;");
+}
+
+std::string get_job_template_text(sqlite3* db, const std::string& job_id) {
+    std::string result;
+    exec_query(db, "SELECT template_text FROM jobs WHERE job_id = ?",
+        [&](sqlite3_stmt* stmt) { result = getColumn(stmt, 0); },
+        {job_id});
+    return result;
 }
 
 void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,

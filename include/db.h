@@ -55,6 +55,7 @@ void delete_expired_jobs(sqlite3* db);
 std::vector<JobRecord> get_all_jobs(sqlite3* db);
 std::vector<Job> get_jobs_needing_details(sqlite3* db);
 std::vector<JobRecord> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
+std::string get_job_template_text(sqlite3* db, const std::string& job_id);
 
 // Job updates
 void update_job_details(sqlite3* db, const Job& job);
