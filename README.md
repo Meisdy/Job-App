@@ -4,7 +4,7 @@ C++ backend + vanilla JS frontend for scraping, tracking, and AI-fit-checking jo
 
 ## Quick start
 
-**Requires Docker.**
+**Requires WSL2 (Ubuntu) and Docker.**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
@@ -13,24 +13,46 @@ curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | ba
 Then edit `Job-App/config/api_keys.json`, replace `YOUR_API_KEY_HERE` with your real key, and restart:
 
 ```bash
-cd Job-App
+cd ~/Job-App
 docker compose restart
 ```
 
 Open http://localhost:8080 and complete onboarding.
 
-Config and database live on the host (`./config`, `./data`) — no image rebuild needed for config changes.
+Config and database live on the host (`./config`, `./data`) — no rebuild needed for config changes.
 
-**Local build:**
+## Starting the app
+
+WSL does not auto-start Docker or containers on boot. Each time you open WSL, run:
 
 ```bash
-sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-openssl-dev
+sudo service docker start
+cd ~/Job-App && docker compose up -d
+```
 
-rm -rf cmake-build-debug && mkdir cmake-build-debug
-cd cmake-build-debug && cmake .. && cd ..
-cmake --build cmake-build-debug
+To make this automatic on every WSL login, add these lines to `~/.bashrc`:
 
-./cmake-build-debug/Job_App
+```bash
+sudo service docker start 2>/dev/null
+cd ~/Job-App && docker compose up -d 2>/dev/null
+```
+
+## Updating to a new version
+
+For any update (code or config changes):
+
+```bash
+cd ~/Job-App
+docker compose up --build -d
+```
+
+Your data and config are never affected — they live on the host, not inside the container.
+
+## Logs
+
+```bash
+cd ~/Job-App
+sudo docker compose logs -f
 ```
 
 ## How it works
@@ -52,16 +74,18 @@ Open the app, click **Scrape**, then **Fit-Check**.
 | `config/system_prompt.txt` | Fit-check prompt template (`{{profile}}`, `{{jobText}}`) |
 | `config/api_keys.json` | API key (gitignored) |
 
+## Admin console
 
-## Logs
+Toggle with `Ctrl+\` in the browser. Allows simple DB operations — use `help` for available commands.
+
+## Local build (no Docker)
 
 ```bash
-cd ~/Job-App
-sudo docker compose logs -f
+sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-openssl-dev
+
+rm -rf cmake-build-debug && mkdir cmake-build-debug
+cd cmake-build-debug && cmake .. && cd ..
+cmake --build cmake-build-debug
+
+./cmake-build-debug/Job_App
 ```
-
-## Manually change DB entries
-
-- Admin console toggles with `Ctrl+\` in the browser.
-- Allows for simple DB operations, has commands and help functions
-
