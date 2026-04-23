@@ -4,29 +4,22 @@ C++ backend + vanilla JS frontend for scraping, tracking, and AI-fit-checking jo
 
 ## Quick start
 
-**Docker (recommended)**
-
-One-liner (`setup.sh` creates the API key template, builds the image, and starts the container):
+**Requires Docker.**
 
 ```bash
-bash setup.sh
-# Edit config/api_keys.json with your real key, then restart:
+curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
+```
+
+Then edit `Job-App/config/api_keys.json`, replace `YOUR_API_KEY_HERE` with your real key, and restart:
+
+```bash
+cd Job-App
 docker compose restart
-# http://localhost:8080
 ```
 
-Or set up manually:
+Open http://localhost:8080 and complete onboarding.
 
-```bash
-mkdir -p data
-cat > config/api_keys.json << 'EOF'
-{ "api_key": "YOUR_KEY" }
-EOF
-docker compose up --build -d
-# http://localhost:8080
-```
-
-Config edits and database changes live on the host (`./config` and `./data` are mounted), so no image rebuild is needed for routine adjustments.
+Config and database live on the host (`./config`, `./data`) — no image rebuild needed for config changes.
 
 **Local build:**
 
