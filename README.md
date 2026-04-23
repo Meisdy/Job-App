@@ -78,6 +78,29 @@ Open the app, click **Scrape**, then **Fit-Check**.
 
 Toggle with `Ctrl+\` in the browser. Allows simple DB operations — use `help` for available commands.
 
+## Uninstall
+
+Stop and remove the container:
+
+```bash
+cd ~/Job-App
+docker compose down
+```
+
+Remove everything including data:
+
+```bash
+docker compose down
+cd ~
+rm -rf ~/Job-App
+```
+
+Remove container and image:
+
+```bash
+docker compose down --rmi all
+```
+
 ## Local build (no Docker)
 
 ```bash
