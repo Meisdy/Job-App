@@ -1,6 +1,12 @@
 #!/bin/bash
 set -e
 
+if ! command -v docker &> /dev/null; then
+  curl -fsSL https://get.docker.com | sudo sh
+  sudo usermod -aG docker "$USER"
+  exec sg docker "$0"
+fi
+
 curl -fsSL https://github.com/Meisdy/Job-App/archive/refs/heads/master.zip -o Job-App.zip
 unzip -q Job-App.zip
 mv Job-App-master Job-App
