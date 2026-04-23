@@ -1,7 +1,10 @@
 #!/bin/bash
 set -e
 
-git clone https://github.com/Meisdy/Job-App
+curl -fsSL https://github.com/Meisdy/Job-App/archive/refs/heads/master.zip -o Job-App.zip
+unzip -q Job-App.zip
+mv Job-App-master Job-App
+rm Job-App.zip
 cd Job-App
 
 cat > config/api_keys.json << 'EOF'
