@@ -53,6 +53,13 @@ Open the app, click **Scrape**, then **Fit-Check**.
 | `config/api_keys.json` | API key (gitignored) |
 
 
+## Logs
+
+```bash
+cd ~/Job-App
+sudo docker compose logs -f
+```
+
 ## Manually change DB entries
 
 - Admin console toggles with `Ctrl+\` in the browser.

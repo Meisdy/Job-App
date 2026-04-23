@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+sudo apt-get install -y unzip > /dev/null
+
 if ! command -v docker &> /dev/null; then
   curl -fsSL https://get.docker.com | sudo sh
   sudo usermod -aG docker "$USER"
