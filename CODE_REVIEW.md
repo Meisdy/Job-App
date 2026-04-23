@@ -48,7 +48,6 @@
 | Location | Issue | Status |
 |---|---|---|
 | `src/main.cpp` | Admin endpoints (`DELETE /api/admin/jobs/:id`, `POST /api/admin/fitcheck/clear`, `.../recheck`) have no authentication. Any localhost process can mutate data. Add at minimum a static bearer-token check. | **Open** |
-| `frontend/js/utils/validation.js` | `tokenMatches`: for tokens > 3 chars, bidirectional substring match (`t.includes(skillLabel)`) means a 50-char token matches a 2-char skill label substring (e.g. `"javascript"` matching `"java"`). Use word-boundary or tokenization matching. | **Open** |
 
 ### 🟠 Medium
 

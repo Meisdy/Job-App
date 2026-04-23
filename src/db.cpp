@@ -134,16 +134,9 @@ void db_init(sqlite3 *db) {
             publication_end_date     TEXT,
             template_text            TEXT,
             scraped_at               TEXT,
-            enriched_data            TEXT,
-            score                    INTEGER,
-            score_label              TEXT,
-            score_reasons            TEXT,
-            processed_at             TEXT,
             user_status              TEXT,
             rating                   INTEGER,
             notes                    TEXT,
-            matched_skills           TEXT,
-            penalized_skills         TEXT,
             availability_status      TEXT
         );
     )", nullptr, nullptr, &errMsg);
@@ -208,9 +201,8 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
     std::vector<JobRecord> jobs;
     const std::string sql = R"(
         SELECT job_id, title, company_name, place, zipcode, canton_code,
-               employment_grade, application_url, score, score_label,
-               score_reasons, user_status, rating, notes, matched_skills,
-               penalized_skills, enriched_data, availability_status, detail_url,
+               employment_grade, application_url,
+               user_status, rating, notes, availability_status, detail_url,
                initial_publication_date, publication_end_date, fit_score, fit_label,
                fit_summary, fit_reasoning, fit_checked_at, fit_profile_hash,
                template_text
@@ -226,32 +218,24 @@ std::vector<JobRecord> get_all_jobs(sqlite3* db) {
         job.canton_code         = getColumn(stmt, 5);
         job.employment_grade    = sqlite3_column_int(stmt, 6);
         job.application_url     = getColumn(stmt, 7);
-        job.score               = sqlite3_column_int(stmt, 8);
-        job.score_label         = getColumn(stmt, 9);
-        job.score_reasons       = getColumn(stmt, 10);
-        job.user_status         = getColumn(stmt, 11);
-        job.rating              = sqlite3_column_int(stmt, 12);
-        job.notes               = getColumn(stmt, 13);
-        job.matched_skills      = getColumn(stmt, 14);
-        job.penalized_skills    = getColumn(stmt, 15);
-        job.enriched_data       = getColumn(stmt, 16);
-        job.availability_status = getColumn(stmt, 17);
-        job.detail_url          = getColumn(stmt, 18);
-        job.pub_date            = getColumn(stmt, 19);
-        job.end_date            = getColumn(stmt, 20);
-        job.fit_score           = sqlite3_column_int(stmt, 21);
-        job.fit_label           = getColumn(stmt, 22);
-        job.fit_summary         = getColumn(stmt, 23);
-        job.fit_reasoning       = getColumn(stmt, 24);
-        job.fit_checked_at      = getColumn(stmt, 25);
-        job.fit_profile_hash      = getColumn(stmt, 26);
-        job.template_text         = getColumn(stmt, 27);
+        job.user_status         = getColumn(stmt, 8);
+        job.rating              = sqlite3_column_int(stmt, 9);
+        job.notes               = getColumn(stmt, 10);
+        job.availability_status = getColumn(stmt, 11);
+        job.detail_url          = getColumn(stmt, 12);
+        job.pub_date            = getColumn(stmt, 13);
+        job.end_date            = getColumn(stmt, 14);
+        job.fit_score           = sqlite3_column_int(stmt, 15);
+        job.fit_label           = getColumn(stmt, 16);
+        job.fit_summary         = getColumn(stmt, 17);
+        job.fit_reasoning       = getColumn(stmt, 18);
+        job.fit_checked_at      = getColumn(stmt, 19);
+        job.fit_profile_hash    = getColumn(stmt, 20);
+        job.template_text       = getColumn(stmt, 21);
         jobs.push_back(job);
     });
     return jobs;
 }
-
-// ── DB V2 IMPLEMENTATION ──────────────────────────────────────────────────────
 
 void db_v2_init(sqlite3* db) {
     db_v2_ensure_tables(db);

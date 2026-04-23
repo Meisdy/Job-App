@@ -202,42 +202,21 @@ json job_record_to_json(const JobRecord& job) {
     job_json["canton_code"]         = job.canton_code;
     job_json["employment_grade"]    = job.employment_grade;
     job_json["application_url"]     = job.application_url;
-    job_json["score"]               = job.score;
-    job_json["score_label"]         = job.score_label;
-    job_json["score_reasons"]       = job.score_reasons;
     job_json["user_status"]         = job.user_status;
     job_json["rating"]              = job.rating;
     job_json["notes"]               = job.notes;
-    job_json["matched_skills"]      = job.matched_skills;
-    job_json["penalized_skills"]    = job.penalized_skills;
     job_json["availability_status"] = job.availability_status;
     job_json["detail_url"]          = job.detail_url;
     job_json["pub_date"]            = job.pub_date;
     job_json["end_date"]            = job.end_date;
     job_json["template_text"]       = job.template_text;
 
-    // V2 fit-check fields
     job_json["fit_score"]           = job.fit_score;
     job_json["fit_label"]           = job.fit_label;
     job_json["fit_summary"]         = job.fit_summary;
     job_json["fit_reasoning"]       = job.fit_reasoning;
     job_json["fit_checked_at"]      = job.fit_checked_at;
     job_json["fit_profile_hash"]    = job.fit_profile_hash;
-
-    // enriched_data may be double-encoded JSON or empty
-    if (!job.enriched_data.empty()) {
-        try {
-            json outer = json::parse(job.enriched_data);
-            job_json["enriched_data"] = outer.is_string()
-                ? json::parse(outer.get<std::string>()) : outer;
-        } catch (const std::exception& e) { 
-            std::cerr << "[WARN] Failed to parse enriched_data for job " << job.job_id 
-                      << ": " << e.what() << std::endl;
-            job_json["enriched_data"] = nullptr; 
-        }
-    } else {
-        job_json["enriched_data"] = nullptr;
-    }
 
     return job_json;
 }

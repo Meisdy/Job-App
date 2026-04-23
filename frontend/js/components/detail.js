@@ -1,25 +1,10 @@
 import state from '../state.js';
-import { CURIOUS_SKILLS, AVOID_SKILLS } from '../api.js';
 import { fmtDate, escapeHtml } from '../utils/formatting.js';
-import { tokenMatches } from '../utils/validation.js';
 import { setStatus, setExpired, saveNotes, setRating, showToast } from './actions.js';
-import { parseEnrichedData } from './job-list.js';
 
 function buildGoogleMapsUrl(zip, city) {
   const query = encodeURIComponent(`${zip} ${city} Switzerland`);
   return `https://www.google.com/maps/search/?api=1&query=${query}`;
-}
-
-function getRemoteLabel(remoteType) {
-  const labels = { full: 'Remote', hybrid: 'Hybrid', none: 'On-site' };
-  return labels[remoteType] || 'On-site';
-}
-
-function formatSalary(min, max, currency = 'CHF') {
-  if (min && max) return `${currency} ${min.toLocaleString()}–${max.toLocaleString()}`;
-  if (min) return `${currency} ${min.toLocaleString()}+`;
-  if (max) return `Up to ${currency} ${max.toLocaleString()}`;
-  return null;
 }
 
 function generateStarsHtml(rating = 0) {
@@ -28,79 +13,9 @@ function generateStarsHtml(rating = 0) {
     .join('');
 }
 
-function parseSkillsList(jobSkillsString) {
-  return (jobSkillsString || '').split('|').filter(Boolean).map(s => s.toLowerCase());
-}
-
-function getSkillClassification(skillLower, matchedSkills, penalizedSkills) {
-  const isMatched = matchedSkills.some(t => tokenMatches(skillLower, t));
-  const isPenalized = penalizedSkills.some(t => tokenMatches(skillLower, t));
-  const isCurious = !isMatched && !isPenalized && CURIOUS_SKILLS.some(t => tokenMatches(skillLower, t));
-  const isAvoid = !isMatched && !isPenalized && AVOID_SKILLS.some(t => tokenMatches(skillLower, t));
-  
-  return { isMatched, isPenalized, isCurious, isAvoid };
-}
-
-function generateSkillsHtml(skillsArray, matchedSkills, penalizedSkills) {
-  if (!skillsArray || skillsArray.length === 0) return '';
-  
-  return skillsArray.map(skill => {
-    const lower = skill.toLowerCase();
-    const cls = getSkillClassification(lower, matchedSkills, penalizedSkills);
-    
-    let classNames = 'spill2';
-    if (cls.isMatched) classNames += ' match';
-    if (cls.isPenalized) classNames += ' penalty';
-    if (cls.isCurious) classNames += ' curious';
-    if (cls.isAvoid) classNames += ' avoid';
-    
-    return `<span class="${classNames}">${escapeHtml(skill)}</span>`;
-  }).join('');
-}
-
-function generateWorkSplitBar(workSplit) {
-  const { coding_pct = 0, hw_lab_pct = 0, meetings_pct = 0, other_pct = 0 } = workSplit || {};
-  
-  const segments = [
-    { key: 'coding', pct: coding_pct, label: 'Coding' },
-    { key: 'hw', pct: hw_lab_pct, label: 'HW / Lab' },
-    { key: 'meets', pct: meetings_pct, label: 'Meetings' },
-    { key: 'other', pct: other_pct, label: 'Other' }
-  ].filter(s => s.pct > 0);
-  
-  const barHtml = segments.map(s => 
-    `<div class="wsplit-seg ${s.key}" style="width:${s.pct}%"></div>`
-  ).join('');
-  
-  const legendHtml = segments.map(s => 
-    `<div class="wsplit-item"><div class="wsplit-dot ${s.key}"></div><span>${s.label}</span><span class="wsplit-val">${s.pct}%</span></div>`
-  ).join('');
-  
-  const notesHtml = workSplit?.notes ? 
-    `<div style="margin-top:8px;font-size:11px;color:var(--text3)">${workSplit.notes}</div>` : '';
-  
-  return `
-    <div class="wsplit-bar">${barHtml}</div>
-    <div class="wsplit-legend">${legendHtml}</div>
-    ${notesHtml}`;
-}
-
-function generateWorkSplitHtml(workSplit) {
-  if (!workSplit || (!workSplit.coding_pct && !workSplit.hw_lab_pct && !workSplit.meetings_pct && !workSplit.other_pct)) {
-    return '';
-  }
-  return generateWorkSplitBar(workSplit);
-}
-
-function generateResponsibilitiesHtml(responsibilities) {
-  if (!responsibilities || responsibilities.length === 0) return '';
-  const items = responsibilities.map(r => `<li>${escapeHtml(r)}</li>`).join('');
-  return `<ul class="rl">${items}</ul>`;
-}
-
 function getFitVerdict(job) {
-  const score = job.fit_score !== undefined ? job.fit_score : (job.score || 0);
-  const label = job.fit_label || job.score_label || 'Weak';
+  const score = job.fit_score !== undefined ? job.fit_score : 0;
+  const label = job.fit_label || 'Unknown';
   return {
     score,
     label,
@@ -111,12 +26,8 @@ function getFitVerdict(job) {
 function cleanTemplateText(text) {
   if (!text) return '';
 
-  // Step 1: Remove surrounding quotes
   let cleaned = text.replace(/^["']|["']$/g, '');
 
-  // Step 2: Strip HTML tags first — entity-encoded tags (e.g. &lt;script&gt;) are NOT yet
-  // decoded, so this only removes real tags. Stripping before entity-decode prevents the
-  // pattern where &lt;script&gt; survives the tag strip and gets decoded to <script>.
   cleaned = cleaned.replace(/<br\s*\/?>/gi, '\n');
   cleaned = cleaned.replace(/<\/p>/gi, '\n\n');
   cleaned = cleaned.replace(/<\/div>/gi, '\n');
@@ -124,15 +35,12 @@ function cleanTemplateText(text) {
   cleaned = cleaned.replace(/<\/li>/gi, '\n');
   cleaned = cleaned.replace(/<[^>]+>/g, '');
 
-  // Step 3: Decode HTML entities — now safe because real tags are already gone
   const textarea = document.createElement('textarea');
   textarea.innerHTML = cleaned;
   cleaned = textarea.value;
 
-  // Step 4: Strip any tags introduced by entity decoding (e.g. &lt;b&gt; → <b>)
   cleaned = cleaned.replace(/<[^>]+>/g, '');
 
-  // Step 5: Clean up whitespace
   cleaned = cleaned
     .replace(/\n\s*\n\s*\n+/g, '\n\n')
     .replace(/\n[ \t]+/g, '\n')
@@ -145,9 +53,8 @@ function cleanTemplateText(text) {
   return cleaned;
 }
 
-function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain, jobTypeDisplay, salLabel, displayScore, displayLabel, starsHtml) {
+function buildHeader(job, city, mapsUrl, displayScore, displayLabel, starsHtml) {
   const zip = escapeHtml(job.zipcode || '');
-  const remote = data.location?.remote || 'none';
   const detailUrl = /^https?:\/\//.test(job.detail_url || '') ? job.detail_url : '';
   const appUrl = /^https?:\/\//.test(job.application_url || '') ? job.application_url : '';
   const safeJobUrl = detailUrl || appUrl;
@@ -181,21 +88,13 @@ function buildHeader(job, data, city, mapsUrl, remoteLabel, jobLevel, jobDomain,
           ${job.end_date ? `<span class="meta-item expiry">⏱️ ${fmtDate(job.end_date)}</span>` : ''}
           <span class="meta-item job-id">ID: ${escapeHtml(job.job_id.slice(-8))}</span>
         </div>
-
-        <div class="metadata-row">
-          ${jobTypeDisplay ? `<span class="meta-tag type">${escapeHtml(jobTypeDisplay)}</span>` : ''}
-          ${jobLevel ? `<span class="meta-tag level">${escapeHtml(jobLevel)}</span>` : ''}
-          ${jobDomain ? `<span class="meta-tag domain">${escapeHtml(jobDomain)}</span>` : ''}
-          ${remote !== 'none' ? `<span class="meta-tag remote">${escapeHtml(remoteLabel)}</span>` : ''}
-          ${salLabel ? `<span class="meta-tag salary">💰 ${escapeHtml(salLabel)}</span>` : ''}
-        </div>
       </div>
     </div>`;
 }
 
 function buildFitSection(job) {
   if (!job.fit_summary && !job.fit_reasoning) return '';
-  
+
   return `
     <div class="fit-section">
       <div class="section-header">
@@ -209,7 +108,6 @@ function buildFitSection(job) {
 
 function buildTemplateSection(text) {
   if (!text) return '';
-  // text is plain text from cleanTemplateText — escape before HTML injection
   const safe = escapeHtml(text).replace(/\n/g, '<br>');
   return `
     <div class="template-section">
@@ -221,45 +119,16 @@ function buildTemplateSection(text) {
     </div>`;
 }
 
-function buildSecondaryInfo(job, data, redFlags, skillsHtml, workSplitHtml, responsibilitiesHtml) {
+function buildSecondaryInfo(job) {
   return `
     <div class="detail-body">
-      ${redFlags.length ? `
-      <div class="section red-flags">
-        <div class="st" style="color:var(--red)">⚠ Red Flags</div>
-        <div class="redflag-list">
-          ${redFlags.map(f => `<div class="redflag-item">${escapeHtml(f)}</div>`).join('')}
-        </div>
-      </div>` : ''}
-      
       <div class="two-col">
         <div class="col-left">
-          ${skillsHtml ? `
-          <div class="section">
-            <div class="st">Required Skills</div>
-            <div>${skillsHtml}</div>
-          </div>` : ''}
-          
-          ${workSplitHtml ? `
-          <div class="section">
-            <div class="st">Work Split</div>
-            ${workSplitHtml}
-          </div>` : ''}
-          
-          ${responsibilitiesHtml ? `
-          <div class="section">
-            <div class="st">Responsibilities</div>
-            ${responsibilitiesHtml}
-          </div>` : ''}
-          
           <div class="section notes-section">
             <div class="st">Notes</div>
             <textarea class="notes-ta" id="notes-input" placeholder="Your private notes...">${escapeHtml(job.notes || '')}</textarea>
             <button class="save-b" id="save-notes-btn">Save Notes</button>
           </div>
-        </div>
-        
-        <div class="col-right">
         </div>
       </div>
     </div>`;
@@ -268,7 +137,7 @@ function buildSecondaryInfo(job, data, redFlags, skillsHtml, workSplitHtml, resp
 function setupActionBar(status) {
   const actionBar = document.getElementById('action-bar');
   if (!actionBar) return;
-  
+
   actionBar.style.display = 'flex';
   actionBar.innerHTML = `
     <div class="ab-left">
@@ -281,22 +150,20 @@ function setupActionBar(status) {
 }
 
 function setupEventHandlers(status, ratingStars) {
-  // Status buttons
   const bi = document.getElementById('btn-i');
-  const ba = document.getElementById('btn-a');  
+  const ba = document.getElementById('btn-a');
   const bs = document.getElementById('btn-s');
   const be = document.getElementById('btn-e');
-  
+
   if (status === 'interested') bi.classList.add('act');
   if (status === 'applied') ba.classList.add('act');
   if (status === 'skipped') bs.classList.add('act');
-  
+
   bi.onclick = () => setStatus('interested');
   ba.onclick = () => setStatus('applied');
   bs.onclick = () => setStatus('skipped');
   be.onclick = () => setExpired();
-  
-  // Rating stars
+
   const stars = ratingStars.querySelectorAll('.star');
   stars.forEach(star => {
     star.addEventListener('click', () => {
@@ -309,25 +176,25 @@ function setupEventHandlers(status, ratingStars) {
 function setupRecheckButton() {
   const recheckBtn = document.getElementById('recheck-btn');
   if (!recheckBtn) return;
-  
+
   recheckBtn.onclick = async () => {
     if (!state.currentJob || recheckBtn.classList.contains('running')) return;
-    
+
     recheckBtn.disabled = true;
     recheckBtn.classList.add('running');
     recheckBtn.innerHTML = '<span class="spin">⟳</span> Checking...';
-    
+
     try {
       const response = await fetch(`/api/jobs/${state.currentJob.job_id}/fitcheck`, {
         method: 'POST'
       });
       const data = await response.json();
-      
+
       if (response.ok) {
         Object.assign(state.currentJob, data);
         const idx = state.allJobs.findIndex(j => j.job_id === state.currentJob.job_id);
         if (idx !== -1) Object.assign(state.allJobs[idx], data);
-        
+
         renderDetail();
         import('./job-list.js').then(m => m.renderList());
         showToast('Fit-check complete');
@@ -346,47 +213,26 @@ function setupRecheckButton() {
 
 export function renderDetail() {
   const job = state.currentJob;
-  const data = parseEnrichedData(job);
+  if (!job) return;
   const status = job.user_status || 'unseen';
-  
-  const city = data.location?.city || job.place || '';
+
+  const city = job.place || '';
   const mapsUrl = buildGoogleMapsUrl(job.zipcode || '', city);
-  const remote = data.location?.remote || 'none';
-  const salLabel = formatSalary(data.salary?.min, data.salary?.max, data.salary?.currency);
-  
-  const matchedSkills = parseSkillsList(job.matched_skills);
-  const penalizedSkills = parseSkillsList(job.penalized_skills);
-  const skillsHtml = generateSkillsHtml(data.required_skills, matchedSkills, penalizedSkills);
-  const workSplitHtml = generateWorkSplitHtml(data.work_split);
-  
+
   const fitVerdict = getFitVerdict(job);
   const templateText = cleanTemplateText(job.template_text);
-  
   const starsHtml = generateStarsHtml(job.rating);
 
-  document.getElementById('detail-scroll').innerHTML = 
-    buildHeader(
-      job, data, city, mapsUrl, getRemoteLabel(remote), 
-      data.experience?.seniority || data.job_type || '',
-      data.industry_type || data.product || '',
-      data.job_type || '',
-      salLabel,
-      fitVerdict.score,
-      fitVerdict.label,
-      starsHtml
-    ) + 
-    buildFitSection(job) + 
-    buildTemplateSection(templateText) + 
-    buildSecondaryInfo(
-      job, data, data.red_flags || [], 
-      skillsHtml, workSplitHtml, 
-      generateResponsibilitiesHtml(data.responsibilities || [])
-    );
-  
+  document.getElementById('detail-scroll').innerHTML =
+    buildHeader(job, city, mapsUrl, fitVerdict.score, fitVerdict.label, starsHtml) +
+    buildFitSection(job) +
+    buildTemplateSection(templateText) +
+    buildSecondaryInfo(job);
+
   setupActionBar(status);
   setupEventHandlers(status, document.getElementById('badge-rating-stars'));
   setupRecheckButton();
-  
+
   const saveNotesBtn = document.getElementById('save-notes-btn');
   if (saveNotesBtn) saveNotesBtn.onclick = () => saveNotes();
 }

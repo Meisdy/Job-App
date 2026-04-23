@@ -11,7 +11,7 @@ async function init() {
   try {
     const r = await fetch(GET_URL);
     state.allJobs = await r.json();
-    state.allJobs.sort((a, b) => (b.score || 0) - (a.score || 0));
+    state.allJobs.sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0));
     setConnectionStatus('connected');
     updateStats();
     renderList();

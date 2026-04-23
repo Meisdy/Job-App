@@ -57,7 +57,7 @@ export function clearSearch() {
 // ============================================================================
 
 function countByFitLabel(jobs, label) {
-  return jobs.filter(job => (job.fit_label || job.score_label) === label).length;
+  return jobs.filter(job => job.fit_label === label).length;
 }
 
 function countByUserStatus(jobs, status) {

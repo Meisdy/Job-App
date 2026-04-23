@@ -54,7 +54,7 @@ Available commands:
         const status = job.user_status || 'unseen';
         byStatus[status] = (byStatus[status] || 0) + 1;
 
-        const label = job.fit_label || job.score_label || 'none';
+        const label = job.fit_label || 'none';
         byLabel[label] = (byLabel[label] || 0) + 1;
 
         if (job.fit_score !== undefined || job.fit_label) withFit++;

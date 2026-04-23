@@ -26,14 +26,6 @@ struct Job {
 };
 
 struct JobRecord : Job {
-    // V1 scoring fields — kept for display/fallback; no longer written by pipeline
-    int         score {};
-    std::string score_label;
-    std::string score_reasons;
-    std::string matched_skills;
-    std::string penalized_skills;
-    std::string enriched_data;
-
     // User state
     std::string user_status;
     int         rating {};
