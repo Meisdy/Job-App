@@ -1373,8 +1373,12 @@ then trigger a profile refresh to update the narrative.*
 
     // ── END V2 API ─────────────────────────────────────────────────────────────
 
-    std::cout << "Server running on http://0.0.0.0:8080" << std::endl;
-    server.listen("0.0.0.0", 8080);
+    for (int attempt = 1; attempt <= 5; ++attempt) {
+        std::cout << "Server running on http://0.0.0.0:8080" << std::endl;
+        if (server.listen("0.0.0.0", 8080)) break;
+        std::cerr << "listen() failed (attempt " << attempt << "/5), retrying in 2s..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+    }
     sqlite3_close(db);
     
     // Cleanup curl globalization
