@@ -26,7 +26,7 @@ Build, test, and code-style guidance for agentic coding in the Job-App repositor
 
 - **CSS Variables**: All colors in `css/variables.css`. Text colors: `--text`, `--text2`, `--text3` — **no `--text1`**
 - **JS Modules**: ES6 modules, no bundler. `state.js` is the single source of truth.
-- **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `IMPORT_TEXT_URL`
+- **api.js exports**: `GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `AI_CONFIG_GET_URL`, `AI_CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `IMPORT_TEXT_URL`
 - **XSS**: All user/LLM data inserted into `innerHTML` must go through `escapeHtml()` from `formatting.js`
 - **Header Layout**: Logo, status dot, `.search-group` (absolutely centered), profile, settings (left → right). Profile has `margin-left: auto`. Header gap is 8px. No filter buttons in header.
 - **Filter Dropdown**: Lives in `.sb-header` between "Positions" label and `⇅ SCORE` sort button. `#filter-dropdown-btn` triggers `#filter-dropdown-menu` (`.open` class toggle). Open/close wired in `main.js` `bindEvents` (click trigger + document click-outside + Escape key).
@@ -86,6 +86,7 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 | `POST /api/scrape/details` | — | Fetch job detail pages (template_text) |
 | `POST /api/fitcheck` | — | Batch fit-check all jobs with `fit_label IS NULL` |
 | `GET/POST /api/config` | — | Read / validate + hot-reload config_v2.json |
+| `GET/POST /api/config/ai` | — | Read / write AI provider config (provider, endpoint, model, api_key) |
 | `GET /api/profile` | — | Read user_profile.md |
 | `POST /api/profile/save` | — | Write user_profile.md |
 | `POST /api/onboarding/complete` | — | Generate profile from 9 onboarding answers |
@@ -94,9 +95,11 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 ```json
 {
   "scrape":   { "queries": [...], "rows": 50 },
-  "fitcheck": { "limit": 50, "model": "...", "endpoint": "...", "max_tokens": 4000, "temperature": 1.0, "top_p": 0.95, "top_k": 64 }
+  "fitcheck": { "provider": "ollama_local", "model": "...", "endpoint": "...", "limit": 50, "max_tokens": 4000, "temperature": 1.0, "top_p": 0.95, "top_k": 64 }
 }
 ```
+
+AI provider/key are read from `config_v2.json` (`fitcheck.provider`, `fitcheck.endpoint`, `fitcheck.model`) and `config/api_keys.json` (`api_key` field). The `GET/POST /api/config/ai` endpoints abstract both files — prefer them over editing directly.
 
 ## 🤖 LLM / Fitcheck
 
@@ -104,6 +107,12 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 - Captured by all 3 fitcheck endpoints: `POST /api/fitcheck` (batch), `POST /api/jobs/:id/fitcheck` (single), `POST /api/admin/fitcheck/recheck/:id` (admin recheck).
 - `httpPostAI` has a **600 s timeout** and auto-retries once on empty response or 5xx error (handles Ollama Cloud cold-start).
 - `parseStreamingResponse` handles two formats: Ollama native NDJSON and OpenAI-compatible SSE.
+- `buildAiRequest(provider, model, prompt, ...)` builds the JSON request body. Provider-specific behavior:
+  - `ollama_local` / `ollama_cloud`: `"format":"json"`, `top_k` included, no `response_format`
+  - `openrouter` / `mistral`: `"response_format":{"type":"json_object"}`, no `top_k`
+  - All others (deepinfra, custom): no JSON mode field
+  - All providers: `"stream":false`
+- API key gate: all fitcheck/import routes skip the empty-key check when `provider == "ollama_local"`.
 - `config_v2` / `config_v2_mutex` (`shared_mutex`): reads use `shared_lock`, writes use `unique_lock`. Snapshot fields before releasing the lock — never hold lock across I/O.
 
 ## 🔒 Security
@@ -141,4 +150,4 @@ sudo apt update && sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-op
 
 ---
 
-*Last updated: 2026-04-23 (fixed stale build dir; removed V1 scoring fields; removed dead skill-matching code)*
+*Last updated: 2026-04-25 (AI provider settings UI; ollama_local key-gate bypass; provider-aware request building; /api/config/ai endpoints)*

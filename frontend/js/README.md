@@ -24,14 +24,14 @@ js/
 
 | Module | Imports | Exports |
 |---|---|---|
-| `api.js` | — | API URLs (`GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `IMPORT_TEXT_URL`) |
+| `api.js` | — | API URLs (`GET_URL`, `UPDATE_URL`, `SCRAPE_URL`, `DETAILS_URL`, `CONFIG_GET_URL`, `CONFIG_POST_URL`, `AI_CONFIG_GET_URL`, `AI_CONFIG_POST_URL`, `PROFILE_GET_URL`, `PROFILE_SAVE_URL`, `FITCHECK_URL`, `IMPORT_TEXT_URL`) |
 | `state.js` | — | `state` object |
 | `utils/formatting.js` | — | `escapeHtml()`, `fmtDate()`, `getStatusIcon()` |
 | `header.js` | `state`, `renderList` | `setConnectionStatus`, `onSearch`, `clearSearch`, `updateStats`, `setFilter`, `toggleSort` |
 | `job-list.js` | `state`, `fmtDate`, `getStatusIcon`, `renderDetail` | `renderList`, `selectJob` |
 | `detail.js` | `state`, `fmtDate`, `escapeHtml`, `setStatus`, `setExpired`, `saveNotes`, `setRating`, `showToast` | `renderDetail` |
 | `actions.js` | `state`, API URLs, `renderDetail`, `renderList`, `updateStats`, `setConnectionStatus` | `setStatus`, `setRating`, `saveNotes`, `showToast`, `scrapeJobs`, `triggerFitCheck`, `openProfile`, `openOnboarding`, `importJobFromText`, `openImportModal`, `closeImportModal` |
-| `modal.js` | `state`, config URLs, `showToast` | `openSettings`, `closeSettings`, `saveSettings` |
+| `modal.js` | `state`, config URLs, `showToast` | `openSettings`, `closeSettings`, `closeSettingsOnBg`, `saveSettings`, `renderConfigForm` |
 | `console.js` | `state` | `initConsole`, `toggleConsole` |
 | `main.js` | All component functions | `init()`, `bindEvents()` |
 
@@ -57,4 +57,4 @@ const state = {
 };
 ```
 
-Last verified: 2026-04-23
+Last verified: 2026-04-25

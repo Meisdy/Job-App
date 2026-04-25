@@ -50,7 +50,7 @@ frontend/
 ## Running
 
 ```bash
-cd /path/to/Job-App/cmake-build-rework
+cd /path/to/Job-App/cmake-build-debug
 ./Job_App
 ```
 

@@ -22,20 +22,7 @@ Quickstart focuses on Docker only for now. On a linux machine with Docker instal
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
 ```
 
-Then edit your API key:
-
-```bash
-cd ~/Job-App
-nano config/api_keys.json   # replace YOUR_API_KEY_HERE
-```
-
-Restart to pick up the key:
-
-```bash
-docker compose restart
-```
-
-Open **http://localhost:8080** and complete onboarding. That's it. Scraping and fit-checking happens inside the app after that.
+Open **http://localhost:8080** and complete onboarding. The first screen lets you pick your AI provider, enter the endpoint and model, and paste your API key — no file editing required. Scraping and fit-checking happen inside the app after that.
 
 **WSL users:** Docker does not auto-start on WSL boot. Start manually via `docker start job-app`, or add to autostart `~/.bashrc` if you want it automatic:
 
@@ -46,62 +33,33 @@ cd ~/Job-App && docker compose up -d 2>/dev/null
 
 ## AI provider setup
 
-`config/api_keys.json` holds your key. `config/config_v2.json` holds endpoint and model.
+Provider, endpoint, model, and API key are all configured inside the app — open **Settings** (gear icon) or set them during onboarding. You do not need to edit config files manually.
 
-**What is tested and known to work:**
-- **Ollama** (local or remote) via `/api/chat` — this is the primary target.
+**Supported providers (tested):**
 
-**What is probably compatible:**
-- Any endpoint that accepts `Authorization: Bearer <key>` and an OpenAI-compatible chat completions request body (`{model, messages, max_tokens, temperature, top_p, response_format, top_k}`).
+| Provider | Notes |
+|----------|-------|
+| Ollama (local) | No API key needed. Default endpoint `http://localhost:11434/api/chat`. Make sure Ollama listens on `0.0.0.0` inside Docker: `OLLAMA_HOST=0.0.0.0 ollama serve`. |
+| Ollama Cloud | Requires API key. Endpoint `https://ollama.com/v1/chat/completions`. |
+| OpenRouter | Requires API key. Endpoint `https://openrouter.ai/api/v1/chat/completions`. |
+| DeepInfra | Requires API key. Endpoint `https://api.deepinfra.com/v1/openai/chat/completions`. |
+| Mistral | Requires API key. Endpoint `https://api.mistral.ai/v1/chat/completions`. |
+| Custom | Any endpoint accepting `Authorization: Bearer <key>` + OpenAI-compatible chat body. |
 
-**What is NOT supported:**
-- Anthropic native API (`x-api-key` header, different request/response format).
-- Any provider that does not accept the exact request body above.
+**Not supported:** Anthropic native API (`x-api-key` header, different request format).
 
-If you want to use a provider other than Ollama, verify that its endpoint accepts the payload below. If it does not, the fit-check will fail.
+### How the backend builds requests
 
-### Ollama (tested)
+The backend sends provider-aware requests — not all fields are sent to all providers:
 
-`config/api_keys.json`:
-```json
-{ "api_key": "" }
-```
+| Field | Ollama (local/cloud) | OpenRouter / Mistral | DeepInfra / Custom |
+|-------|---------------------|---------------------|--------------------|
+| `format: "json"` | ✅ | — | — |
+| `response_format: {type: "json_object"}` | — | ✅ | — |
+| `top_k` | ✅ | — | — |
+| `stream: false` | ✅ | ✅ | ✅ |
 
-`config/config_v2.json`:
-```json
-{
-  "fitcheck": {
-    "endpoint": "http://localhost:11434/api/chat",
-    "model": "llama3.1",
-    "limit": 10,
-    "max_tokens": 4000,
-    "temperature": 0.8,
-    "top_p": 0.95,
-    "top_k": 64
-  },
-  "scrape": { "queries": ["Software Engineer"], "rows": 50 }
-}
-```
-
-For remote Ollama, change `endpoint` to the remote URL. The backend auto-detects Ollama native NDJSON vs OpenAI-compatible SSE streams.
-
-### Other providers
-
-Change `endpoint` and `model` to match your provider. The request body sent by the backend is:
-
-```json
-{
-  "model": "<model from config_v2.json>",
-  "messages": [{"role": "user", "content": "<prompt>"}],
-  "max_tokens": 4000,
-  "temperature": 0.8,
-  "top_p": 0.95,
-  "response_format": {"type": "json_object"},
-  "top_k": 64
-}
-```
-
-The response must be parseable as either Ollama NDJSON or OpenAI SSE. If your provider uses a different format, fit-check will not work.
+The response is parsed as either Ollama native NDJSON or OpenAI-compatible SSE automatically.
 
 ## How it works
 
@@ -120,26 +78,27 @@ You can also import a job from pasted text (`Import Text`), recheck a single job
 
 ## Configuration
 
-All config lives in `config/` on the host. Changes require a container restart unless otherwise noted.
+Most settings are editable live in the app (Settings gear). Config files in `config/` on the host are the source of truth and survive container rebuilds.
 
 ### `api_keys.json`
 
-Single key used for LLM calls:
+Single key used for LLM calls. Written by the app when you save settings — you rarely need to touch this directly.
 
 ```json
 { "api_key": "YOUR_API_KEY_HERE" }
 ```
 
-For Ollama this can be `""`.
+For Ollama local this can be `""`.
 
 ### `config_v2.json`
 
-Controls scraping and LLM parameters:
+Controls scraping and LLM parameters. Editable in Settings without restart.
 
 | Field | Meaning |
 |-------|---------|
 | `scrape.queries` | Array of search strings sent to jobs.ch. |
 | `scrape.rows` | Max listings to fetch per query. |
+| `fitcheck.provider` | Provider key (`ollama_local`, `ollama_cloud`, `openrouter`, `deepinfra`, `mistral`, `custom`). |
 | `fitcheck.endpoint` | LLM HTTP endpoint. |
 | `fitcheck.model` | Model identifier (provider-specific). |
 | `fitcheck.limit` | Max jobs to fit-check in one batch call. |
@@ -209,10 +168,10 @@ docker compose logs -f
 | Symptom | Fix |
 |---------|-----|
 | `Bind for 0.0.0.0:8080 failed: port already allocated` | Stop the old container: `docker compose down` in the other project, or change the port mapping in `docker-compose.yml`. |
-| `Connection refused` to LLM endpoint | If using local Ollama, make sure it listens on `0.0.0.0` (not just `127.0.0.1`). In Ollama: `OLLAMA_HOST=0.0.0.0 ollama serve`. Check firewall. |
+| `Connection refused` to LLM endpoint | Check the endpoint in Settings. For local Ollama inside Docker, Ollama must listen on `0.0.0.0`: `OLLAMA_HOST=0.0.0.0 ollama serve`. Check firewall. |
 | LLM returns empty response or times out | The backend retries once automatically. If it still fails, check that the model name is correct and the endpoint returns JSON/SSE correctly. Backend timeout is fixed at 600s. |
 | Scrape returns 0 jobs | Verify `scrape.queries` in `config_v2.json`. Check logs for HTTP errors from jobs.ch. |
-| Onboarding or profile not saving | Profile is written to `data/user_profile.md`. Check that the `data/` volume mount is working and the container can write there. |
+| Onboarding or profile not saving | Profile is written to `config/user_profile.md`. Check that the `config/` volume mount is working and the container can write there. |
 | Fit-check is slow | Increase `fitcheck.limit` if your endpoint handles concurrency well. Decrease if you hit rate limits. Check `max_tokens` — too high wastes time on long reasoning. |
 
 ## Uninstall

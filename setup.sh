@@ -29,7 +29,5 @@ echo "Building and starting (takes ~2 min first time)..."
 docker compose up --build -d
 
 echo ""
-echo "Done. Edit config/api_keys.json with your API key, then run:"
-echo "  docker compose restart"
-echo ""
-echo "Open http://localhost:8080"
+echo "Done. Open http://localhost:8080 and complete onboarding."
+echo "Onboarding lets you pick your AI provider and enter your API key — no file editing needed."

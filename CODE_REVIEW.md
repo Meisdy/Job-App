@@ -54,6 +54,12 @@
 - `job-list.js` `buildJobItemHtml`: `escapeHtml()` applied to `data-id`, `job.place`
 - `double ollama_top_k` corrected to `int` in all 5 config snapshot blocks
 - Hardcoded `../config/user_profile.md` replaced with `base_dir + "/config/user_profile.md"` in 3 endpoints
+- `GET/POST /api/config/ai` endpoints added; AI config (provider, endpoint, model, key) separated from main config
+- Provider/model settings UI: dropdown auto-fills endpoint, model chips for quick selection, key field disabled for local Ollama
+- `ollama_local` bypasses empty `api_key` check in all fitcheck and import-text routes (read provider before gate, not after)
+- `buildAiRequest()` now takes `provider` as first arg; uses `"format":"json"` for Ollama, `"response_format"` only for openrouter/mistral, `"stream":false` always
+- Ollama Cloud POST redirect fixed: `CURLOPT_FOLLOWLOCATION` + `CURLOPT_POSTREDIR = CURL_REDIR_POST_ALL` (was dropping body on 301)
+- `onboarding.html` provider setup screen added; saves via `/api/config/ai` before proceeding to profile questions
 
 ---
 
