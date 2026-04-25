@@ -1164,10 +1164,16 @@ then trigger a profile refresh to update the narrative.*
 
         std::string truncated = text.substr(0, 8000);
         std::string extractPrompt =
-            "Extract job posting details from the text below. Return ONLY valid JSON with these exact keys:\n"
-            "title, company_name, place, zipcode, employment_grade (integer percent, 0 if unknown),\n"
-            "application_url, pub_date (YYYY-MM-DD or empty), end_date (YYYY-MM-DD or empty)\n"
-            "Unknown fields: empty string. Do NOT include any other keys.\n\nText:\n" + truncated;
+            "Extract job posting details from the text below. Return ONLY valid JSON with exactly these keys:\n"
+            "- title: job title (string)\n"
+            "- company_name: name of the hiring company or employer (string, NOT a city or location)\n"
+            "- place: city or town where the job is located (string)\n"
+            "- zipcode: postal/zip code of the job location — digits only, NOT salary, NOT employment percent (string, empty if unknown)\n"
+            "- employment_grade: workload percentage as integer 0-100 (e.g. 80 for '80%', 100 for full-time, 0 if unknown). NOT salary.\n"
+            "- application_url: direct URL to apply or view the job posting (string, empty if not found)\n"
+            "- pub_date: publication date in YYYY-MM-DD format (string, empty if unknown)\n"
+            "- end_date: application deadline in YYYY-MM-DD format (string, empty if unknown)\n"
+            "Unknown fields: use empty string or 0. Do NOT include any other keys. Do NOT put salary anywhere.\n\nText:\n" + truncated;
 
         try {
             std::cout << "[INFO] Import: calling AI to extract fields..." << std::endl;
@@ -1197,7 +1203,18 @@ then trigger a profile refresh to update the narrative.*
             job.place            = extracted.value("place", "");
             job.zipcode          = extracted.value("zipcode", "");
             job.canton_code      = "N/A";
-            job.employment_grade = extracted.value("employment_grade", 0);
+            {
+                auto& eg = extracted["employment_grade"];
+                if (eg.is_number()) {
+                    job.employment_grade = eg.get<int>();
+                } else if (eg.is_string()) {
+                    std::string s = eg.get<std::string>();
+                    auto it = std::find_if(s.begin(), s.end(), ::isdigit);
+                    job.employment_grade = (it != s.end()) ? std::stoi(std::string(it, s.end())) : 0;
+                } else {
+                    job.employment_grade = 0;
+                }
+            }
             job.application_url  = extracted.value("application_url", "");
             job.detail_url       = "";
             job.pub_date         = extracted.value("pub_date", "");
