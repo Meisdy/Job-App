@@ -1,10 +1,10 @@
 {
   "fitcheck": {
-    "endpoint": "https://api.deepinfra.com/v1/openai/chat/completions",
+    "endpoint": "https://ollama.com/v1/chat/completions",
     "limit": 10,
     "max_tokens": 4000,
-    "model": "google/gemma-4-31B-it",
-    "provider": "deepinfra",
+    "model": "gemma4:31b-cloud",
+    "provider": "ollama_cloud",
     "temperature": 0.8,
     "top_k": 65,
     "top_p": 0.95
