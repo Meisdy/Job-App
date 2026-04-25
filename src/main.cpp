@@ -21,6 +21,12 @@ namespace fs = std::filesystem;
 static std::string base_dir;
 static std::string s_config_path;
 static std::string s_system_prompt_path;
+
+struct AiSnapshot {
+    std::string provider, model, endpoint;
+    int max_tokens, top_k;
+    double temperature, top_p;
+};
 static const std::string& configPath() { return s_config_path; }
 static const std::string& systemPromptPath() { return s_system_prompt_path; }
 
@@ -665,6 +671,13 @@ int main() {
         return content;
     };
 
+    auto snapshotAiConfig = [&config_v2, &config_v2_mutex]() -> AiSnapshot {
+        std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
+        return { config_v2.provider, config_v2.ollama_model, config_v2.ai_endpoint,
+                 config_v2.ollama_max_tokens, config_v2.ollama_top_k,
+                 config_v2.ollama_temperature, config_v2.ollama_top_p };
+    };
+
     auto buildFitcheckPrompt = [&system_prompt_template](const std::string& profile, const std::string& jobText) -> std::string {
         std::string result = system_prompt_template;
         size_t pos;
@@ -742,7 +755,7 @@ int main() {
 
     // ── V2 API ENDPOINTS ───────────────────────────────────────────────────────
 
-    server.Post("/api/onboarding/complete", [&config_v2, &config_v2_mutex, &api_key, &extractBlock, &parseStreamingResponse](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/onboarding/complete", [&api_key, &snapshotAiConfig, &extractBlock, &parseStreamingResponse](const httplib::Request& req, httplib::Response& res) {
         try {
             json body = json::parse(req.body);
             
@@ -752,9 +765,7 @@ int main() {
                 return;
             }
             
-            std::string onb_provider;
-            { std::shared_lock<std::shared_mutex> lock(config_v2_mutex); onb_provider = config_v2.provider; }
-            if (api_key.empty() && onb_provider != "ollama_local") {
+            if (api_key.empty() && snapshotAiConfig().provider != "ollama_local") {
                 res.status = 500;
                 res.set_content(json{{"error", "AI not configured — set provider and API key in Settings."}}.dump(), "application/json");
                 return;
@@ -852,32 +863,20 @@ then trigger a profile refresh to update the narrative.*
 
             prompt += fullProfile;
 
-            std::string provider, ollama_model, ai_endpoint;
-            int ollama_max_tokens;
-            double ollama_temperature, ollama_top_p; int ollama_top_k;
-            {
-                std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-                provider           = config_v2.provider;
-                ollama_model       = config_v2.ollama_model;
-                ai_endpoint        = config_v2.ai_endpoint;
-                ollama_max_tokens  = config_v2.ollama_max_tokens;
-                ollama_temperature = config_v2.ollama_temperature;
-                ollama_top_p       = config_v2.ollama_top_p;
-                ollama_top_k       = config_v2.ollama_top_k;
-            }
+            auto ai = snapshotAiConfig();
 
             json request = {
-                {"model",       ollama_model},
+                {"model",       ai.model},
                 {"messages",    json::array({{{"role", "user"}, {"content", prompt}}})},
-                {"max_tokens",  ollama_max_tokens},
-                {"temperature", ollama_temperature},
-                {"top_p",       ollama_top_p},
+                {"max_tokens",  ai.max_tokens},
+                {"temperature", ai.temperature},
+                {"top_p",       ai.top_p},
                 {"stream",      false}
             };
-            if (!isOllamaProvider(provider)) request["response_format"] = {{"type", "text"}};
-            if (isOllamaProvider(provider) && ollama_top_k > 0) request["top_k"] = ollama_top_k;
+            if (!isOllamaProvider(ai.provider)) request["response_format"] = {{"type", "text"}};
+            if (isOllamaProvider(ai.provider) && ai.top_k > 0) request["top_k"] = ai.top_k;
 
-            std::string response = httpPostAI(ai_endpoint, api_key, request.dump());
+            std::string response = httpPostAI(ai.endpoint, api_key, request.dump());
             std::string accumulatedResponse = parseStreamingResponse(response);
 
             if (accumulatedResponse.empty()) {
@@ -946,7 +945,7 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &snapshotAiConfig, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request&, httplib::Response& res) {
         std::string markdownPath = base_dir + "/config/user_profile.md";
         std::ifstream file(markdownPath);
         
@@ -960,23 +959,11 @@ then trigger a profile refresh to update the narrative.*
                             std::istreambuf_iterator<char>());
         file.close();
         
+        auto ai = snapshotAiConfig();
         int fitcheck_limit;
-        std::string provider, ollama_model, ai_endpoint;
-        int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p; int ollama_top_k;
-        {
-            std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-            provider           = config_v2.provider;
-            fitcheck_limit     = config_v2.fitcheck_limit;
-            ollama_model       = config_v2.ollama_model;
-            ai_endpoint        = config_v2.ai_endpoint;
-            ollama_max_tokens  = config_v2.ollama_max_tokens;
-            ollama_temperature = config_v2.ollama_temperature;
-            ollama_top_p       = config_v2.ollama_top_p;
-            ollama_top_k       = config_v2.ollama_top_k;
-        }
+        { std::shared_lock<std::shared_mutex> lock(config_v2_mutex); fitcheck_limit = config_v2.fitcheck_limit; }
 
-        if (api_key.empty() && provider != "ollama_local") {
+        if (api_key.empty() && ai.provider != "ollama_local") {
             res.status = 500;
             res.set_content(json{{"error", "AI not configured — set provider and API key in Settings."}}.dump(), "application/json");
             return;
@@ -1002,11 +989,10 @@ then trigger a profile refresh to update the narrative.*
 
                 std::string prompt = buildFitcheckPrompt(content, cleaned);
 
-                json request = buildAiRequest(provider, ollama_model, prompt, ollama_max_tokens,
-                                              ollama_temperature, ollama_top_p, ollama_top_k);
+                json request = buildAiRequest(ai.provider, ai.model, prompt, ai.max_tokens,
+                                              ai.temperature, ai.top_p, ai.top_k);
 
-                std::string response = httpPostAI(ai_endpoint,
-                                                api_key, request.dump());
+                std::string response = httpPostAI(ai.endpoint, api_key, request.dump());
 
                 std::string accumulated = parseStreamingResponse(response);
                 if (accumulated.empty()) throw std::runtime_error("Empty response from API");
@@ -1033,7 +1019,7 @@ then trigger a profile refresh to update the narrative.*
     });
 
     // POST /api/jobs/:id/fitcheck — Re-check fit for a single job
-    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
+    server.Post("/api/jobs/:id/fitcheck", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db, &snapshotAiConfig, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
         
@@ -1073,30 +1059,18 @@ then trigger a profile refresh to update the narrative.*
             // Build prompt
             std::string prompt = buildFitcheckPrompt(profileContent, cleaned);
 
-            std::string provider, ollama_model, ai_endpoint;
-            int ollama_max_tokens;
-            double ollama_temperature, ollama_top_p; int ollama_top_k;
-            {
-                std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-                provider           = config_v2.provider;
-                ollama_model       = config_v2.ollama_model;
-                ai_endpoint        = config_v2.ai_endpoint;
-                ollama_max_tokens  = config_v2.ollama_max_tokens;
-                ollama_temperature = config_v2.ollama_temperature;
-                ollama_top_p       = config_v2.ollama_top_p;
-                ollama_top_k       = config_v2.ollama_top_k;
-            }
+            auto ai = snapshotAiConfig();
 
-            if (api_key.empty() && provider != "ollama_local") {
+            if (api_key.empty() && ai.provider != "ollama_local") {
                 res.status = 500;
                 res.set_content(json{{"error", "AI not configured — set provider and API key in Settings."}}.dump(), "application/json");
                 return;
             }
 
-            json request = buildAiRequest(provider, ollama_model, prompt, ollama_max_tokens,
-                                          ollama_temperature, ollama_top_p, ollama_top_k);
+            json request = buildAiRequest(ai.provider, ai.model, prompt, ai.max_tokens,
+                                          ai.temperature, ai.top_p, ai.top_k);
 
-            std::string api_response = httpPostAI(ai_endpoint,
+            std::string api_response = httpPostAI(ai.endpoint,
                                                 api_key, request.dump());
             
             std::cout << "[DEBUG] API response length: " << api_response.length() << std::endl;
@@ -1146,8 +1120,8 @@ then trigger a profile refresh to update the narrative.*
         return ss.str();
     };
 
-    server.Post("/api/jobs/import-text", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db,
-        &generateManualJobId, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
+    server.Post("/api/jobs/import-text", [&api_key, &db_write_mutex, &db,
+        &snapshotAiConfig, &loadProfileMarkdown, &generateManualJobId, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::cout << "[INFO] POST /api/jobs/import-text — request received (" << req.body.size() << " bytes)" << std::endl;
 
@@ -1169,22 +1143,9 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        std::string provider, ollama_model, ai_endpoint;
-        int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p; int ollama_top_k;
-        {
-            std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-            provider           = config_v2.provider;
-            ollama_model       = config_v2.ollama_model;
-            ai_endpoint        = config_v2.ai_endpoint;
-            ollama_max_tokens  = config_v2.ollama_max_tokens;
-            ollama_temperature = config_v2.ollama_temperature;
-            ollama_top_p       = config_v2.ollama_top_p;
-            ollama_top_k       = config_v2.ollama_top_k;
-        }
+        auto ai = snapshotAiConfig();
 
-        if (api_key.empty() && provider != "ollama_local") {
-            std::cerr << "[ERROR] Import: API key not configured" << std::endl;
+        if (api_key.empty() && ai.provider != "ollama_local") {
             res.status = 500;
             res.set_content(json{{"error", "AI not configured — set provider and API key in Settings."}}.dump(), "application/json");
             return;
@@ -1202,10 +1163,10 @@ then trigger a profile refresh to update the narrative.*
 
         try {
             std::cout << "[INFO] Import: calling AI to extract fields..." << std::endl;
-            json extractRequest = buildAiRequest(provider, ollama_model, extractPrompt, ollama_max_tokens,
-                                                  0.3, ollama_top_p, ollama_top_k);
+            json extractRequest = buildAiRequest(ai.provider, ai.model, extractPrompt, ai.max_tokens,
+                                                  0.3, ai.top_p, ai.top_k);
 
-            std::string extractResponse = httpPostAI(ai_endpoint, api_key, extractRequest.dump());
+            std::string extractResponse = httpPostAI(ai.endpoint, api_key, extractRequest.dump());
             std::string accumulated = parseStreamingResponse(extractResponse);
             if (accumulated.empty()) throw std::runtime_error("Empty response from extraction AI");
             std::cout << "[INFO] Import: extraction AI responded (" << accumulated.size() << " chars)" << std::endl;
@@ -1254,41 +1215,34 @@ then trigger a profile refresh to update the narrative.*
 
             std::cout << "[INFO] Import: job inserted — " << jobId << " — " << job.title << std::endl;
 
-            std::string profilePath = base_dir + "/config/user_profile.md";
-            std::ifstream profileFile(profilePath);
-            if (profileFile.is_open()) {
-                std::string profileContent((std::istreambuf_iterator<char>(profileFile)),
-                                           std::istreambuf_iterator<char>());
-                profileFile.close();
+            std::string profileContent = loadProfileMarkdown();
+            if (!profileContent.empty()) {
+                std::cout << "[INFO] Import: running fit-check for " << jobId << "..." << std::endl;
+                std::string cleaned = cleanTemplateText(job.template_text);
+                if (!cleaned.empty()) {
+                    std::string fitPrompt = buildFitcheckPrompt(profileContent, cleaned);
+                    json fitRequest = buildAiRequest(ai.provider, ai.model, fitPrompt, ai.max_tokens,
+                                                    ai.temperature, ai.top_p, ai.top_k);
 
-                if (!profileContent.empty()) {
-                    std::cout << "[INFO] Import: running fit-check for " << jobId << "..." << std::endl;
-                    std::string cleaned = cleanTemplateText(job.template_text);
-                    if (!cleaned.empty()) {
-                        std::string fitPrompt = buildFitcheckPrompt(profileContent, cleaned);
-                        json fitRequest = buildAiRequest(provider, ollama_model, fitPrompt, ollama_max_tokens,
-                                                        ollama_temperature, ollama_top_p, ollama_top_k);
-
-                        std::string fitResponse = httpPostAI(ai_endpoint, api_key, fitRequest.dump());
-                        std::string fitAccumulated = parseStreamingResponse(fitResponse);
-                        if (!fitAccumulated.empty()) {
-                            try {
-                                json fitData = extractJsonFromResponse(fitAccumulated);
-                                std::lock_guard<std::mutex> lock(db_write_mutex);
-                                save_fit_result_v2(db, jobId,
-                                    fitData.value("fit_score", 0),
-                                    fitData.value("fit_label", "Unknown"),
-                                    fitData.value("fit_summary", ""),
-                                    fitData.value("fit_reasoning", ""),
-                                    "md_file_profile");
-                                std::cout << "[INFO] Import: fit-check complete for " << jobId << " — " << fitData.value("fit_label", "?") << " (" << fitData.value("fit_score", 0) << ")" << std::endl;
-                            } catch (const std::exception& e2) {
-                                std::cerr << "[WARN] Import: fit-check JSON parse failed for " << jobId << ": " << e2.what() << std::endl;
-                                std::cerr << "[DEBUG] Fit-check raw (first 500): " << fitAccumulated.substr(0, 500) << std::endl;
-                            }
-                        } else {
-                            std::cerr << "[WARN] Import: fit-check returned empty for " << jobId << std::endl;
+                    std::string fitResponse = httpPostAI(ai.endpoint, api_key, fitRequest.dump());
+                    std::string fitAccumulated = parseStreamingResponse(fitResponse);
+                    if (!fitAccumulated.empty()) {
+                        try {
+                            json fitData = extractJsonFromResponse(fitAccumulated);
+                            std::lock_guard<std::mutex> lock(db_write_mutex);
+                            save_fit_result_v2(db, jobId,
+                                fitData.value("fit_score", 0),
+                                fitData.value("fit_label", "Unknown"),
+                                fitData.value("fit_summary", ""),
+                                fitData.value("fit_reasoning", ""),
+                                "md_file_profile");
+                            std::cout << "[INFO] Import: fit-check complete for " << jobId << " — " << fitData.value("fit_label", "?") << " (" << fitData.value("fit_score", 0) << ")" << std::endl;
+                        } catch (const std::exception& e2) {
+                            std::cerr << "[WARN] Import: fit-check JSON parse failed for " << jobId << ": " << e2.what() << std::endl;
+                            std::cerr << "[DEBUG] Fit-check raw (first 500): " << fitAccumulated.substr(0, 500) << std::endl;
                         }
+                    } else {
+                        std::cerr << "[WARN] Import: fit-check returned empty for " << jobId << std::endl;
                     }
                 }
             }
@@ -1349,8 +1303,8 @@ then trigger a profile refresh to update the narrative.*
         }
     });
 
-    server.Post("/api/admin/fitcheck/recheck/:id", [&config_v2, &config_v2_mutex, &api_key, &db_write_mutex, &db,
-        &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
+    server.Post("/api/admin/fitcheck/recheck/:id", [&api_key, &db_write_mutex, &db,
+        &snapshotAiConfig, &loadProfileMarkdown, &buildFitcheckPrompt, &parseStreamingResponse, &extractJsonFromResponse]
     (const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::cout << "[INFO] Admin recheck triggered for job: " << job_id << std::endl;
@@ -1378,21 +1332,9 @@ then trigger a profile refresh to update the narrative.*
             return;
         }
 
-        std::string provider, ollama_model, ai_endpoint;
-        int ollama_max_tokens;
-        double ollama_temperature, ollama_top_p; int ollama_top_k;
-        {
-            std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-            provider           = config_v2.provider;
-            ollama_model       = config_v2.ollama_model;
-            ai_endpoint        = config_v2.ai_endpoint;
-            ollama_max_tokens  = config_v2.ollama_max_tokens;
-            ollama_temperature = config_v2.ollama_temperature;
-            ollama_top_p       = config_v2.ollama_top_p;
-            ollama_top_k       = config_v2.ollama_top_k;
-        }
+        auto ai = snapshotAiConfig();
 
-        if (api_key.empty() && provider != "ollama_local") {
+        if (api_key.empty() && ai.provider != "ollama_local") {
             res.status = 500;
             res.set_content(json{{"error", "AI not configured — set provider and API key in Settings."}}.dump(), "application/json");
             return;
@@ -1402,11 +1344,10 @@ then trigger a profile refresh to update the narrative.*
             std::string cleaned = cleanTemplateText(*templateText);
             std::string prompt = buildFitcheckPrompt(profile, cleaned);
 
-            json request = buildAiRequest(provider, ollama_model, prompt, ollama_max_tokens,
-                                          ollama_temperature, ollama_top_p, ollama_top_k);
+            json request = buildAiRequest(ai.provider, ai.model, prompt, ai.max_tokens,
+                                          ai.temperature, ai.top_p, ai.top_k);
 
-            std::string apiResponse = httpPostAI(ai_endpoint,
-                                               api_key, request.dump());
+            std::string apiResponse = httpPostAI(ai.endpoint, api_key, request.dump());
             std::string accumulated = parseStreamingResponse(apiResponse);
 
             if (accumulated.empty()) {

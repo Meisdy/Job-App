@@ -61,8 +61,18 @@ export function closeSettingsOnBg(event) {
 
 function setupProviderHandlers() {
   const select = document.getElementById('cfg-ai-provider');
-  if (!select) return;
-  select.addEventListener('change', () => updateProviderUI(select.value));
+  if (select) select.addEventListener('change', () => updateProviderUI(select.value));
+
+  const body = document.getElementById('settings-body');
+  if (body) body.addEventListener('click', e => {
+    const chip = e.target.closest('.model-chip');
+    if (!chip) return;
+    const modelEl = document.getElementById('cfg-ai-model');
+    if (modelEl) modelEl.value = chip.dataset.model;
+    chip.closest('#cfg-ai-model-chips')?.querySelectorAll('.model-chip')
+      .forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
 }
 
 function updateProviderUI(providerKey) {
@@ -79,7 +89,7 @@ function updateProviderUI(providerKey) {
 
   if (chipsEl) {
     chipsEl.innerHTML = p.models.map(m =>
-      `<span class="model-chip" onclick="document.getElementById('cfg-ai-model').value='${m}';this.parentNode.querySelectorAll('.model-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${m}</span>`
+      `<span class="model-chip" data-model="${escapeHtml(m)}">${escapeHtml(m)}</span>`
     ).join('');
   }
 
@@ -152,7 +162,7 @@ function renderAiSection(aiConfig) {
     .join('');
 
   const chips = p.models.map(m =>
-    `<span class="model-chip${(aiConfig.model === m) ? ' active' : ''}" onclick="document.getElementById('cfg-ai-model').value='${m}';this.parentNode.querySelectorAll('.model-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${m}</span>`
+    `<span class="model-chip${(aiConfig.model === m) ? ' active' : ''}" data-model="${escapeHtml(m)}">${escapeHtml(m)}</span>`
   ).join('');
 
   const fields = [
