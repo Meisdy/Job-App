@@ -1,5 +1,5 @@
 import state from './state.js';
-import { GET_URL } from './api.js';
+import { GET_URL, PROFILE_GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
@@ -7,6 +7,12 @@ import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, sc
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
+  const profileRes = await fetch(PROFILE_GET_URL);
+  if (profileRes.status === 404) {
+    window.location.href = '/onboarding.html';
+    return;
+  }
+
   setConnectionStatus('loading');
   try {
     const r = await fetch(GET_URL);
