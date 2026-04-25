@@ -1182,6 +1182,10 @@ then trigger a profile refresh to update the narrative.*
             "- application_url: direct URL to apply or view the posting (string, empty if not found)\n"
             "- pub_date: publication date YYYY-MM-DD (string, empty if unknown)\n"
             "- end_date: application deadline YYYY-MM-DD (string, empty if unknown)\n"
+            "- description: clean plain-text version of the job content only — include role summary, responsibilities, "
+            "qualifications, and benefits. Strip all navigation, headers, footers, salary info, similar job listings, "
+            "recruiter info, legal text, and UI artifacts. Keep section headings (e.g. Rolle, Verantwortung, Qualifikationen). "
+            "Write as clean readable text, no icons, no noise. If nothing meaningful found, empty string.\n"
             "Unknown fields: empty string or 0. No extra keys. No salary anywhere.\n\nText:\n" + truncated;
 
         try {
@@ -1240,7 +1244,8 @@ then trigger a profile refresh to update the narrative.*
                 job.pub_date = buf;
             }
             job.end_date         = extracted.value("end_date", "");
-            job.template_text    = text;
+            std::string description = extracted.value("description", "");
+            job.template_text    = description.empty() ? text : description;
 
             {
                 std::lock_guard<std::mutex> lock(db_write_mutex);
