@@ -22,7 +22,7 @@ Quickstart focuses on Docker only for now. On a linux machine with Docker instal
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
 ```
 
-Open **http://localhost:8080** and complete onboarding. The first screen lets you pick your AI provider, enter the endpoint and model, and paste your API key — no file editing required. Scraping and fit-checking happen inside the app after that.
+Open **http://localhost:8080** and complete onboarding. The first screen lets you pick your AI provider, enter the endpoint and model, and paste your API key. Scraping and fit-checking happen inside the app after that.
 
 **WSL users:** Docker does not auto-start on WSL boot. Start manually via `docker start job-app`, or add to autostart `~/.bashrc` if you want it automatic:
 
@@ -48,33 +48,28 @@ Provider, endpoint, model, and API key are all configured inside the app — ope
 
 **Not supported:** Anthropic native API (`x-api-key` header, different request format).
 
-### How the backend builds requests
-
-The backend sends provider-aware requests — not all fields are sent to all providers:
-
-| Field | Ollama (local) | Ollama Cloud / OpenRouter / Mistral | DeepInfra / Custom |
-|-------|---------------|-------------------------------------|--------------------|
-| `format: "json"` | ✅ | — | — |
-| `response_format: {type: "json_object"}` | — | ✅ | — |
-| `top_k` | ✅ | — | — |
-| `stream: false` | ✅ | ✅ | ✅ |
-
-The response is parsed as either Ollama native NDJSON or OpenAI-compatible SSE automatically.
-
 ## How it works
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Scrape    │────▶│   Details   │────▶│  Fit-check  │────▶│   Track     │
-│  jobs.ch    │     │ fetch text  │     │   LLM call  │     │   in UI     │
-└─────────────┘     └─────────────┘     └─────────────┘     └─────────────┘
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Scrape    │────▶│  Fit-check  │────▶│   Track     │
+│  jobs.ch    │     │   LLM call  │     │   in UI     │
+└─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-1. Click **Scrape** in the UI. The backend hits jobs.ch for each query in `config_v2.json`, saves new listings to SQLite, then fetches the full posting text.
-2. Click **Fit-Check**. The backend sends every job with `template_text` but no `fit_label` to your LLM endpoint in batches of `limit`. Results are written back to the DB.
+1. Click **Scrape** in the UI. The backend hits jobs.ch for each query in `config_v2.json`, saves new listings to SQLite, and fetches full posting text automatically.
+2. Click **Fit-Check**. The backend sends every unscored job + your profile to your LLM endpoint in batches. Results are written back to the DB.
 3. Sort by fit score, filter by label, read AI reasoning, and decide whether to apply.
 
 You can also import a job from pasted text (`Import Text`), recheck a single job, or clear all fit data and re-run from the admin console.
+
+## Getting good results
+
+1. **Onboarding** — complete onboarding once. Be specific: skills, years of experience, preferred workload, hard no-gos. The more concrete, the better the scoring.
+2. **First scrape** — scrape a small batch (~5 jobs) and run Fit-Check.
+3. **Check the scores** — read the AI reasoning on a few results. Are Strong jobs actually strong? Are Weak ones correctly rejected?
+4. **Tune via Profile** — if the scores are off, open **Profile**, edit your profile text (add constraints, reword skills, clarify deal-breakers), and re-run Fit-Check on the same batch.
+5. **Repeat until calibrated** — once results feel right, the workflow is just: **Scrape → Fit-Check** whenever you want fresh listings.
 
 ## Configuration
 
