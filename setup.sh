@@ -24,6 +24,7 @@ cat > config/api_keys.json << 'EOF'
 EOF
 
 mkdir -p data
+chmod +x update.sh
 
 echo "Building and starting (takes ~2 min first time)..."
 docker compose up --build -d
@@ -31,3 +32,5 @@ docker compose up --build -d
 echo ""
 echo "Done. Open http://localhost:8080 and complete onboarding."
 echo "Onboarding lets you pick your AI provider and enter your API key — no file editing needed."
+echo ""
+echo "To update later: cd ~/Job-App && bash update.sh"
