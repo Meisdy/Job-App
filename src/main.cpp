@@ -1182,10 +1182,14 @@ then trigger a profile refresh to update the narrative.*
             "- application_url: direct URL to apply or view the posting (string, empty if not found)\n"
             "- pub_date: publication date YYYY-MM-DD (string, empty if unknown)\n"
             "- end_date: application deadline YYYY-MM-DD (string, empty if unknown)\n"
-            "- description: clean plain-text version of the job content only — include role summary, responsibilities, "
-            "qualifications, and benefits. Strip all navigation, headers, footers, salary info, similar job listings, "
-            "recruiter info, legal text, and UI artifacts. Keep section headings (e.g. Rolle, Verantwortung, Qualifikationen). "
-            "Write as clean readable text, no icons, no noise. If nothing meaningful found, empty string.\n"
+            "- description: clean plain-text reconstruction of the job content — role summary, responsibilities, "
+            "qualifications, benefits. Rules: (1) remove ALL lines that are a single word or short label like 'icon', "
+            "'Ort', 'Lohn', 'Pensum', 'Anstellungsart', 'Bewerben', 'decore', 'recruiter', 'Login', 'FAQ', etc. "
+            "(2) remove navigation, footer, similar job listings, recruiter bios, legal text, salary figures, copyright. "
+            "(3) benefits: write as '- Benefit name' per line, NOT 'icon\\nBenefit name'. "
+            "(4) section headings on their own line in title case. "
+            "(5) output must be readable prose and bullet points — no isolated single words, no label fragments. "
+            "If nothing meaningful found, empty string.\n"
             "Unknown fields: empty string or 0. No extra keys. No salary anywhere.\n\nText:\n" + truncated;
 
         try {
