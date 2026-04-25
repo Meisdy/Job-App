@@ -29,21 +29,25 @@ export async function openSettings() {
   body.innerHTML = renderLoadingState();
 
   try {
-    const [cfgRes, aiRes, verRes] = await Promise.all([
+    const [cfgRes, aiRes] = await Promise.all([
       fetch(CONFIG_GET_URL),
-      fetch('/api/config/ai'),
-      fetch(VERSION_URL)
+      fetch('/api/config/ai')
     ]);
     rawConfig = await cfgRes.json();
     rawAiConfig = await aiRes.json();
     body.innerHTML = renderConfigForm(rawConfig, rawAiConfig);
     setupProviderHandlers();
-    const ver = await verRes.json();
-    const verEl = document.getElementById('app-version');
-    if (verEl) verEl.textContent = `v${ver.version}`;
   } catch (error) {
     body.innerHTML = renderErrorState('Failed to load config');
   }
+
+  fetch(VERSION_URL)
+    .then(r => r.json())
+    .then(ver => {
+      const verEl = document.getElementById('app-version');
+      if (verEl) verEl.textContent = `v${ver.version}`;
+    })
+    .catch(() => {});
 }
 
 export function closeSettings() {
