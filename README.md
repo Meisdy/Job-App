@@ -8,15 +8,9 @@ Personal job-market radar: scrape listings from jobs.ch, score them against your
 2. **Fit-check** — Sends every job + your profile to an LLM. Stores a `fit_label` (Strong, Decent, Experimental, Weak, No Go), a weighted score, and structured reasoning you can read in seconds.
 3. **Track** — Keep notes, set a status (New, Applied, etc.), and rate jobs. Sort, filter, and search everything in the browser.
 
-## Who it's for
-
-- Job seekers who want to stop manually reading hundreds of postings.
-- Anyone with an LLM API endpoint who wants to let AI do the first-pass filtering.
-- Developers who want a hackable, self-hosted C++ + vanilla-JS stack with no bundler and no SaaS.
-
 ## Quick start
 
-Quickstart focuses on Docker only for now. On a linux machine with Docker installed, execute: 
+Docker only. On a Linux machine with Docker installed:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
@@ -24,29 +18,12 @@ curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | ba
 
 Open **http://localhost:8080** and complete onboarding. The first screen lets you pick your AI provider, enter the endpoint and model, and paste your API key. Scraping and fit-checking happen inside the app after that.
 
-**WSL users:** Docker does not auto-start on WSL boot. Start manually via `docker start job-app`, or add to autostart `~/.bashrc` if you want it automatic:
+**WSL users:** Docker does not auto-start on WSL boot. Start manually via `docker start job-app`, or add to `~/.bashrc`:
 
 ```bash
 sudo service docker start 2>/dev/null
 cd ~/Job-App && docker compose up -d 2>/dev/null
 ```
-
-## AI provider setup
-
-Provider, endpoint, model, and API key are all configured inside the app — open **Settings** (gear icon) or set them during onboarding. You do not need to edit config files manually.
-
-**Supported providers (tested):**
-
-| Provider | Notes |
-|----------|-------|
-| Ollama (local) | No API key needed. Default endpoint `http://localhost:11434/api/chat`. Make sure Ollama listens on `0.0.0.0` inside Docker: `OLLAMA_HOST=0.0.0.0 ollama serve`. |
-| Ollama Cloud | Requires API key. Endpoint `https://ollama.com/v1/chat/completions`. |
-| OpenRouter | Requires API key. Endpoint `https://openrouter.ai/api/v1/chat/completions`. |
-| DeepInfra | Requires API key. Endpoint `https://api.deepinfra.com/v1/openai/chat/completions`. |
-| Mistral | Requires API key. Endpoint `https://api.mistral.ai/v1/chat/completions`. |
-| Custom | Any endpoint accepting `Authorization: Bearer <key>` + OpenAI-compatible chat body. |
-
-**Not supported:** Anthropic native API (`x-api-key` header, different request format).
 
 ## How it works
 
@@ -61,7 +38,9 @@ Provider, endpoint, model, and API key are all configured inside the app — ope
 2. Click **Fit-Check**. The backend sends every unscored job + your profile to your LLM endpoint in batches. Results are written back to the DB.
 3. Sort by fit score, filter by label, read AI reasoning, and decide whether to apply.
 
-You can also import a job from pasted text (`Import Text`), recheck a single job, or clear all fit data and re-run from the admin console.
+You can also import a job from pasted text (**Add Job manually**), recheck a single job, or clear all fit data and re-run from the admin console.
+
+> **Disclaimer:** Scraping jobs.ch is done at your own risk. Be reasonable — don't hammer the site with hundreds of requests. Use sensible query limits (`scrape.rows`) and don't run scrapes in a tight loop. This tool is for personal use only.
 
 ## Getting good results
 
@@ -71,9 +50,26 @@ You can also import a job from pasted text (`Import Text`), recheck a single job
 4. **Tune via Profile** — if the scores are off, open **Profile**, edit your profile text (add constraints, reword skills, clarify deal-breakers), and re-run Fit-Check on the same batch.
 5. **Repeat until calibrated** — once results feel right, the workflow is just: **Scrape → Fit-Check** whenever you want fresh listings.
 
+## AI provider setup
+
+Provider, endpoint, model, and API key are all configured inside the app — open **Settings** (gear icon) or set them during onboarding.
+
+**Supported providers (tested):**
+
+| Provider | Notes |
+|----------|-------|
+| Ollama (local) | No API key needed. Default endpoint `http://localhost:11434/api/chat`. Make sure Ollama listens on `0.0.0.0` inside Docker: `OLLAMA_HOST=0.0.0.0 ollama serve`. |
+| Ollama Cloud | Requires API key. Endpoint `https://ollama.com/v1/chat/completions`. |
+| OpenRouter | Requires API key. Endpoint `https://openrouter.ai/api/v1/chat/completions`. |
+| DeepInfra | Requires API key. Endpoint `https://api.deepinfra.com/v1/openai/chat/completions`. |
+| Mistral | Requires API key. Endpoint `https://api.mistral.ai/v1/chat/completions`. |
+| Custom | Any endpoint accepting `Authorization: Bearer <key>` + OpenAI-compatible chat body. |
+
+**Not supported:** Anthropic native API (`x-api-key` header, different request format).
+
 ## Configuration
 
-Most settings are editable live in the app (Settings gear). Config files in `config/` on the host are the source of truth and survive container rebuilds.
+Most settings are editable live in the app (Settings gear). Config files in `config/` on the host survive container rebuilds.
 
 ### `api_keys.json`
 
@@ -100,7 +96,7 @@ Controls scraping and LLM parameters. Editable in Settings without restart.
 | `fitcheck.max_tokens` | Max response tokens per LLM call. |
 | `fitcheck.temperature` | LLM temperature. |
 | `fitcheck.top_p` | Nucleus sampling. |
-| `fitcheck.top_k` | Top-k sampling (Ollama / some providers). |
+| `fitcheck.top_k` | Top-k sampling (Ollama local only). |
 
 ### `system_prompt.txt`
 
@@ -116,20 +112,6 @@ The default prompt asks for structured JSON output including `fit_score`, `fit_l
 ### `user_profile.md`
 
 Created after onboarding (or edited in **Profile**). Plain Markdown describing your skills, constraints, experience, and No-Gos. This is what gets substituted into `{{profile}}` during fit-check.
-
-## Project layout
-
-| Path | Purpose |
-|------|---------|
-| `src/main.cpp` | HTTP server, API endpoints, LLM streaming helpers |
-| `src/db.cpp` | SQLite operations, migrations |
-| `frontend/index.html` | Main SPA |
-| `frontend/onboarding.html` | Onboarding wizard (generates `user_profile.md`) |
-| `frontend/css/` / `frontend/js/` | Vanilla ES6 modules, no bundler |
-| `config/config_v2.json` | Scrape + LLM settings |
-| `config/system_prompt.txt` | Fit-check prompt template |
-| `config/api_keys.json` | API key (gitignored) |
-| `data/` | SQLite database (bind-mounted) |
 
 ## Admin console
 
@@ -148,10 +130,9 @@ bash update.sh
 
 Downloads the latest version and rebuilds the container. Database and config survive.
 
-## Logs
+To follow logs:
 
 ```bash
-cd ~/Job-App
 docker compose logs -f
 ```
 
@@ -183,25 +164,8 @@ cd ~
 rm -rf ~/Job-App
 ```
 
-Also remove the image if you want to free disk space:
+Also remove the image to free disk space:
 
 ```bash
 docker compose down --rmi all
 ```
-
-## Local build (no Docker)
-
-```bash
-# Dependencies
-sudo apt install -y cmake g++ make libsqlite3-dev libcurl4-openssl-dev
-
-# Build
-rm -rf cmake-build-debug && mkdir cmake-build-debug
-cd cmake-build-debug && cmake .. && cd ..
-cmake --build cmake-build-debug
-
-# Run
-./cmake-build-debug/Job_App
-```
-
-The server starts on port 8080. Make sure `config/` and `data/` exist next to the binary.
