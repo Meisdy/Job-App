@@ -147,14 +147,12 @@ Press `Ctrl + \` in the browser to open the dev admin console. Commands work on 
 
 ## Updating
 
-Pull or edit code/config, then rebuild:
-
 ```bash
 cd ~/Job-App
-docker compose up --build -d
+bash update.sh
 ```
 
-Your database and config are on the host (`./data`, `./config`) and survive the rebuild.
+Downloads the latest version and rebuilds the container. Database and config survive.
 
 ## Logs
 
