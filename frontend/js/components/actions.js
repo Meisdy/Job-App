@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, IMPORT_TEXT_URL, PROFILE_GET_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, IMPORT_TEXT_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -262,21 +262,43 @@ export async function triggerFitCheck() {
 
 export async function openProfile() {
   const overlay = document.getElementById('profile-overlay');
-  const body = document.getElementById('profile-text-body');
-  if (!overlay || !body) return;
+  const textarea = document.getElementById('profile-text-body');
+  if (!overlay || !textarea) return;
   overlay.classList.add('open');
+  textarea.value = '';
   try {
     const res = await fetch(PROFILE_GET_URL);
     if (!res.ok) throw new Error('No profile');
     const text = await res.text();
-    body.textContent = text;
+    textarea.value = text;
   } catch {
-    body.textContent = 'No profile found. Complete onboarding first.';
+    textarea.value = 'No profile found. Complete onboarding first.';
   }
 }
 
 export function closeProfile() {
   document.getElementById('profile-overlay')?.classList.remove('open');
+}
+
+export async function saveProfile() {
+  const textarea = document.getElementById('profile-text-body');
+  const content = textarea?.value ?? '';
+  const btn = document.getElementById('profile-save-btn');
+  if (btn) { btn.textContent = 'Saving...'; btn.disabled = true; }
+  try {
+    const res = await fetch(PROFILE_SAVE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    if (!res.ok) throw new Error('Save failed');
+    showToast('Profile saved');
+    closeProfile();
+  } catch (e) {
+    showToast(`Save failed: ${e.message}`, true);
+  } finally {
+    if (btn) { btn.textContent = 'Save Profile'; btn.disabled = false; }
+  }
 }
 
 export function openOnboarding() {

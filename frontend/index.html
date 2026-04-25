@@ -111,14 +111,15 @@
   <div class="modal modal--wide">
     <div class="modal-header">
       <span class="modal-title">👤 My Profile</span>
+      <button class="modal-cancel-btn" id="profile-redo-btn" style="font-size:12px;padding:6px 14px;margin-left:auto;margin-right:8px">↺ Redo Onboarding</button>
       <button class="modal-close" id="profile-close" aria-label="Close profile">✕</button>
     </div>
-    <div class="modal-body">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:11px;color:var(--text3)">Your profile is used by the AI for fit-checking.</span>
-        <button class="modal-cancel-btn" id="profile-redo-btn" style="font-size:11px;padding:4px 12px">↺ Redo Onboarding</button>
-      </div>
-      <div id="profile-text-body" class="profile-text"><div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div></div>
+    <div class="modal-body" style="padding:16px 20px">
+      <textarea id="profile-text-body" class="profile-textarea" spellcheck="false"><div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-cancel-btn" id="profile-cancel-btn">Cancel</button>
+      <button class="modal-save-btn" id="profile-save-btn">Save Profile</button>
     </div>
   </div>
 </div>

@@ -3,7 +3,7 @@ import { GET_URL, PROFILE_GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, saveProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
@@ -75,6 +75,8 @@ function bindEvents() {
   onClick('import-job-btn', openImportModal);
   onClick('profile-btn', openProfile);
   onClick('profile-close', closeProfile);
+  onClick('profile-cancel-btn', closeProfile);
+  onClick('profile-save-btn', saveProfile);
   onClick('profile-redo-btn', openOnboarding);
   onClick('onboard-btn', openOnboarding);
   onClick('fitcheck-btn', triggerFitCheck);
