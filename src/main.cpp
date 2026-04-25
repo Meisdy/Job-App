@@ -440,6 +440,10 @@ int main() {
         res.set_redirect("/index.html");
     });
 
+    server.Get("/api/version", [](const httplib::Request&, httplib::Response& res) {
+        res.set_content(json{{"version", APP_VERSION}}.dump(), "application/json");
+    });
+
     server.Get("/api/jobs", [&db](const httplib::Request&, httplib::Response& res) {
         json result = json::array();
         for (const auto& job : get_all_jobs(db))
