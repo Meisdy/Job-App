@@ -52,8 +52,8 @@ Provider, endpoint, model, and API key are all configured inside the app — ope
 
 The backend sends provider-aware requests — not all fields are sent to all providers:
 
-| Field | Ollama (local/cloud) | OpenRouter / Mistral | DeepInfra / Custom |
-|-------|---------------------|---------------------|--------------------|
+| Field | Ollama (local) | Ollama Cloud / OpenRouter / Mistral | DeepInfra / Custom |
+|-------|---------------|-------------------------------------|--------------------|
 | `format: "json"` | ✅ | — | — |
 | `response_format: {type: "json_object"}` | — | ✅ | — |
 | `top_k` | ✅ | — | — |

@@ -107,8 +107,8 @@ AI provider/key are read from `config_v2.json` (`fitcheck.provider`, `fitcheck.e
 - `httpPostAI` has a **600 s timeout** and auto-retries once on empty response or 5xx error (handles Ollama Cloud cold-start).
 - `parseStreamingResponse` handles two formats: Ollama native NDJSON and OpenAI-compatible SSE.
 - `buildAiRequest(provider, model, prompt, ...)` builds the JSON request body. Provider-specific behavior:
-  - `ollama_local` / `ollama_cloud`: `"format":"json"`, `top_k` included, no `response_format`
-  - `openrouter` / `mistral`: `"response_format":{"type":"json_object"}`, no `top_k`
+  - `ollama_local`: native API — `"format":"json"`, `top_k` included, no `response_format`
+  - `ollama_cloud` / `openrouter` / `mistral`: `"response_format":{"type":"json_object"}`, no `top_k`
   - All others (deepinfra, custom): no JSON mode field
   - All providers: `"stream":false`
 - API key gate: all fitcheck/import routes skip the empty-key check when `provider == "ollama_local"`.

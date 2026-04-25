@@ -157,12 +157,16 @@ std::string httpPostAI(const std::string& url, const std::string& apiKey, const 
     return response;
 }
 
+static bool isOllamaLocal(const std::string& provider) {
+    return provider == "ollama_local";
+}
+
 static bool isOllamaProvider(const std::string& provider) {
     return provider == "ollama_local" || provider == "ollama_cloud";
 }
 
 static bool supportsJsonMode(const std::string& provider) {
-    return provider == "openrouter" || provider == "mistral";
+    return provider == "openrouter" || provider == "mistral" || provider == "ollama_cloud";
 }
 
 json buildAiRequest(const std::string& provider, const std::string& model, const std::string& prompt,
@@ -175,12 +179,12 @@ json buildAiRequest(const std::string& provider, const std::string& model, const
         {"top_p",       top_p},
         {"stream",      false}
     };
-    if (isOllamaProvider(provider)) {
+    if (isOllamaLocal(provider)) {
         req["format"] = "json";
     } else if (supportsJsonMode(provider)) {
         req["response_format"] = {{"type", "json_object"}};
     }
-    if (isOllamaProvider(provider) && top_k > 0) req["top_k"] = top_k;
+    if (isOllamaLocal(provider) && top_k > 0) req["top_k"] = top_k;
     return req;
 }
 
@@ -881,8 +885,8 @@ then trigger a profile refresh to update the narrative.*
                 {"top_p",       ai.top_p},
                 {"stream",      false}
             };
-            if (!isOllamaProvider(ai.provider)) request["response_format"] = {{"type", "text"}};
-            if (isOllamaProvider(ai.provider) && ai.top_k > 0) request["top_k"] = ai.top_k;
+            if (!isOllamaLocal(ai.provider)) request["response_format"] = {{"type", "text"}};
+            if (isOllamaLocal(ai.provider) && ai.top_k > 0) request["top_k"] = ai.top_k;
 
             std::string response = httpPostAI(ai.endpoint, api_key, request.dump());
             std::string accumulatedResponse = parseStreamingResponse(response);
