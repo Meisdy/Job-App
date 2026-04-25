@@ -269,6 +269,25 @@ export function openOnboarding() {
 }
 
 let importInProgress = false;
+let importedJobId = null;
+
+function showImportUrlStep() {
+  document.getElementById('import-step-text')?.style.setProperty('display', 'none');
+  document.getElementById('import-footer-text')?.style.setProperty('display', 'none');
+  document.getElementById('import-step-url')?.style.setProperty('display', '');
+  document.getElementById('import-footer-url')?.style.setProperty('display', 'flex');
+  document.getElementById('import-url-input')?.focus();
+}
+
+function resetImportModal() {
+  document.getElementById('import-step-text')?.style.setProperty('display', '');
+  document.getElementById('import-footer-text')?.style.setProperty('display', '');
+  document.getElementById('import-step-url')?.style.setProperty('display', 'none');
+  document.getElementById('import-footer-url')?.style.setProperty('display', 'none');
+  const urlInput = document.getElementById('import-url-input');
+  if (urlInput) urlInput.value = '';
+  importedJobId = null;
+}
 
 export async function importJobFromText() {
   if (importInProgress) return;
@@ -282,9 +301,7 @@ export async function importJobFromText() {
 
   importInProgress = true;
   const button = setButtonLoading('import-btn', 'Extracting...', 'Import');
-  const cancelBtn = document.getElementById('import-cancel-btn');
   if (!button) { importInProgress = false; return; }
-  if (cancelBtn) cancelBtn.disabled = true;
   textarea.disabled = true;
 
   try {
@@ -297,19 +314,30 @@ export async function importJobFromText() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Import failed');
 
-    button.innerHTML = '<span class="spin">⟳</span> Fit-checking...';
+    importedJobId = data.job_id;
     showToast(`Imported: ${data.title || data.job_id}`);
-    closeImportModal();
     await refreshJobs('fit');
-    showToast('Import complete ✓');
+    showImportUrlStep();
   } catch (error) {
     showToast(`Import failed: ${error.message}`, true);
   } finally {
     resetButton(button, 'Import');
-    if (cancelBtn) cancelBtn.disabled = false;
     if (textarea) textarea.disabled = false;
     importInProgress = false;
   }
+}
+
+export async function saveImportUrl() {
+  const url = document.getElementById('import-url-input')?.value?.trim();
+  if (url && importedJobId) {
+    await fetch(UPDATE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ job_id: importedJobId, application_url: url })
+    });
+    await refreshJobs('fit');
+  }
+  closeImportModal();
 }
 
 export function openImportModal() {
@@ -322,4 +350,5 @@ export function closeImportModal() {
   const textarea = document.getElementById('import-textarea');
   if (overlay) overlay.classList.remove('open');
   if (textarea) textarea.value = '';
+  resetImportModal();
 }

@@ -3,7 +3,7 @@ import { GET_URL, PROFILE_GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding, importJobFromText, openImportModal, closeImportModal } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
@@ -107,6 +107,8 @@ function bindEvents() {
   onClick('import-close', closeImportModal);
   onClick('import-cancel-btn', closeImportModal);
   onClick('import-btn', importJobFromText);
+  onClick('import-url-save-btn', saveImportUrl);
+  onClick('import-url-skip-btn', closeImportModal);
 
   // Modal overlay click
   const modalOverlay = document.getElementById('settings-overlay');

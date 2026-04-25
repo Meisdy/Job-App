@@ -467,6 +467,14 @@ int main() {
                     throw std::runtime_error("Notes too long (max 10000 chars)");
                 update_job_field(db, job_id, "notes", notes);
             }
+            if (body.contains("application_url")) {
+                std::string url = body["application_url"];
+                if (!url.empty() && url.rfind("http", 0) != 0)
+                    throw std::runtime_error("Invalid URL");
+                if (url.size() > 2048)
+                    throw std::runtime_error("URL too long");
+                update_job_field(db, job_id, "application_url", url);
+            }
 
             res.set_content(json{{"ok", true}}.dump(), "application/json");
         } catch (const std::exception& e) {
