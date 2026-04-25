@@ -1164,7 +1164,10 @@ then trigger a profile refresh to update the narrative.*
 
         std::string truncated = text.substr(0, 8000);
         std::string extractPrompt =
-            "Extract job posting details from the text below. Return ONLY valid JSON with exactly these keys:\n"
+            "The text below was copied from a job listing webpage and may contain UI artifacts: icon labels, "
+            "navigation text, button names, repeated whitespace, or strings like 'icon', 'info', 'arrow', 'chevron', "
+            "'menu', 'logo', 'share', 'save', 'print'. Ignore all such noise and extract only real job content.\n\n"
+            "Return ONLY valid JSON with exactly these keys:\n"
             "- title: job title (string)\n"
             "- company_name: name of the hiring company or employer (string, NOT a city or location)\n"
             "- place: city or town where the job is located (string)\n"
