@@ -2,8 +2,7 @@ services:
   job-app:
     container_name: job-app
     build: .
-    ports:
-      - "8080:8080"
+    network_mode: host
     volumes:
       - ./data:/app/data
       - ./config:/app/config
