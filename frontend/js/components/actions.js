@@ -1,5 +1,5 @@
 import state from '../state.js';
-import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, IMPORT_TEXT_URL } from '../api.js';
+import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, FITCHECK_URL, IMPORT_TEXT_URL, PROFILE_GET_URL } from '../api.js';
 import { renderDetail } from './detail.js';
 import { renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
@@ -260,12 +260,27 @@ export async function triggerFitCheck() {
 // Navigation
 // ============================================================================
 
-export function openProfile() {
-  window.open('/profile.html', '_blank');
+export async function openProfile() {
+  const overlay = document.getElementById('profile-overlay');
+  const body = document.getElementById('profile-text-body');
+  if (!overlay || !body) return;
+  overlay.classList.add('open');
+  try {
+    const res = await fetch(PROFILE_GET_URL);
+    if (!res.ok) throw new Error('No profile');
+    const text = await res.text();
+    body.textContent = text;
+  } catch {
+    body.textContent = 'No profile found. Complete onboarding first.';
+  }
+}
+
+export function closeProfile() {
+  document.getElementById('profile-overlay')?.classList.remove('open');
 }
 
 export function openOnboarding() {
-  window.open('/onboarding.html', '_blank');
+  window.location.href = '/onboarding.html';
 }
 
 let importInProgress = false;

@@ -3,7 +3,7 @@ import { GET_URL, PROFILE_GET_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
 import { initConsole, toggleConsole } from './components/console.js';
 
 async function init() {
@@ -74,6 +74,8 @@ function bindEvents() {
   onClick('scrape-btn', scrapeJobs);
   onClick('import-job-btn', openImportModal);
   onClick('profile-btn', openProfile);
+  onClick('profile-close', closeProfile);
+  onClick('profile-redo-btn', openOnboarding);
   onClick('onboard-btn', openOnboarding);
   onClick('fitcheck-btn', triggerFitCheck);
   onClick('settings-btn', openSettings);
@@ -123,6 +125,15 @@ function bindEvents() {
     });
   }
 
+  // Profile modal overlay click
+  const profileOverlay = document.getElementById('profile-overlay');
+  if (profileOverlay) {
+    profileOverlay.addEventListener('mousedown', e => { state._profileModalMousedownTarget = e.target; });
+    profileOverlay.addEventListener('click', e => {
+      if (e.target === profileOverlay && state._profileModalMousedownTarget === profileOverlay) closeProfile();
+    });
+  }
+
   // Import modal overlay click
   const importOverlay = document.getElementById('import-overlay');
   if (importOverlay) {
@@ -169,6 +180,7 @@ function bindEvents() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeSettings();
+    closeProfile();
     closeImportModal();
     const menu = document.getElementById('filter-dropdown-menu');
     const btn = document.getElementById('filter-dropdown-btn');

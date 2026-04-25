@@ -18,6 +18,14 @@
   flex-direction:column;
   overflow:hidden;
 }
+.modal--wide { width:860px; max-height:88vh; }
+.profile-text {
+  font-size:12px;
+  line-height:1.7;
+  color:var(--text2);
+  white-space:pre-wrap;
+  font-family:'JetBrains Mono', monospace;
+}
 .modal-header {
   padding:16px 20px;
   border-bottom:1px solid var(--border);
