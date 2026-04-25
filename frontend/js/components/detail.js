@@ -159,10 +159,10 @@ function setupEventHandlers(status, ratingStars) {
   if (status === 'applied') ba.classList.add('act');
   if (status === 'skipped') bs.classList.add('act');
 
-  bi.onclick = () => setStatus('interested');
-  ba.onclick = () => setStatus('applied');
-  bs.onclick = () => setStatus('skipped');
-  be.onclick = () => setExpired();
+  bi.addEventListener('click', () => setStatus('interested'));
+  ba.addEventListener('click', () => setStatus('applied'));
+  bs.addEventListener('click', () => setStatus('skipped'));
+  be.addEventListener('click', () => setExpired());
 
   const stars = ratingStars.querySelectorAll('.star');
   stars.forEach(star => {
@@ -177,7 +177,7 @@ function setupRecheckButton() {
   const recheckBtn = document.getElementById('recheck-btn');
   if (!recheckBtn) return;
 
-  recheckBtn.onclick = async () => {
+  recheckBtn.addEventListener('click', async () => {
     if (!state.currentJob || recheckBtn.classList.contains('running')) return;
 
     recheckBtn.disabled = true;
@@ -208,7 +208,7 @@ function setupRecheckButton() {
       recheckBtn.classList.remove('running');
       recheckBtn.innerHTML = '🔄 Redo Fit-Check';
     }
-  };
+  });
 }
 
 export function renderDetail() {
@@ -234,5 +234,5 @@ export function renderDetail() {
   setupRecheckButton();
 
   const saveNotesBtn = document.getElementById('save-notes-btn');
-  if (saveNotesBtn) saveNotesBtn.onclick = () => saveNotes();
+  if (saveNotesBtn) saveNotesBtn.addEventListener('click', () => saveNotes());
 }

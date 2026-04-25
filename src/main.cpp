@@ -194,12 +194,12 @@ struct ConfigV2 {
     // Fit-check
     std::string              provider{"ollama_local"};
     int                      fitcheck_limit{};
-    std::string              ollama_model{};
+    std::string              model{};
     std::string              ai_endpoint{};
-    int                      ollama_max_tokens{};
-    double                   ollama_temperature{};
-    double                   ollama_top_p{};
-    int                      ollama_top_k{};
+    int                      max_tokens{};
+    double                   temperature{};
+    double                   top_p{};
+    int                      top_k{};
 };
 
 void validateConfigV2(const json& c) {
@@ -225,12 +225,12 @@ ConfigV2 loadConfigV2() {
 
     cfg.provider          = c["fitcheck"].value("provider", "ollama_local");
     cfg.fitcheck_limit    = c["fitcheck"]["limit"].get<int>();
-    cfg.ollama_model      = c["fitcheck"]["model"].get<std::string>();
+    cfg.model             = c["fitcheck"]["model"].get<std::string>();
     cfg.ai_endpoint       = c["fitcheck"]["endpoint"].get<std::string>();
-    cfg.ollama_max_tokens = c["fitcheck"].value("max_tokens", 4000);
-    cfg.ollama_temperature = c["fitcheck"].value("temperature", 1.0);
-    cfg.ollama_top_p      = c["fitcheck"].value("top_p", 0.95);
-    cfg.ollama_top_k      = c["fitcheck"].value("top_k", 64);
+    cfg.max_tokens        = c["fitcheck"].value("max_tokens", 4000);
+    cfg.temperature       = c["fitcheck"].value("temperature", 1.0);
+    cfg.top_p             = c["fitcheck"].value("top_p", 0.95);
+    cfg.top_k             = c["fitcheck"].value("top_k", 64);
 
     return cfg;
 }
@@ -607,7 +607,7 @@ int main() {
         json result = {
             {"provider", config_v2.provider},
             {"endpoint", config_v2.ai_endpoint},
-            {"model",    config_v2.ollama_model},
+            {"model",    config_v2.model},
             {"key_set",  !api_key.empty()}
         };
         res.set_content(result.dump(), "application/json");
@@ -681,9 +681,9 @@ int main() {
 
     auto snapshotAiConfig = [&config_v2, &config_v2_mutex]() -> AiSnapshot {
         std::shared_lock<std::shared_mutex> lock(config_v2_mutex);
-        return { config_v2.provider, config_v2.ollama_model, config_v2.ai_endpoint,
-                 config_v2.ollama_max_tokens, config_v2.ollama_top_k,
-                 config_v2.ollama_temperature, config_v2.ollama_top_p };
+        return { config_v2.provider, config_v2.model, config_v2.ai_endpoint,
+                 config_v2.max_tokens, config_v2.top_k,
+                 config_v2.temperature, config_v2.top_p };
     };
 
     auto buildFitcheckPrompt = [&system_prompt_template](const std::string& profile, const std::string& jobText) -> std::string {
@@ -692,7 +692,7 @@ int main() {
         while ((pos = result.find("{{profile}}")) != std::string::npos)
             result.replace(pos, 11, profile);
         while ((pos = result.find("{{jobText}}")) != std::string::npos)
-            result.replace(pos, 12, jobText);
+            result.replace(pos, 11, jobText);
         return result;
     };
 

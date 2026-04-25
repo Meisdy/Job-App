@@ -6,7 +6,9 @@ const state = {
   searchQuery: '',
   sortMode: 'score',
   _cfgRaw: null,
-  _modalMousedownTarget: null
+  _modalMousedownTarget: null,
+  _profileModalMousedownTarget: null,
+  _importModalMousedownTarget: null
 };
 
 export default state;

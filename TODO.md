@@ -1,13 +1,5 @@
 # TODO
 
-## README overhaul
-- Rewrite with clear sections: what it does, who it's for, quickstart
-- AI provider setup guide: OpenAI, Anthropic, Ollama, OpenRouter — example configs for each
-- Document the fit-check workflow end-to-end with screenshots or ASCII flow
-- Explain config_v2.json fields (endpoint, model, temperature etc.) with annotated example
-- Add troubleshooting section (common errors, WSL gotchas)
-- Add badges (Docker, license, etc.)
-
 ## AI provider compatibility
 - Test and document OpenAI-compatible endpoints (OpenAI, Groq, OpenRouter, LM Studio, Ollama)
 - ✅ Handle provider-specific response formats that deviate from OpenAI spec (Ollama native vs OpenAI SSE; `format:json` vs `response_format`)

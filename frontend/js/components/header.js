@@ -109,7 +109,7 @@ export function updateStats() {
 // ============================================================================
 
 const filterLabels = {
-  all: 'ALL', Strong: 'STRONG', decent: 'DECENT',
+  all: 'ALL', strong: 'STRONG', decent: 'DECENT',
   experimental: 'EXP', weak: 'WEAK', unseen: 'NEW',
   interested: 'STARRED', applied: 'APPLIED'
 };

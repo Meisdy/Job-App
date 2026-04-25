@@ -11,7 +11,6 @@ Static SPA served by the C++ backend. ES6 modules, no bundler.
 ```
 frontend/
 ├── index.html              # Main SPA
-├── profile.html            # Profile editor
 ├── onboarding.html         # Onboarding wizard
 ├── css/
 │   ├── variables.css       # All colors (no --text1)

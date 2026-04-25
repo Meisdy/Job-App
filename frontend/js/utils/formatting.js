@@ -26,6 +26,4 @@ export function getStatusIcon(status) {
   return icons[status] || '';
 }
 
-// Legacy exports for backward compatibility
 export const fmtDate = formatDate;
-export const sicon = getStatusIcon;

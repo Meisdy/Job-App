@@ -18,7 +18,6 @@ Build, test, and code-style guidance for agentic coding in the Job-App repositor
 | `src/main.cpp` | Server, all API endpoints, config, HTTP helpers |
 | `src/db.cpp` | Database operations (SQLite) |
 | `frontend/index.html` | Main SPA |
-| `frontend/profile.html` | Profile editor (separate page) |
 | `frontend/onboarding.html` | Onboarding wizard (separate page) |
 | `frontend/css/` / `frontend/js/` | ES6 modules, no bundler |
 

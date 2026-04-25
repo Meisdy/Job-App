@@ -129,7 +129,6 @@ Created after onboarding (or edited in **Profile**). Plain Markdown describing y
 | `src/main.cpp` | HTTP server, API endpoints, LLM streaming helpers |
 | `src/db.cpp` | SQLite operations, migrations |
 | `frontend/index.html` | Main SPA |
-| `frontend/profile.html` | Profile editor |
 | `frontend/onboarding.html` | Onboarding wizard (generates `user_profile.md`) |
 | `frontend/css/` / `frontend/js/` | Vanilla ES6 modules, no bundler |
 | `config/config_v2.json` | Scrape + LLM settings |

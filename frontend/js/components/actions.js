@@ -67,11 +67,7 @@ async function refreshJobs(sortBy = 'score') {
     const response = await fetch(GET_URL);
     state.allJobs = await response.json();
     
-    if (sortBy === 'fit') {
-      state.allJobs.sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0));
-    } else {
-      state.allJobs.sort((a, b) => (b.score || 0) - (a.score || 0));
-    }
+    state.allJobs.sort((a, b) => (b.fit_score || 0) - (a.fit_score || 0));
     
     setConnectionStatus('connected');
     updateStats();
