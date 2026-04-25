@@ -1164,19 +1164,25 @@ then trigger a profile refresh to update the narrative.*
 
         std::string truncated = text.substr(0, 8000);
         std::string extractPrompt =
-            "The text below was copied from a job listing webpage and may contain UI artifacts: icon labels, "
-            "navigation text, button names, repeated whitespace, or strings like 'icon', 'info', 'arrow', 'chevron', "
-            "'menu', 'logo', 'share', 'save', 'print'. Ignore all such noise and extract only real job content.\n\n"
+            "Extract structured data from the job posting text below. The text may have been copied from a Swiss job board "
+            "(e.g. jobs.ch) where values appear BEFORE their labels on separate lines. Common label words to recognize:\n"
+            "- 'Ort' = location/city (the value before it is the place, NOT company)\n"
+            "- 'Lohn', 'CHF', 'Gehalt', 'Salaire' = salary (IGNORE — do not put in any field)\n"
+            "- 'Pensum', 'Arbeitspensum' = workload % (the value before it is employment_grade)\n"
+            "- 'Anstellungsart' = employment type (ignore)\n"
+            "- 'Bewerben' = apply button (ignore)\n"
+            "- 'icon' lines before benefit text = UI artifacts (ignore)\n"
+            "- Bare numbers like '482551' = job IDs (ignore, NOT zipcode)\n\n"
             "Return ONLY valid JSON with exactly these keys:\n"
             "- title: job title (string)\n"
-            "- company_name: name of the hiring company or employer (string, NOT a city or location)\n"
-            "- place: city or town where the job is located (string)\n"
-            "- zipcode: postal/zip code of the job location — digits only, NOT salary, NOT employment percent (string, empty if unknown)\n"
-            "- employment_grade: workload percentage as integer 0-100 (e.g. 80 for '80%', 100 for full-time, 0 if unknown). NOT salary.\n"
-            "- application_url: direct URL to apply or view the job posting (string, empty if not found)\n"
-            "- pub_date: publication date in YYYY-MM-DD format (string, empty if unknown)\n"
-            "- end_date: application deadline in YYYY-MM-DD format (string, empty if unknown)\n"
-            "Unknown fields: use empty string or 0. Do NOT include any other keys. Do NOT put salary anywhere.\n\nText:\n" + truncated;
+            "- company_name: name of the hiring company (string — NOT a city, NOT a location, NOT empty if identifiable)\n"
+            "- place: city or town of the job location (string)\n"
+            "- zipcode: 4-digit Swiss postal code or equivalent — digits only. Empty if not explicitly present. NEVER salary, NEVER job ID.\n"
+            "- employment_grade: workload as integer 0-100. Use the lower bound if a range (e.g. '80-100%' → 80). 100 for full-time. 0 if unknown.\n"
+            "- application_url: direct URL to apply or view the posting (string, empty if not found)\n"
+            "- pub_date: publication date YYYY-MM-DD (string, empty if unknown)\n"
+            "- end_date: application deadline YYYY-MM-DD (string, empty if unknown)\n"
+            "Unknown fields: empty string or 0. No extra keys. No salary anywhere.\n\nText:\n" + truncated;
 
         try {
             std::cout << "[INFO] Import: calling AI to extract fields..." << std::endl;
