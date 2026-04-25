@@ -9,6 +9,36 @@
   <link rel="stylesheet" href="/css/base.css">
   <style>
     * { box-sizing: border-box; }
+    .provider-screen { display: none; }
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; color: var(--text3); font-weight: 500; margin-bottom: 6px; display: block; }
+    .form-input, .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus { outline: none; border-color: var(--accent); }
+    .form-input:disabled { opacity: 0.45; cursor: not-allowed; }
+    .model-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .model-chip {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--surface2, #1e2530);
+      border: 1px solid var(--border2);
+      color: var(--text3);
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+    .model-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .model-chip.active { background: rgba(96,165,250,0.12); border-color: rgba(96,165,250,0.4); color: var(--accent); }
+    .key-note { font-size: 11px; color: var(--text3); margin-top: 4px; }
     body {
       display: flex;
       justify-content: center;
@@ -148,8 +178,52 @@
     <div class="progress-bar">
       <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
     </div>
-    
-    <div id="question-container">
+
+    <div class="provider-screen" id="provider-screen" style="display:block">
+      <div class="question-counter">Setup — Step 1 of 2</div>
+      <h1 class="question-title">Choose your AI Provider</h1>
+      <p class="question-subtitle">Select a provider and enter your API key. This is used for profile generation and job fit-checking.</p>
+
+      <div class="form-group">
+        <label class="form-label">Provider</label>
+        <select class="form-select" id="ob-provider">
+          <option value="ollama_local">Ollama (Local)</option>
+          <option value="ollama_cloud">Ollama Cloud</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="deepinfra">DeepInfra</option>
+          <option value="mistral">Mistral</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Endpoint URL</label>
+        <input class="form-input" id="ob-endpoint" type="text" value="http://localhost:11434/api/chat">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Model</label>
+        <input class="form-input" id="ob-model" type="text" value="llama3.2:3b" placeholder="e.g. llama3.2:3b">
+        <div class="model-chips" id="ob-model-chips">
+          <span class="model-chip active" onclick="selectChip(this,'ob-model')">llama3.2:3b</span>
+          <span class="model-chip" onclick="selectChip(this,'ob-model')">llama3.1:8b</span>
+          <span class="model-chip" onclick="selectChip(this,'ob-model')">mistral</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">API Key</label>
+        <input class="form-input" id="ob-key" type="password" disabled placeholder="No key required for local Ollama">
+        <div class="key-note" id="ob-key-note">Ollama local does not need an API key.</div>
+      </div>
+
+      <div class="button-row">
+        <button class="btn-primary" id="provider-next-btn">Next →</button>
+      </div>
+      <div id="provider-error" style="color:var(--red,#f87171);font-size:12px;margin-top:12px;display:none"></div>
+    </div>
+
+    <div id="question-container" style="display:none">
       <div class="question-counter" id="question-counter">Question 1 of 10</div>
       <h1 class="question-title" id="question-title">Loading...</h1>
       <p class="question-subtitle" id="question-subtitle"></p>
@@ -175,6 +249,78 @@
   </div>
 
     <script>
+    const PROVIDERS = {
+      ollama_local: { endpoint: 'http://localhost:11434/api/chat',                      models: ['llama3.2:latest', 'llama3.2:3b', 'llama3.1:8b'],                                            needsKey: false },
+      ollama_cloud: { endpoint: 'https://ollama.com/v1/chat/completions',               models: ['gemma4:31b-cloud', 'deepseek-v4-flash'],                                                      needsKey: true  },
+      openrouter:   { endpoint: 'https://openrouter.ai/api/v1/chat/completions',        models: ['mistralai/mistral-nemo', 'meta-llama/llama-3.1-70b-instruct', 'qwen/qwen-2.5-72b-instruct'],                                           needsKey: true  },
+      deepinfra:    { endpoint: 'https://api.deepinfra.com/v1/openai/chat/completions', models: ['mistralai/Mistral-Nemo-Instruct-2407', 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'],                    needsKey: true  },
+      mistral:      { endpoint: 'https://api.mistral.ai/v1/chat/completions',           models: ['mistral-small-latest'],                                                                       needsKey: true  },
+      custom:       { endpoint: '',                                                      models: [],                                                                                             needsKey: true  }
+    };
+
+    function selectChip(el, inputId) {
+      el.closest('.model-chips').querySelectorAll('.model-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(inputId).value = el.textContent;
+    }
+
+    document.getElementById('ob-provider').addEventListener('change', function() {
+      const p = PROVIDERS[this.value];
+      if (!p) return;
+      const endpointEl = document.getElementById('ob-endpoint');
+      const modelEl    = document.getElementById('ob-model');
+      const keyEl      = document.getElementById('ob-key');
+      const chipsEl    = document.getElementById('ob-model-chips');
+      const noteEl     = document.getElementById('ob-key-note');
+
+      if (p.endpoint) endpointEl.value = p.endpoint;
+      if (p.models.length) modelEl.value = p.models[0];
+
+      chipsEl.innerHTML = p.models.map((m, i) =>
+        `<span class="model-chip${i===0?' active':''}" onclick="selectChip(this,'ob-model')">${m}</span>`
+      ).join('');
+
+      keyEl.disabled = !p.needsKey;
+      keyEl.placeholder = p.needsKey ? 'Enter API Key' : 'No key required for local Ollama';
+      if (!p.needsKey) keyEl.value = '';
+      noteEl.textContent = p.needsKey ? 'Stored in config/api_keys.json.' : 'Ollama local does not need an API key.';
+    });
+
+    document.getElementById('provider-next-btn').addEventListener('click', async () => {
+      const provider = document.getElementById('ob-provider').value;
+      const endpoint = document.getElementById('ob-endpoint').value.trim();
+      const model    = document.getElementById('ob-model').value.trim();
+      const apiKey   = document.getElementById('ob-key').value.trim();
+      const errEl    = document.getElementById('provider-error');
+      const btn      = document.getElementById('provider-next-btn');
+
+      errEl.style.display = 'none';
+      if (!endpoint) { errEl.textContent = 'Endpoint is required.'; errEl.style.display = 'block'; return; }
+      if (!model)    { errEl.textContent = 'Model is required.';    errEl.style.display = 'block'; return; }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch('/api/config/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, endpoint, model, api_key: apiKey })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Save failed');
+
+        document.getElementById('provider-screen').style.display = 'none';
+        document.getElementById('question-container').style.display = 'block';
+        showQuestion(0);
+      } catch (e) {
+        errEl.textContent = 'Error: ' + e.message;
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Next →';
+      }
+    });
+
     const questions = [
       {
         title: "CV Drop",
@@ -218,12 +364,7 @@
     let answers = [];
 
     async function init() {
-      try {
-        showQuestion(0);
-      } catch (e) {
-        document.getElementById('question-title').textContent = 'Error loading questions';
-        console.error(e);
-      }
+      // Provider screen is shown by default; profile questions shown after provider save
     }
 
     function showQuestion(index) {

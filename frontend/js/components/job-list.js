@@ -125,7 +125,7 @@ export function renderList() {
 
   // Render empty state or list
   if (filteredJobs.length === 0) {
-    jobListElement.innerHTML = '<div class="ldw">No results</div>';
+    jobListElement.innerHTML = '<div class="ldw">No Jobs in Database</div>';
     return;
   }
 

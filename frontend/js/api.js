@@ -5,6 +5,8 @@ const SCRAPE_URL = '/api/scrape/jobs';
 const DETAILS_URL = '/api/scrape/details';
 const CONFIG_GET_URL = '/api/config';
 const CONFIG_POST_URL = '/api/config';
+const AI_CONFIG_GET_URL = '/api/config/ai';
+const AI_CONFIG_POST_URL = '/api/config/ai';
 
 const PROFILE_GET_URL = '/api/profile';
 const PROFILE_SAVE_URL = '/api/profile/save';
@@ -18,6 +20,8 @@ export {
   DETAILS_URL,
   CONFIG_GET_URL,
   CONFIG_POST_URL,
+  AI_CONFIG_GET_URL,
+  AI_CONFIG_POST_URL,
   PROFILE_GET_URL,
   PROFILE_SAVE_URL,
   FITCHECK_URL,

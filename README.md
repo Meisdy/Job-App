@@ -5,9 +5,8 @@ Personal job-market radar: scrape listings from jobs.ch, score them against your
 ## What it does
 
 1. **Scrape** — Fetches job listings from jobs.ch based on your search queries.
-2. **Detail** — Downloads the full posting text for each listing.
-3. **Fit-check** — Sends every job + your profile to an LLM. Stores a `fit_label` (Strong, Decent, Experimental, Weak, No Go), a weighted score, and structured reasoning you can read in seconds.
-4. **Track** — Keep notes, set a status (New, Applied, etc.), and rate jobs. Sort, filter, and search everything in the browser.
+2. **Fit-check** — Sends every job + your profile to an LLM. Stores a `fit_label` (Strong, Decent, Experimental, Weak, No Go), a weighted score, and structured reasoning you can read in seconds.
+3. **Track** — Keep notes, set a status (New, Applied, etc.), and rate jobs. Sort, filter, and search everything in the browser.
 
 ## Who it's for
 
@@ -17,7 +16,7 @@ Personal job-market radar: scrape listings from jobs.ch, score them against your
 
 ## Quick start
 
-Requires Docker.
+Quickstart focuses on Docker only for now. On a linux machine with Docker installed, execute: 
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
@@ -38,7 +37,7 @@ docker compose restart
 
 Open **http://localhost:8080** and complete onboarding. That's it. Scraping and fit-checking happens inside the app after that.
 
-**WSL users:** Docker does not auto-start on WSL boot. Add this to `~/.bashrc` if you want it automatic:
+**WSL users:** Docker does not auto-start on WSL boot. Start manually via `docker start job-app`, or add to autostart `~/.bashrc` if you want it automatic:
 
 ```bash
 sudo service docker start 2>/dev/null

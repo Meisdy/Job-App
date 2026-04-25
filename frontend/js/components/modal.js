@@ -3,7 +3,17 @@ import { CONFIG_GET_URL, CONFIG_POST_URL } from '../api.js';
 import { showToast } from './actions.js';
 import { escapeHtml } from '../utils/formatting.js';
 
+const PROVIDERS = {
+  ollama_local: { name: 'Ollama (Local)',  endpoint: 'http://localhost:11434/api/chat',                      models: ['llama3.2:latest', 'llama3.2:3b', 'llama3.1:8b'],                                                      needsKey: false },
+  ollama_cloud: { name: 'Ollama Cloud',    endpoint: 'https://ollama.com/v1/chat/completions',               models: ['gemma4:31b-cloud', 'deepseek-v4-flash'],                                                      needsKey: true  },
+  openrouter:   { name: 'OpenRouter',      endpoint: 'https://openrouter.ai/api/v1/chat/completions',        models: ['mistralai/mistral-nemo', 'meta-llama/llama-3.1-70b-instruct', 'qwen/qwen-2.5-72b-instruct'],                                           needsKey: true  },
+  deepinfra:    { name: 'DeepInfra',       endpoint: 'https://api.deepinfra.com/v1/openai/chat/completions', models: ['mistralai/Mistral-Nemo-Instruct-2407', 'meta-llama/Meta-Llama-3.1-70B-Instruct', 'Qwen/Qwen2.5-72B-Instruct'],                    needsKey: true  },
+  mistral:      { name: 'Mistral',         endpoint: 'https://api.mistral.ai/v1/chat/completions',           models: ['mistral-small-latest'],                                                                       needsKey: true  },
+  custom:       { name: 'Custom',          endpoint: '',                                                      models: [],                                                                                             needsKey: true  }
+};
+
 let rawConfig = null;
+let rawAiConfig = null;
 
 // ============================================================================
 // Open/Close
@@ -19,9 +29,14 @@ export async function openSettings() {
   body.innerHTML = renderLoadingState();
 
   try {
-    const response = await fetch(CONFIG_GET_URL);
-    rawConfig = await response.json();
-    body.innerHTML = renderConfigForm(rawConfig);
+    const [cfgRes, aiRes] = await Promise.all([
+      fetch(CONFIG_GET_URL),
+      fetch('/api/config/ai')
+    ]);
+    rawConfig = await cfgRes.json();
+    rawAiConfig = await aiRes.json();
+    body.innerHTML = renderConfigForm(rawConfig, rawAiConfig);
+    setupProviderHandlers();
   } catch (error) {
     body.innerHTML = renderErrorState('Failed to load config');
   }
@@ -37,6 +52,44 @@ export function closeSettingsOnBg(event) {
   if (!overlay) return;
   if (event.target === overlay && state._modalMousedownTarget === overlay) {
     closeSettings();
+  }
+}
+
+// ============================================================================
+// Provider Handler
+// ============================================================================
+
+function setupProviderHandlers() {
+  const select = document.getElementById('cfg-ai-provider');
+  if (!select) return;
+  select.addEventListener('change', () => updateProviderUI(select.value));
+}
+
+function updateProviderUI(providerKey) {
+  const p = PROVIDERS[providerKey];
+  if (!p) return;
+  const endpointEl = document.getElementById('cfg-ai-endpoint');
+  const modelEl    = document.getElementById('cfg-ai-model');
+  const keyEl      = document.getElementById('cfg-ai-key');
+  const chipsEl    = document.getElementById('cfg-ai-model-chips');
+  const keyNote    = document.getElementById('cfg-ai-key-note');
+
+  if (endpointEl && p.endpoint) endpointEl.value = p.endpoint;
+  if (modelEl && p.models.length) modelEl.value = p.models[0];
+
+  if (chipsEl) {
+    chipsEl.innerHTML = p.models.map(m =>
+      `<span class="model-chip" onclick="document.getElementById('cfg-ai-model').value='${m}';this.parentNode.querySelectorAll('.model-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${m}</span>`
+    ).join('');
+  }
+
+  if (keyEl) {
+    keyEl.disabled = !p.needsKey;
+    keyEl.placeholder = p.needsKey ? 'Enter API Key' : 'No key required for local Ollama';
+    if (!p.needsKey) keyEl.value = '';
+  }
+  if (keyNote) {
+    keyNote.textContent = p.needsKey ? 'Stored in config/api_keys.json. Leave blank to keep current.' : 'Ollama local does not need an API key.';
   }
 }
 
@@ -90,6 +143,34 @@ function renderGrid(fields) {
 // Form Rendering
 // ============================================================================
 
+function renderAiSection(aiConfig) {
+  const currentProvider = aiConfig.provider || 'ollama_local';
+  const p = PROVIDERS[currentProvider] || PROVIDERS.custom;
+
+  const providerOptions = Object.entries(PROVIDERS)
+    .map(([k, v]) => `<option value="${k}"${k === currentProvider ? ' selected' : ''}>${escapeHtml(v.name)}</option>`)
+    .join('');
+
+  const chips = p.models.map(m =>
+    `<span class="model-chip${(aiConfig.model === m) ? ' active' : ''}" onclick="document.getElementById('cfg-ai-model').value='${m}';this.parentNode.querySelectorAll('.model-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${m}</span>`
+  ).join('');
+
+  const fields = [
+    renderField('Provider', `<select class="cfg-input" id="cfg-ai-provider">${providerOptions}</select>`),
+    renderField('Endpoint URL', `<input class="cfg-input" id="cfg-ai-endpoint" type="text" value="${escapeHtml(aiConfig.endpoint || '')}">`),
+    renderField('Model',
+      `<input class="cfg-input" id="cfg-ai-model" type="text" value="${escapeHtml(aiConfig.model || '')}">` +
+      `<div id="cfg-ai-model-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${chips}</div>`
+    ),
+    renderField('API Key',
+      `<input class="cfg-input" id="cfg-ai-key" type="password" ${!p.needsKey ? 'disabled' : ''} placeholder="${p.needsKey ? 'Enter New API Key' : 'No key required for local Ollama'}">` +
+      `<div id="cfg-ai-key-note" style="font-size:11px;color:var(--text3);margin-top:4px">${p.needsKey ? 'Stored in config/api_keys.json. Leave blank to keep current.' : 'Ollama local does not need an API key.'}</div>`
+    )
+  ];
+
+  return renderSection('AI Provider', renderGrid(fields));
+}
+
 function renderScrapeSection(config) {
   const scrape = config.scrape || {};
   const fields = [
@@ -103,19 +184,18 @@ function renderScrapeSection(config) {
 function renderFitcheckSection(config) {
   const fc = config.fitcheck || {};
   const fields = [
-    renderField('Job Limit', renderInput('cfg-fc-limit', fc.limit ?? 50)),
-    renderField('Model', renderInput('cfg-fc-model', fc.model || '', 'text')),
-    renderField('Endpoint URL', renderInput('cfg-fc-endpoint', fc.endpoint || '', 'text')),
-    renderField('Max Tokens', renderInput('cfg-fc-max-tokens', fc.max_tokens ?? 4000)),
-    renderField('Temperature', renderInput('cfg-fc-temperature', fc.temperature ?? 1.0, 'number')),
-    renderField('Top P', renderInput('cfg-fc-top-p', fc.top_p ?? 0.95, 'number')),
-    renderField('Top K', renderInput('cfg-fc-top-k', fc.top_k ?? 64))
+    renderField('Job Limit',    renderInput('cfg-fc-limit',       fc.limit       ?? 50)),
+    renderField('Max Tokens',   renderInput('cfg-fc-max-tokens',  fc.max_tokens  ?? 4000)),
+    renderField('Temperature',  renderInput('cfg-fc-temperature', fc.temperature ?? 1.0, 'number')),
+    renderField('Top P',        renderInput('cfg-fc-top-p',       fc.top_p       ?? 0.95, 'number')),
+    renderField('Top K',        renderInput('cfg-fc-top-k',       fc.top_k       ?? 64))
   ];
-  return renderSection('Fit-Check (AI)', renderGrid(fields));
+  return renderSection('Fit-Check (Advanced)', renderGrid(fields));
 }
 
-export function renderConfigForm(config) {
+export function renderConfigForm(config, aiConfig) {
   return [
+    renderAiSection(aiConfig || {}),
     renderScrapeSection(config),
     renderFitcheckSection(config)
   ].join('');
@@ -154,36 +234,53 @@ export async function saveSettings() {
   if (!rawConfig) return;
 
   try {
-    const updated = JSON.parse(JSON.stringify(rawConfig));
+    const provider = getStringValue('cfg-ai-provider');
+    const endpoint = getStringValue('cfg-ai-endpoint');
+    const model    = getStringValue('cfg-ai-model');
+    const apiKey   = getStringValue('cfg-ai-key');
 
+    // Save AI provider config
+    const aiRes = await fetch('/api/config/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, endpoint, model, api_key: apiKey })
+    });
+    const aiData = await aiRes.json();
+    if (!aiRes.ok) {
+      showToast('AI config error: ' + (aiData.error || 'unknown'), true);
+      return;
+    }
+
+    // Save main config (scrape + advanced fitcheck params)
+    const updated = JSON.parse(JSON.stringify(rawConfig));
     updated.scrape = {
       queries: getTextareaLines('cfg-queries'),
       rows: getIntValue('cfg-rows', 50)
     };
-
     updated.fitcheck = {
+      ...(updated.fitcheck || {}),
+      provider,
+      endpoint,
+      model,
       limit:       getIntValue('cfg-fc-limit', 50),
-      model:       getStringValue('cfg-fc-model'),
-      endpoint:    getStringValue('cfg-fc-endpoint'),
       max_tokens:  getIntValue('cfg-fc-max-tokens', 4000),
       temperature: getFloatValue('cfg-fc-temperature', 1.0),
       top_p:       getFloatValue('cfg-fc-top-p', 0.95),
       top_k:       getIntValue('cfg-fc-top-k', 64)
     };
 
-    const response = await fetch(CONFIG_POST_URL, {
+    const cfgRes = await fetch(CONFIG_POST_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated)
     });
+    const cfgData = await cfgRes.json();
 
-    const data = await response.json();
-
-    if (response.ok) {
+    if (cfgRes.ok) {
       showToast('Config saved & reloaded');
       closeSettings();
     } else {
-      showToast('Error: ' + (data.error || 'unknown'), true);
+      showToast('Error: ' + (cfgData.error || 'unknown'), true);
     }
   } catch (error) {
     showToast('Save failed', true);
