@@ -13,7 +13,6 @@
 
 using json = nlohmann::json;
 
-static constexpr int kOnboardingQuestionCount = 9;
 static const std::string kAiNotConfigured = "AI not configured — set provider and API key in Settings.";
 
 static void replaceAll(std::string& text, const std::string& from, const std::string& to) {
@@ -316,34 +315,32 @@ void generateProfile(AppState& state, const httplib::Request& req, httplib::Resp
     try {
         json body = json::parse(req.body);
 
-        if (!body.contains("answers") || !body["answers"].is_array() ||
-            body["answers"].size() != kOnboardingQuestionCount) {
-            sendError(res, 400, "Expected " + std::to_string(kOnboardingQuestionCount) + " answers");
+        // The onboarding page owns the question list; the server only labels what it receives.
+        if (!body.contains("answers") || !body["answers"].is_array() || body["answers"].empty()) {
+            sendError(res, 400, "Expected a non-empty answers array");
             return;
+        }
+        const auto& answers = body["answers"];
+
+        for (const auto& entry : answers) {
+            if (!entry.is_object() ||
+                !entry.contains("title")  || !entry["title"].is_string() ||
+                !entry.contains("answer") || !entry["answer"].is_string()) {
+                sendError(res, 400, "Each answer needs a title and an answer string");
+                return;
+            }
         }
 
         auto ai_opt = requireAi(state, res);
         if (!ai_opt) return;
         const AiSnapshot& ai = *ai_opt;
-        const auto& answers = body["answers"];
-
-        const std::string questions[kOnboardingQuestionCount] = {
-            "CV Drop",
-            "Career Goal (3–5 Years)",
-            "Intrinsic Motivation",
-            "No-Gos",
-            "Tech Skills: Build vs. Tolerate",
-            "Company Type & Region",
-            "Hard Constraints",
-            "Work Style",
-            "What Should the LLM Know That's Not in the CV?"
-        };
 
         std::string profileText = "Candidate Onboarding Answers:\n\n";
-        for (int i = 0; i < kOnboardingQuestionCount; i++) {
-            profileText += "Q" + std::to_string(i + 1) + ": " + questions[i] + "\n";
-            std::string answer = answers[i].is_string() ? answers[i].get<std::string>() : answers[i].dump();
-            profileText += "A" + std::to_string(i + 1) + ": " + answer + "\n\n";
+        int questionNumber = 1;
+        for (const auto& entry : answers) {
+            std::string number = std::to_string(questionNumber++);
+            profileText += "Q" + number + ": " + entry["title"].get<std::string>()  + "\n";
+            profileText += "A" + number + ": " + entry["answer"].get<std::string>() + "\n\n";
         }
 
         std::string prompt = state.onboarding_prompt + profileText;

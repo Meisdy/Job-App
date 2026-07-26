@@ -9,50 +9,14 @@ Version: [HASH]
 
 ---
 
-## Q1: CV Drop
+Then one section per answer, in the order given, repeating the question title verbatim:
+
+## Q[number]: [question title]
 [Answer]
 
 ---
 
-## Q2: Career Goal (3–5 Years)
-[Answer]
-
----
-
-## Q3: Intrinsic Motivation
-[Answer]
-
----
-
-## Q4: No-Gos
-[Answer]
-
----
-
-## Q5: Tech Skills: Build vs. Tolerate
-[Answer]
-
----
-
-## Q6: Company Type & Region
-[Answer]
-
----
-
-## Q7: Hard Constraints
-[Answer]
-
----
-
-## Q8: Work Style
-[Answer]
-
----
-
-## Q9: What Should the LLM Know That's Not in the CV?
-[Answer]
-
----
+After the last answer:
 
 ## Synthesized Narrative
 [Auto-generated from all answers above. Combine into cohesive paragraph for job assessment.]

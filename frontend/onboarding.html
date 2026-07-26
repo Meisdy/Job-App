@@ -382,39 +382,39 @@
     const questions = [
       {
         title: "CV Drop",
-        subtitle: "Paste your full CV or key stations: title, company/institution, period, core tasks."
+        subtitle: "Paste your full CV or key stations: title, company/institution, period, core tasks. Include apprenticeship, diplomas, certificates and licences."
       },
       {
         title: "Career Goal (3–5 Years)",
-        subtitle: "Role, industry, country, seniority — as specific as possible. Not 'interesting work', but what exactly."
+        subtitle: "Role, industry, region, seniority — as specific as possible. Not 'interesting work', but what exactly."
       },
       {
         title: "Intrinsic Motivation",
-        subtitle: "What gives you energy at work? (e.g. hands-on building, debugging deep systems, deploying things, autonomy, impact) — no generic answers."
+        subtitle: "What gives you energy at work? (e.g. working with your hands, solving hard problems, helping people directly, organising, autonomy, visible impact) — no generic answers."
       },
       {
         title: "No-Gos",
-        subtitle: "Absolute dealbreakers: culture, task types, travel %, hierarchy, corporate language, management style, industries."
+        subtitle: "Absolute dealbreakers: culture, task types, shift or weekend work, travel %, hierarchy, corporate language, management style, industries."
       },
       {
-        title: "Tech Skills: Build vs. Tolerate",
-        subtitle: "Separate 'want to master' from 'can do but dislike'. This shapes fit quality significantly."
+        title: "Skills: Build vs. Tolerate",
+        subtitle: "Separate 'want to master' from 'can do but dislike' — tools, machines, software, methods, certifications. This shapes fit quality significantly."
       },
       {
-        title: "Company Type & Region",
-        subtitle: "Startup / SME / corporate, product / service, known brand / hidden champion. Country/region preference or hard constraint."
+        title: "Employer Type & Region",
+        subtitle: "Startup / SME / corporate / public sector / non-profit, product or service, known brand or hidden champion. Which cantons, how far you will commute, and which language regions (German / French / Italian) work for you."
       },
       {
         title: "Hard Constraints",
-        subtitle: "Minimum salary, remote %, location, start date, visa/permit status, language of work."
+        subtitle: "Minimum salary in CHF, Pensum in %, remote share, earliest start date, notice period, permit status (Swiss / C / B / G / L), and the working languages you can handle."
       },
       {
         title: "Work Style",
         subtitle: "Solo deep-focus vs. collaborative, how you handle ambiguity, preferred feedback culture, pace."
       },
       {
-        title: "What Should the LLM Know That's Not in the CV?",
-        subtitle: "Personality, values, things that went wrong before, what a great day at work looks like. Free-form."
+        title: "What Else Should We Know?",
+        subtitle: "Anything not in the CV: personality, values, things that went wrong before, what a great day at work looks like. Free-form."
       }
     ];
 
@@ -522,12 +522,18 @@
       document.getElementById('question-container').style.display = 'none';
       document.getElementById('loading-screen').style.display = 'block';
       
+      // Titles travel with the answers so the question list stays defined here only
+      const titledAnswers = questions.map((question, index) => ({
+        title: question.title,
+        answer: answers[index]
+      }));
+
       // Call complete endpoint to generate markdown profile
       try {
         const res = await fetch('/api/onboarding/complete', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({answers: answers})
+          body: JSON.stringify({answers: titledAnswers})
         });
         const data = await res.json();
         

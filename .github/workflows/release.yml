@@ -57,7 +57,6 @@ jobs:
           cp config/system_prompt.txt   "$DIST/config/"
           cp config/onboarding_prompt.txt "$DIST/config/"
           cp config/import_prompt.txt   "$DIST/config/"
-          cp config/user_profile_template.md "$DIST/config/" 2>/dev/null || true
           zip -r "Job_App-${{ github.ref_name }}-win64.zip" "$DIST"
 
       # ── Single GitHub Release: notes + exe zip asset ──────────────────────

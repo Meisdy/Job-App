@@ -2,6 +2,8 @@
 
 Scrape job listings from jobs.ch, linkedIn or import a job manually, score them against your profile with an LLM, and track applications — all in one self-hosted UI.
 
+Built for the **Swiss job market** and for any trade — the onboarding questions ask about CHF, Pensum, permit class and language regions, not about your tech stack. The map, the canton and postal-code fields and the jobs.ch source are Switzerland-bound; LinkedIn scraping, Import Text, fit-check and the tracker are not. See [Scope](MANUAL.md#scope) for the full split.
+
 ## Quick start
 
 Two ways to run: a standalone Windows exe (no Docker) or a Docker image on Linux (recommended).

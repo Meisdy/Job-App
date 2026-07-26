@@ -1,20 +1,42 @@
 # Job Master — Manual
 
+## Scope
+
+Built for the **Swiss job market**, for any trade — not only tech. Onboarding, fit-check and tracking make no assumption about your industry; the country assumptions are real and listed here.
+
+| Part | Swiss-bound? |
+|---|---|
+| jobs.ch source | Yes — Swiss board, no equivalent for other countries |
+| LinkedIn source | No — `Location` is a free text field, set it to any country |
+| Map view | Yes — bundled place index covers Switzerland and Liechtenstein only. Foreign jobs land in the unpinned drawer |
+| Job fields | Yes — canton code, 4-digit postal code, Pensum in % |
+| Import Text | Mostly — the extraction prompt knows Swiss posting labels (`Lohn`, `Gehalt`, `Salaire`, `Pensum`). Foreign postings usually still parse, minus those fields |
+| Onboarding questions | Yes — asks salary in CHF, Pensum %, permit class, German/French/Italian language regions |
+| Fit-check, tracker, notes | No — country-neutral |
+
+Short version: outside Switzerland, use the LinkedIn source and Import Text; expect no map pins and empty canton fields.
+
+---
+
 ## Onboarding
 
 Runs automatically on first launch. Nine questions build your `user_profile.md`:
 
-1. CV — drop a PDF (text-selectable only) or paste plain text
+1. CV — drop a PDF (text-selectable only) or paste plain text, including apprenticeship, diplomas and licences
 2. Career goal (3–5 years)
 3. What drives you
-4. Hard no-gos
-5. Tech you want to build vs. tolerate
-6. Preferred company type and region
-7. Hard constraints (salary floor, language, etc.)
+4. Hard no-gos, including shift or weekend work
+5. Skills you want to build vs. tolerate
+6. Preferred employer type and region — cantons, commute distance, language regions
+7. Hard constraints (salary in CHF, Pensum %, notice period, permit status, working languages)
 8. Work style
-9. Anything else the LLM should know
+9. Anything else not in the CV
+
+The questions are trade-neutral — a polymechanic, a nurse and a developer all answer the same nine. They assume the Swiss market, not the tech industry (see [Scope](#scope)).
 
 Profile is editable any time via **Profile** (person icon in header). Changes take effect on the next fit-check.
+
+The question list lives in `frontend/onboarding.html` and nowhere else — the server labels whatever the page sends it. Edit, add or drop questions there and the generated profile follows.
 
 ---
 

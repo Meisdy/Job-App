@@ -11,7 +11,6 @@ WORKDIR /app
 COPY --from=builder /src/build/Job_App .
 COPY frontend/ frontend/
 COPY config/system_prompt.txt config/system_prompt.txt
-COPY config/user_profile_template.md config/user_profile_template.md
 COPY config/onboarding_prompt.txt config/onboarding_prompt.txt
 COPY config/import_prompt.txt config/import_prompt.txt
 RUN mkdir -p data
