@@ -8,11 +8,12 @@
 - [ ] Overall simplify UI
 
 ## Logic
-- [ ] Refactor sourcing to make it modular
+- [ ] Add import / export functionality for DB for handover from and to manual workflows
+- [ ] Refactor sourcing for modularity and security
 - [ ] De-dupe for sources
 - [ ] Restore single job? Generally admin console features and if it shall remain at all
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe voice input or pick questions / answers
-- [ ] Onboarding and general logic is currently heavy tech and swiss focussed
+
 
 
 ## Ideas
