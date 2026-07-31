@@ -16,6 +16,7 @@
 #include "ai.h"
 #include "config.h"
 #include "db.h"
+#include "export.h"
 #include "fitcheck.h"
 #include "response.h"
 #include "scheduler.h"
@@ -267,6 +268,27 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         std::string key = readApiKey(state.api_key, state.api_key_mutex);
 
         importJobFromText(state, res, *ai_opt, key, text);
+    });
+
+    // ── EXPORT ───────────────────────────────────────────────────────────────
+
+    server.Get("/api/export/applications.csv", [&state](const httplib::Request&, httplib::Response& res) {
+        std::vector<JobRecord> jobs;
+        {
+            std::lock_guard<std::mutex> lock(state.db_mutex);
+            jobs = get_all_jobs(state.db);
+        }
+
+        // Only rows the user acted on — scraped listings are reproducible, this is not.
+        std::vector<JobRecord> tracked;
+        for (const JobRecord& job : jobs) {
+            if (job.user_status == "applied" || job.user_status == "interested")
+                tracked.push_back(job);
+        }
+
+        res.set_content(buildApplicationsCsv(std::move(tracked)), "text/csv; charset=utf-8");
+        res.set_header("Content-Disposition", "attachment; filename=\"job-applications.csv\"");
+        res.set_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
     });
 
     // ── SCRAPE ───────────────────────────────────────────────────────────────
