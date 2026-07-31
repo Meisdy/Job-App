@@ -9,8 +9,8 @@
 
 ## Logic
 - [ ] Refactor sourcing for modularity and security
+- [ ] Check that hard delete exists for every job at some point. Purge function from admin will be removed. 
 - [ ] De-dupe for sources
-- [ ] Restore single job? Generally admin console features and if it shall remain at all
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe voice input or pick questions / answers
 
 

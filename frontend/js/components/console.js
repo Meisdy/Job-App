@@ -49,14 +49,9 @@ const COMMANDS = {
       cmd('clear',   '',        'clear output');
       cmd('stats',   '',        'job statistics');
       gap();
-      sec('Operations');
-      cmd('scrape',   '',       'full scrape · jobs + details');
-      cmd('fitcheck', '',       'batch fit-check unassessed');
-      gap();
       sec('Soft Delete', '· hidden, reversible');
       cmd('delete:status', 'status',  'all with user status');
       cmd('delete:label',  'label',  'all with fit label');
-      cmd('delete:job',    'id',     'one job');
       cmd('restore:all',   '',       'restore all deleted to unseen');
       gap();
       sec('Purge', '· permanent');
@@ -66,7 +61,6 @@ const COMMANDS = {
       sec('Fit-Check');
       cmd('fitcheck:clear',       'id', 'clear fit data for one job');
       cmd('fitcheck:clear-all',   '',   'clear all fit data');
-      cmd('fitcheck:recheck',     'id', 'recheck one job');
       cmd('fitcheck:recheck-all', '',   'clear all + batch recheck');
       gap();
       return null;
@@ -118,36 +112,6 @@ const COMMANDS = {
     }
   },
 
-  scrape: {
-    desc: 'Trigger full scrape (jobs + details)',
-    handler: async () => {
-      logConsole('Scraping jobs...', 'system');
-      const r1 = await fetch(`${API_BASE}/scrape/jobs`, { method: 'POST' });
-      if (!r1.ok) throw new Error(`Scrape jobs failed: HTTP ${r1.status}`);
-      const d1 = await r1.json();
-      logConsole(`Jobs scraped: ${d1.count ?? '?'} processed. Fetching details...`, 'system');
-
-      const r2 = await fetch(`${API_BASE}/scrape/details`, { method: 'POST' });
-      if (!r2.ok) throw new Error(`Scrape details failed: HTTP ${r2.status}`);
-      const d2 = await r2.json();
-      return `Scrape complete. Jobs: ${d1.count ?? '?'} processed, details: ${d2.updated ?? '?'} updated, ${d2.failed ?? 0} failed`;
-    }
-  },
-
-  fitcheck: {
-    desc: 'Run batch fit-check on unassessed jobs',
-    handler: async () => {
-      logConsole('Running fit-check...', 'system');
-      const res = await fetch(`${API_BASE}/fitcheck`, { method: 'POST' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      return `Fit-check complete: ${data.checked} checked, ${data.failed} failed`;
-    }
-  },
-
   'delete:status': {
     desc: 'Soft-delete all jobs with given status',
     usage: 'delete:status <status>',
@@ -169,24 +133,6 @@ const COMMANDS = {
       if (!label) throw new Error('Usage: delete:label <label>');
       const deleted = await bulkDeleteByFitLabel(label);
       return `Soft-deleted ${deleted} "${label}" jobs`;
-    }
-  },
-
-  'delete:job': {
-    desc: 'Soft-delete one job',
-    usage: 'delete:job <id>',
-    confirm: true,
-    handler: async (args) => {
-      const id = resolveJobId(args[0]);
-      logConsole(`Resolved: ...${id.slice(-8)}`, 'system');
-      const res = await fetch(`${API_BASE}/jobs/${encodeURIComponent(id)}/soft-delete`, {
-        method: 'POST'
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      return `Soft-deleted job ...${id.slice(-8)}`;
     }
   },
 
@@ -274,27 +220,6 @@ const COMMANDS = {
         throw new Error(data.error || `HTTP ${res.status}`);
       }
       return 'Cleared fit data for all jobs. Run fitcheck to re-assess.';
-    }
-  },
-
-  'fitcheck:recheck': {
-    desc: 'Re-check fit for one job',
-    usage: 'fitcheck:recheck <id>',
-    confirm: true,
-    handler: async (args) => {
-      const id = resolveJobId(args[0]);
-      logConsole(`Resolved: ...${id.slice(-8)}`, 'system');
-      logConsole('Clearing fit data and triggering recheck...', 'system');
-
-      const res = await fetch(`${API_BASE}/admin/fitcheck/recheck/${encodeURIComponent(id)}`, {
-        method: 'POST'
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || `HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      return `Rechecked ...${id.slice(-8)}: fit_score=${data.fit_score}, fit_label=${data.fit_label}`;
     }
   },
 

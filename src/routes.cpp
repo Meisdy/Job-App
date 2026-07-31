@@ -211,16 +211,6 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         }
     });
 
-    server.Delete("/api/jobs/:id", [&state](const httplib::Request& req, httplib::Response& res) {
-        try {
-            std::lock_guard<std::mutex> lock(state.db_mutex);
-            delete_job(state.db, req.path_params.at("id"));
-            sendJson(res, {{"ok", true}});
-        } catch (const std::exception& e) {
-            sendJson(res, {{"error", "database error"}, {"detail", e.what()}}, 500);
-        }
-    });
-
     server.Post("/api/jobs/:id/soft-delete", [&state](const httplib::Request& req, httplib::Response& res) {
         try {
             std::lock_guard<std::mutex> lock(state.db_mutex);
@@ -536,19 +526,6 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         } catch (const std::exception& e) {
             std::cerr << "[ADMIN] Clear all fit data failed: " << e.what() << std::endl;
             sendError(res, 500, e.what());
-        }
-    });
-
-    server.Post("/api/admin/fitcheck/recheck/:id", [&state](const httplib::Request& req, httplib::Response& res) {
-        std::string job_id = req.path_params.at("id");
-        std::cout << "[INFO] Admin recheck triggered for job: " << job_id << std::endl;
-
-        try {
-            auto result = fitcheckSingleJob(state, res, job_id, true, "admin_recheck");
-            if (!result) return;
-            sendJson(res, {{"ok", true}, {"fit_score", result->score}, {"fit_label", result->label}});
-        } catch (const std::exception& e) {
-            sendError(res, 500, std::string("Recheck failed: ") + e.what());
         }
     });
 

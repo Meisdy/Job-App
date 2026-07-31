@@ -4,7 +4,7 @@ import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, tog
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
 import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, saveProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
-import { initConsole, toggleConsole } from './components/console.js';
+import { initConsole } from './components/console.js';
 
 const MOBILE_BREAKPOINT = 1024;
 
