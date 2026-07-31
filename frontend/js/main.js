@@ -3,8 +3,8 @@ import { GET_URL, PROFILE_GET_URL, VERSION_URL } from './api.js';
 import { setConnectionStatus, updateStats, onSearch, clearSearch, setFilter, toggleSort, initBulkDeleteDropdown } from './components/header.js';
 import { renderList, selectJob } from './components/job-list.js';
 import { closeSettings, openSettings, saveSettings } from './components/modal.js';
-import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, saveProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal } from './components/actions.js';
-import { initConsole } from './components/console.js';
+import { setStatus, setRating, hoverStar, unhoverStar, setExpired, saveNotes, scrapeJobs, triggerFitCheck, openProfile, closeProfile, saveProfile, openOnboarding, importJobFromText, saveImportUrl, openImportModal, closeImportModal, restoreDeletedJob } from './components/actions.js';
+import { initRestoreDropdown } from './components/restore.js';
 
 const MOBILE_BREAKPOINT = 1024;
 
@@ -112,10 +112,17 @@ function bindEvents() {
   }
 
   initBulkDeleteDropdown();
+  initRestoreDropdown();
 
   const jobList = document.getElementById('job-list');
   if (jobList) {
     jobList.addEventListener('click', e => {
+      const restoreButton = e.target.closest('.restore-btn');
+      if (restoreButton) {
+        restoreDeletedJob(restoreButton.dataset.id);
+        return;
+      }
+
       const item = e.target.closest('.job-item');
       if (!item) return;
       const id = item.dataset.id;
@@ -241,7 +248,6 @@ async function checkForUpdate() {
 
 document.addEventListener('DOMContentLoaded', () => {
   init();
-  initConsole();
   checkForUpdate();
 });
 

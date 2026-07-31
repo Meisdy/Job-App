@@ -1,6 +1,9 @@
 import state from '../state.js';
-import { renderList } from './job-list.js';
+import { BULK_DELETE_URL, GET_URL } from '../api.js';
+import { DELETED_FILTER, loadDeletedJobs, refreshDeletedJobs, renderList } from './job-list.js';
 import { isClosedApplication } from '../application-status.js';
+import { FIT_LABELS, fitLabelCategory } from '../fit-labels.js';
+import { countDistinct, renderCategoryPicker } from '../utils/popover.js';
 
 // ============================================================================
 // Connection Status
@@ -105,6 +108,14 @@ export function updateStats() {
     if (btn) btn.textContent = text;
   });
 
+  // The deleted list is fetched lazily, so its count only exists once it has been opened
+  const deletedBtn = document.getElementById('filter-deleted');
+  if (deletedBtn) {
+    deletedBtn.textContent = state.deletedJobsLoaded
+      ? `Deleted (${state.deletedJobs.length})`
+      : 'Deleted';
+  }
+
   // Tracker keeps closed applications, so its count includes them (unlike counts.applied)
   const allApplications = state.allJobs.filter(j => j.user_status === 'applied').length;
   const trackerBtn = document.getElementById('tracker-btn');
@@ -118,10 +129,16 @@ export function updateStats() {
 const filterLabels = {
   all: 'ALL', strong: 'STRONG', decent: 'DECENT',
   experimental: 'EXP', weak: 'WEAK', unseen: 'NEW',
-  interested: 'STARRED', applied: 'APPLIED'
+  interested: 'STARRED', applied: 'APPLIED', deleted: 'DELETED'
 };
 
-export function setFilter(button, filterName) {
+// Restore by label only makes sense while the deleted list is on screen.
+function setRestoreControlVisible(visible) {
+  const wrap = document.getElementById('restore-wrap');
+  if (wrap) wrap.classList.toggle('visible', visible);
+}
+
+export async function setFilter(button, filterName) {
   state.currentFilter = filterName;
 
   document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
@@ -135,6 +152,14 @@ export function setFilter(button, filterName) {
 
   const menu = document.getElementById('filter-dropdown-menu');
   if (menu) menu.classList.remove('open');
+
+  const isDeletedView = filterName === DELETED_FILTER;
+  setRestoreControlVisible(isDeletedView);
+
+  if (isDeletedView) {
+    await loadDeletedJobs();
+    updateStats();
+  }
 
   renderList();
 }
@@ -172,7 +197,9 @@ function isOlderThan30Days(scrapedAt) {
 // How long the "✓ Cleaned N" confirmation stays before the button resets.
 const CLEANUP_DONE_FLASH_MS = 1400;
 
+// Every rating group, plus the two status groups that have no rating equivalent.
 const CLEANUP_CATEGORIES = [
+  ...FIT_LABELS.map(fitLabelCategory),
   {
     key: 'skipped',
     label: 'Skipped',
@@ -180,18 +207,16 @@ const CLEANUP_CATEGORIES = [
     requestBody: { status: 'skipped', older_than_days: 0 }
   },
   {
-    key: 'noGo',
-    label: 'No Go',
-    matches: job => (job.fit_label || '').toLowerCase() === 'no go',
-    requestBody: { fit_label: 'no go' }
-  },
-  {
-    key: 'oldUnseen',
+    key: 'old-unseen',
     label: 'Unseen > 30 days',
     matches: job => (!job.user_status || job.user_status === 'unseen') && isOlderThan30Days(job.scraped_at),
     requestBody: { status: 'unseen', older_than_days: 30 }
   }
 ];
+
+// Deleting a Strong or Decent job is almost never what someone came here to do,
+// so those groups start unticked even though they are listed.
+const CLEANUP_DEFAULT_CHECKED = new Set(['weak', 'no-go', 'skipped', 'old-unseen']);
 
 function cleanupElements() {
   return {
@@ -200,18 +225,8 @@ function cleanupElements() {
   };
 }
 
-// Distinct jobs matched by any of the given categories (one job may match several).
-function countDistinct(categories) {
-  const active = state.allJobs.filter(job => job.user_status !== 'deleted');
-  const ids = new Set();
-  active.forEach(job => {
-    if (categories.some(category => category.matches(job))) ids.add(job.job_id);
-  });
-  return ids.size;
-}
-
 async function bulkDeleteRequest(body) {
-  const res = await fetch('/api/jobs/bulk', {
+  const res = await fetch(BULK_DELETE_URL, {
     method: 'DELETE',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
@@ -240,56 +255,20 @@ function closeMenu() {
   if (button) button.setAttribute('aria-expanded', 'false');
 }
 
-function selectedCategories(menu) {
-  return CLEANUP_CATEGORIES.filter(category =>
-    menu.querySelector(`input[data-key="${category.key}"]`)?.checked
-  );
-}
-
-// The confirm button always shows how many distinct jobs the current selection deletes.
-function refreshConfirmButton(menu) {
-  const confirmButton = menu.querySelector('.cleanup-confirm');
-  if (!confirmButton) return;
-  const count = countDistinct(selectedCategories(menu));
-  confirmButton.textContent = `Delete ${count}`;
-  confirmButton.disabled = count === 0;
-}
-
 function renderMenu(menu) {
-  const available = CLEANUP_CATEGORIES
-    .map(category => ({ category, count: countDistinct([category]) }))
-    .filter(entry => entry.count > 0);
-
-  if (available.length === 0) {
-    menu.innerHTML = '<span class="bulk-del-empty">Nothing to clean up</span>';
-    return;
-  }
-
-  const rows = available.map(({ category, count }) => `
-    <label class="cleanup-row">
-      <input type="checkbox" data-key="${category.key}" checked>
-      <span>${category.label}</span>
-      <span class="cleanup-count">${count}</span>
-    </label>`).join('');
-
-  menu.innerHTML = `${rows}
-    <div class="cleanup-foot">
-      <button class="cleanup-confirm"></button>
-      <button class="cleanup-cancel">Cancel</button>
-    </div>`;
-
-  refreshConfirmButton(menu);
-  menu.querySelectorAll('input[data-key]').forEach(input =>
-    input.addEventListener('change', () => refreshConfirmButton(menu))
-  );
-  menu.querySelector('.cleanup-cancel').addEventListener('click', closeMenu);
-  menu.querySelector('.cleanup-confirm').addEventListener('click', () => runCleanup(menu));
+  renderCategoryPicker(menu, {
+    jobs: state.allJobs,
+    categories: CLEANUP_CATEGORIES,
+    isCheckedByDefault: category => CLEANUP_DEFAULT_CHECKED.has(category.key),
+    confirmLabel: count => `Delete ${count}`,
+    emptyText: 'Nothing to clean up',
+    danger: true,
+    onCancel: closeMenu,
+    onConfirm: runCleanup
+  });
 }
 
-async function runCleanup(menu) {
-  const categories = selectedCategories(menu);
-  if (categories.length === 0) return;
-
+async function runCleanup(categories) {
   const { button } = cleanupElements();
   closeMenu();
   button.classList.remove('done', 'error');
@@ -302,7 +281,8 @@ async function runCleanup(menu) {
     for (const category of categories) {
       deleted += await bulkDeleteRequest(category.requestBody);
     }
-    state.allJobs = await fetch('/api/jobs').then(r => r.json());
+    state.allJobs = await fetch(GET_URL).then(r => r.json());
+    await refreshDeletedJobs();
     renderList();
     updateStats();
     toastBulk(`Cleaned up ${deleted} jobs`);
@@ -322,18 +302,11 @@ async function runCleanup(menu) {
 function updateCleanupButton() {
   const { button } = cleanupElements();
   if (!button) return;
-  const total = countDistinct(CLEANUP_CATEGORIES);
+  const total = countDistinct(state.allJobs, CLEANUP_CATEGORIES);
   button.classList.remove('running', 'done', 'error');
   button.disabled = total === 0;
-  button.title = total > 0 ? 'Review and delete skipped, No Go and old unseen jobs' : 'Nothing to clean up';
+  button.title = total > 0 ? 'Review and delete jobs by rating or status' : 'Nothing to clean up';
   button.textContent = total > 0 ? `🗑 Clean up (${total})` : '✓ Clean';
-}
-
-// Kept name for callers (console.js) that refresh the header after data changes.
-export function updateBulkDeleteMenu() {
-  updateCleanupButton();
-  const { menu } = cleanupElements();
-  if (menu && menu.classList.contains('open')) renderMenu(menu);
 }
 
 export function initBulkDeleteDropdown() {

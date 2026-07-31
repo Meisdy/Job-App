@@ -1,7 +1,7 @@
 import state from '../state.js';
 import { GET_URL, UPDATE_URL, SCRAPE_URL, DETAILS_URL, DETAILS_PROGRESS_URL, FITCHECK_URL, FITCHECK_PROGRESS_URL, IMPORT_TEXT_URL, PROFILE_GET_URL, PROFILE_SAVE_URL } from '../api.js';
 import { renderDetail } from './detail.js';
-import { renderList } from './job-list.js';
+import { refreshDeletedJobs, renderList } from './job-list.js';
 import { updateStats, setConnectionStatus } from './header.js';
 import { showConfirm } from '../utils/confirm.js';
 
@@ -61,7 +61,7 @@ function resetButton(button, originalText) {
 // Job Refresh
 // ============================================================================
 
-async function refreshJobs(sortBy = 'score') {
+export async function refreshJobs(sortBy = 'score') {
   setConnectionStatus('loading');
   
   try {
@@ -145,6 +145,7 @@ export function setExpired() {
 
       state.allJobs = state.allJobs.filter(j => j.job_id !== state.currentJob.job_id);
       state.currentJob = null;
+      await refreshDeletedJobs();
 
       document.getElementById('action-bar').style.display = 'none';
       document.getElementById('detail-scroll').innerHTML = `
@@ -162,30 +163,18 @@ export function setExpired() {
   });
 }
 
-async function bulkDelete(body) {
-  const res = await fetch('/api/jobs/bulk', {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || 'Bulk delete failed');
+export async function restoreDeletedJob(jobId) {
+  try {
+    const response = await fetch(`/api/jobs/${encodeURIComponent(jobId)}/restore`, { method: 'POST' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    // The row is gone from the deleted list and back in the active one.
+    state.deletedJobs = state.deletedJobs.filter(job => job.job_id !== jobId);
+    await refreshJobs();
+    showToast('Job restored');
+  } catch (error) {
+    showToast('Restore failed', true);
   }
-  const data = await res.json();
-  state.allJobs = await fetch('/api/jobs').then(r => r.json());
-  renderList();
-  updateStats();
-  return data.deleted;
-}
-
-export async function bulkDeleteByStatus(status, olderThanDays = 0) {
-  const body = olderThanDays > 0 ? { status, older_than_days: olderThanDays } : { status };
-  return bulkDelete(body);
-}
-
-export async function bulkDeleteByFitLabel(fitLabel) {
-  return bulkDelete({ fit_label: fitLabel });
 }
 
 export async function saveNotes() {

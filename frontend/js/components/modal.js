@@ -1,7 +1,9 @@
 import state from "../state.js";
-import { CONFIG_URL, VERSION_URL } from "../api.js";
-import { showToast } from "./actions.js";
+import { CONFIG_URL, FITCHECK_RESET_URL, FITCHECK_URL, VERSION_URL } from "../api.js";
+import { refreshJobs, showToast } from "./actions.js";
 import { escapeHtml } from "../utils/formatting.js";
+import { FIT_LABELS, fitLabelCategory } from "../fit-labels.js";
+import { renderCategoryPicker } from "../utils/popover.js";
 
 const PROVIDERS = {
   ollama_local: {
@@ -137,6 +139,8 @@ function setupProviderHandlers() {
   setupSourceToggle("cfg-jobsch-enabled", "cfg-jobsch-settings");
   setupSourceToggle("cfg-linkedin-enabled", "cfg-linkedin-settings");
   setupSourceToggle("cfg-automode-enabled", "cfg-automode-settings");
+
+  renderRecheckPicker();
 }
 
 function setupSourceToggle(toggleId, settingsId) {
@@ -403,13 +407,82 @@ function renderFitcheckSection(config) {
   return renderSection("Fit-Check (Advanced)", renderGrid(fields));
 }
 
+function renderMaintenanceSection() {
+  return renderSection(
+    "Maintenance",
+    `<div class="cfg-label">Re-check by rating</div>
+     <div class="picker-panel" id="recheck-picker" style="margin-top:6px"></div>
+     <div style="font-size:11px;color:var(--text3);margin-top:6px">Clears the fit data of the chosen groups, then re-scores them with the AI.</div>`,
+  );
+}
+
 export function renderConfigForm(config, aiConfig) {
   return [
     renderAiSection(aiConfig || {}),
     renderScrapeSection(config),
     renderAutomodeSection(config),
     renderFitcheckSection(config),
+    renderMaintenanceSection(),
   ].join("");
+}
+
+// ============================================================================
+// Re-check by rating
+// ============================================================================
+
+const RECHECK_CATEGORIES = FIT_LABELS.map(fitLabelCategory);
+
+async function resetFitData(fitLabel) {
+  const response = await fetch(FITCHECK_RESET_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fit_label: fitLabel }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.detail || "Reset failed");
+  }
+}
+
+// Two explicit steps, same as the old console command: clear the chosen groups,
+// then run the batch fit-check that picks up everything without a label.
+async function runRecheck(categories, confirmButton) {
+  confirmButton.disabled = true;
+  confirmButton.textContent = "Clearing...";
+
+  try {
+    for (const category of categories) {
+      await resetFitData(category.requestBody.fit_label);
+    }
+
+    confirmButton.textContent = "Re-checking...";
+    const response = await fetch(FITCHECK_URL, { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Fit-check failed");
+
+    await refreshJobs();
+    showToast(`Re-checked ${data.checked} jobs, ${data.failed} failed`);
+    renderRecheckPicker();
+  } catch (error) {
+    showToast(error.message, true);
+    confirmButton.disabled = false;
+    confirmButton.textContent = "Retry";
+  }
+}
+
+function renderRecheckPicker() {
+  const panel = document.getElementById("recheck-picker");
+  if (!panel) return;
+
+  renderCategoryPicker(panel, {
+    jobs: state.allJobs,
+    categories: RECHECK_CATEGORIES,
+    isCheckedByDefault: () => false,
+    confirmLabel: (count) => `Re-check ${count}`,
+    emptyText: "No rated jobs",
+    onCancel: renderRecheckPicker,
+    onConfirm: runRecheck,
+  });
 }
 
 // ============================================================================

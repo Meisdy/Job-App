@@ -59,7 +59,8 @@ void delete_job(sqlite3* db, const std::string& job_id);
 void delete_expired_jobs(sqlite3* db);
 int bulk_soft_delete_by_status(sqlite3* db, const std::string& status, int older_than_days = 0);
 int bulk_soft_delete_by_fit_label(sqlite3* db, const std::string& fit_label);
-int bulk_hard_delete_by_fit_label(sqlite3* db, const std::string& fit_label);
+int restore_job(sqlite3* db, const std::string& job_id);
+int restore_deleted_by_fit_label(sqlite3* db, const std::string& fit_label);
 int restore_all_deleted(sqlite3* db);
 
 // Heavy text columns excluded from get_all_jobs; fetched per job on demand
@@ -71,6 +72,7 @@ struct JobDetail {
 
 // Job queries
 std::vector<JobRecord> get_all_jobs(sqlite3* db);
+std::vector<JobRecord> get_deleted_jobs(sqlite3* db);
 std::optional<JobDetail> get_job_detail(sqlite3* db, const std::string& job_id);
 std::vector<Job> get_jobs_needing_details(sqlite3* db);
 std::vector<JobRecord> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
@@ -85,9 +87,9 @@ void save_fit_result_v2(sqlite3* db, const std::string& job_id, int score,
                         const std::string& label, const std::string& summary,
                         const std::string& reasoning, const std::string& profile_hash);
 
-// Admin operations
+// Fit-check maintenance
 void clear_fit_data(sqlite3* db, const std::string& job_id);
-void clear_all_fit_data(sqlite3* db);
+int clear_fit_data_by_label(sqlite3* db, const std::string& fit_label);
 
 // DB helper
 std::string getColumn(sqlite3_stmt* s, int i);

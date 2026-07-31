@@ -60,6 +60,51 @@ namespace {
         sqlite3_finalize(stmt);
     }
 
+    // get_all_jobs and get_deleted_jobs differ only in their WHERE clause, so the
+    // column list and the row reader live in one place and cannot drift apart.
+    const std::string cJobRecordColumns = R"(
+        job_id, title, company_name, place, zipcode, canton_code,
+        employment_grade, application_url,
+        user_status, rating, notes, availability_status, detail_url,
+        initial_publication_date, publication_end_date, fit_score, fit_label,
+        fit_checked_at, fit_profile_hash,
+        source, application_status, applied_at, last_reaction, last_reaction_at
+    )";
+
+    std::vector<JobRecord> query_job_records(sqlite3* db, const std::string& where_clause) {
+        std::vector<JobRecord> jobs;
+        const std::string sql = "SELECT " + cJobRecordColumns + " FROM jobs WHERE " + where_clause;
+        exec_query(db, sql, [&](sqlite3_stmt* stmt) {
+            JobRecord job;
+            job.job_id              = getColumn(stmt, 0);
+            job.title               = getColumn(stmt, 1);
+            job.company_name        = getColumn(stmt, 2);
+            job.place               = getColumn(stmt, 3);
+            job.zipcode             = getColumn(stmt, 4);
+            job.canton_code         = getColumn(stmt, 5);
+            job.employment_grade    = sqlite3_column_int(stmt, 6);
+            job.application_url     = getColumn(stmt, 7);
+            job.user_status         = getColumn(stmt, 8);
+            job.rating              = sqlite3_column_int(stmt, 9);
+            job.notes               = getColumn(stmt, 10);
+            job.availability_status = getColumn(stmt, 11);
+            job.detail_url          = getColumn(stmt, 12);
+            job.pub_date            = getColumn(stmt, 13);
+            job.end_date            = getColumn(stmt, 14);
+            job.fit_score           = sqlite3_column_int(stmt, 15);
+            job.fit_label           = getColumn(stmt, 16);
+            job.fit_checked_at      = getColumn(stmt, 17);
+            job.fit_profile_hash    = getColumn(stmt, 18);
+            job.source              = getColumn(stmt, 19);
+            job.application_status  = getColumn(stmt, 20);
+            job.applied_at          = getColumn(stmt, 21);
+            job.last_reaction       = getColumn(stmt, 22);
+            job.last_reaction_at    = getColumn(stmt, 23);
+            jobs.push_back(job);
+        });
+        return jobs;
+    }
+
 }
 
 void delete_job(sqlite3* db, const std::string &job_id) {
@@ -111,8 +156,13 @@ int bulk_soft_delete_by_fit_label(sqlite3* db, const std::string& fit_label) {
     return sqlite3_changes(db);
 }
 
-int bulk_hard_delete_by_fit_label(sqlite3* db, const std::string& fit_label) {
-    exec_write(db, "DELETE FROM jobs WHERE LOWER(fit_label) = LOWER(?)", {fit_label});
+int restore_job(sqlite3* db, const std::string& job_id) {
+    exec_write(db, "UPDATE jobs SET user_status = 'unseen' WHERE job_id = ? AND user_status = 'deleted'", {job_id});
+    return sqlite3_changes(db);
+}
+
+int restore_deleted_by_fit_label(sqlite3* db, const std::string& fit_label) {
+    exec_write(db, "UPDATE jobs SET user_status = 'unseen' WHERE LOWER(fit_label) = LOWER(?) AND user_status = 'deleted'", {fit_label});
     return sqlite3_changes(db);
 }
 
@@ -235,46 +285,11 @@ std::string getColumn(sqlite3_stmt* s, int i) {
 }
 
 std::vector<JobRecord> get_all_jobs(sqlite3* db) {
-    std::vector<JobRecord> jobs;
-    const std::string sql = R"(
-        SELECT job_id, title, company_name, place, zipcode, canton_code,
-               employment_grade, application_url,
-               user_status, rating, notes, availability_status, detail_url,
-               initial_publication_date, publication_end_date, fit_score, fit_label,
-               fit_checked_at, fit_profile_hash,
-               source, application_status, applied_at, last_reaction, last_reaction_at
-        FROM jobs
-        WHERE user_status IS NULL OR user_status != 'deleted'
-    )";
-    exec_query(db, sql, [&](sqlite3_stmt* stmt) {
-        JobRecord job;
-        job.job_id              = getColumn(stmt, 0);
-        job.title               = getColumn(stmt, 1);
-        job.company_name        = getColumn(stmt, 2);
-        job.place               = getColumn(stmt, 3);
-        job.zipcode             = getColumn(stmt, 4);
-        job.canton_code         = getColumn(stmt, 5);
-        job.employment_grade    = sqlite3_column_int(stmt, 6);
-        job.application_url     = getColumn(stmt, 7);
-        job.user_status         = getColumn(stmt, 8);
-        job.rating              = sqlite3_column_int(stmt, 9);
-        job.notes               = getColumn(stmt, 10);
-        job.availability_status = getColumn(stmt, 11);
-        job.detail_url          = getColumn(stmt, 12);
-        job.pub_date            = getColumn(stmt, 13);
-        job.end_date            = getColumn(stmt, 14);
-        job.fit_score           = sqlite3_column_int(stmt, 15);
-        job.fit_label           = getColumn(stmt, 16);
-        job.fit_checked_at      = getColumn(stmt, 17);
-        job.fit_profile_hash    = getColumn(stmt, 18);
-        job.source              = getColumn(stmt, 19);
-        job.application_status  = getColumn(stmt, 20);
-        job.applied_at          = getColumn(stmt, 21);
-        job.last_reaction       = getColumn(stmt, 22);
-        job.last_reaction_at    = getColumn(stmt, 23);
-        jobs.push_back(job);
-    });
-    return jobs;
+    return query_job_records(db, "user_status IS NULL OR user_status != 'deleted'");
+}
+
+std::vector<JobRecord> get_deleted_jobs(sqlite3* db) {
+    return query_job_records(db, "user_status = 'deleted'");
 }
 
 std::optional<JobDetail> get_job_detail(sqlite3* db, const std::string& job_id) {
@@ -333,13 +348,17 @@ void clear_fit_data(sqlite3* db, const std::string& job_id) {
     std::cout << "[DB] clear_fit_data(" << job_id << "): " << sqlite3_changes(db) << " rows" << std::endl;
 }
 
-void clear_all_fit_data(sqlite3* db) {
+// Clearing the label is what makes a job eligible again for get_jobs_needing_fitcheck_v2,
+// which skips deleted jobs — so this skips them too and only reports rows that will be re-scored.
+int clear_fit_data_by_label(sqlite3* db, const std::string& fit_label) {
     exec_write(db, R"(
         UPDATE jobs SET fit_score=0, fit_label=NULL, fit_summary=NULL,
         fit_reasoning=NULL, fit_checked_at=NULL, fit_profile_hash=NULL
-        WHERE fit_label IS NOT NULL
-    )");
-    std::cout << "[DB] clear_all_fit_data: " << sqlite3_changes(db) << " rows" << std::endl;
+        WHERE LOWER(fit_label) = LOWER(?) AND (user_status IS NULL OR user_status != 'deleted')
+    )", {fit_label});
+    const int cleared = sqlite3_changes(db);
+    std::cout << "[DB] clear_fit_data_by_label(" << fit_label << "): " << cleared << " rows" << std::endl;
+    return cleared;
 }
 
 std::vector<JobRecord> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit) {

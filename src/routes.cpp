@@ -97,6 +97,19 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         sendJson(res, result);
     });
 
+    // Deleted rows are excluded from /api/jobs, so the restore screen needs its own list.
+    server.Get("/api/jobs/deleted", [&state](const httplib::Request&, httplib::Response& res) {
+        std::vector<JobRecord> jobs;
+        {
+            std::lock_guard<std::mutex> lock(state.db_mutex);
+            jobs = get_deleted_jobs(state.db);
+        }
+        json result = json::array();
+        for (const auto& job : jobs)
+            result.push_back(jobRecordToJson(job));
+        sendJson(res, result);
+    });
+
     server.Get("/api/jobs/:id/detail", [&state](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::optional<JobDetail> detail;
@@ -221,16 +234,36 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         }
     });
 
-    server.Post("/api/jobs/restore-all", [&state](const httplib::Request&, httplib::Response& res) {
+    server.Post("/api/jobs/:id/restore", [&state](const httplib::Request& req, httplib::Response& res) {
         try {
             int restored;
             {
                 std::lock_guard<std::mutex> lock(state.db_mutex);
-                restored = restore_all_deleted(state.db);
+                restored = restore_job(state.db, req.path_params.at("id"));
             }
             sendJson(res, {{"ok", true}, {"restored", restored}});
         } catch (const std::exception& e) {
             sendJson(res, {{"error", "database error"}, {"detail", e.what()}}, 500);
+        }
+    });
+
+    // Empty body restores every deleted job; a fit_label restores just that group.
+    server.Post("/api/jobs/restore", [&state](const httplib::Request& req, httplib::Response& res) {
+        try {
+            std::string fit_label;
+            if (!req.body.empty())
+                fit_label = json::parse(req.body).value("fit_label", "");
+
+            int restored;
+            {
+                std::lock_guard<std::mutex> lock(state.db_mutex);
+                restored = fit_label.empty()
+                    ? restore_all_deleted(state.db)
+                    : restore_deleted_by_fit_label(state.db, fit_label);
+            }
+            sendJson(res, {{"ok", true}, {"restored", restored}});
+        } catch (const std::exception& e) {
+            sendJson(res, {{"error", "bad request"}, {"detail", e.what()}}, 400);
         }
     });
 
@@ -446,6 +479,26 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         sendJson(res, progressToJson(state.fitcheck_progress));
     });
 
+    // Clearing a group's fit data makes it eligible for the next POST /api/fitcheck run.
+    // No AI call happens here — re-scoring stays an explicit second step.
+    server.Post("/api/fitcheck/reset", [&state](const httplib::Request& req, httplib::Response& res) {
+        try {
+            json body = json::parse(req.body);
+            std::string fit_label = body.value("fit_label", "");
+            if (fit_label.empty())
+                throw std::runtime_error("Missing 'fit_label' field");
+
+            int cleared;
+            {
+                std::lock_guard<std::mutex> lock(state.db_mutex);
+                cleared = clear_fit_data_by_label(state.db, fit_label);
+            }
+            sendJson(res, {{"ok", true}, {"cleared", cleared}});
+        } catch (const std::exception& e) {
+            sendJson(res, {{"error", "bad request"}, {"detail", e.what()}}, 400);
+        }
+    });
+
     server.Post("/api/jobs/:id/fitcheck", [&state](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::cout << "[INFO] Fitcheck triggered for job: " << job_id << std::endl;
@@ -468,75 +521,4 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
         }
     });
 
-    // ── ADMIN ────────────────────────────────────────────────────────────────
-
-    server.Delete("/api/admin/jobs/bulk", [&state](const httplib::Request& req, httplib::Response& res) {
-        try {
-            json body = json::parse(req.body);
-            std::string fit_label = body.value("fit_label", "");
-            if (fit_label.empty())
-                throw std::runtime_error("Missing 'fit_label' field");
-            int deleted;
-            {
-                std::lock_guard<std::mutex> lock(state.db_mutex);
-                deleted = bulk_hard_delete_by_fit_label(state.db, fit_label);
-            }
-            std::cout << "[ADMIN] Hard-deleted " << deleted << " jobs with fit_label=" << fit_label << std::endl;
-            sendJson(res, {{"ok", true}, {"deleted", deleted}});
-        } catch (const std::exception& e) {
-            sendError(res, 400, e.what());
-        }
-    });
-
-    server.Delete("/api/admin/jobs/:id", [&state](const httplib::Request& req, httplib::Response& res) {
-        std::string job_id = req.path_params.at("id");
-        std::cout << "[ADMIN] DELETE /api/admin/jobs/" << job_id << std::endl;
-        try {
-            std::lock_guard<std::mutex> lock(state.db_mutex);
-            delete_job(state.db, job_id);
-            std::cout << "[ADMIN] Deleted job " << job_id << std::endl;
-            sendJson(res, {{"ok", true}});
-        } catch (const std::exception& e) {
-            std::cerr << "[ADMIN] Delete job failed: " << e.what() << std::endl;
-            sendError(res, 500, e.what());
-        }
-    });
-
-    server.Post("/api/admin/fitcheck/clear/:id", [&state](const httplib::Request& req, httplib::Response& res) {
-        std::string job_id = req.path_params.at("id");
-        std::cout << "[ADMIN] POST /api/admin/fitcheck/clear/" << job_id << std::endl;
-        try {
-            std::lock_guard<std::mutex> lock(state.db_mutex);
-            clear_fit_data(state.db, job_id);
-            std::cout << "[ADMIN] Cleared fit data for job " << job_id << std::endl;
-            sendJson(res, {{"ok", true}});
-        } catch (const std::exception& e) {
-            std::cerr << "[ADMIN] Clear fit data failed: " << e.what() << std::endl;
-            sendError(res, 500, e.what());
-        }
-    });
-
-    server.Post("/api/admin/fitcheck/clear", [&state](const httplib::Request&, httplib::Response& res) {
-        std::cout << "[ADMIN] POST /api/admin/fitcheck/clear (all)" << std::endl;
-        try {
-            std::lock_guard<std::mutex> lock(state.db_mutex);
-            clear_all_fit_data(state.db);
-            std::cout << "[ADMIN] Cleared all fit data" << std::endl;
-            sendJson(res, {{"ok", true}});
-        } catch (const std::exception& e) {
-            std::cerr << "[ADMIN] Clear all fit data failed: " << e.what() << std::endl;
-            sendError(res, 500, e.what());
-        }
-    });
-
-    server.Post("/api/admin/fitcheck/recheck", [&state](const httplib::Request&, httplib::Response& res) {
-        std::cout << "[INFO] Admin batch recheck triggered (clear all)" << std::endl;
-        try {
-            std::lock_guard<std::mutex> lock(state.db_mutex);
-            clear_all_fit_data(state.db);
-            sendJson(res, {{"ok", true}, {"message", "All fit data cleared. Trigger /api/fitcheck to recheck."}});
-        } catch (const std::exception& e) {
-            sendError(res, 500, e.what());
-        }
-    });
 }

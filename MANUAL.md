@@ -58,9 +58,9 @@ This system uses LLMs, which needs proper instructions and thus, some tuning.
 | **Scrape** | Fetches new listings from jobs.ch per your queries, then auto-fetches full posting text |
 | **Fit-Check** | Scores every unscored job via LLM. Progress bar fills left→right. Fatal errors (bad key, no credits, rate limit) stop the batch and turn the button red — fix in Settings, then retry |
 | **Add Job manually** | Paste any job posting text. App extracts fields and fit-checks automatically |
-| **⊞ Filter** | Filter list by fit label or status: All / Strong / Decent / Exp / Weak / New / Starred / Applied |
+| **⊞ Filter** | Filter list by fit label or status: All / Strong / Decent / Exp / Weak / New / Starred / Applied / Deleted |
 | **⇅ Score** | Toggle sort: fit score (default) ↔ date scraped |
-| **🗑 Cleanup** | Bulk soft-delete: all Skipped, all No Go, or unseen jobs older than 30 days |
+| **🗑 Cleanup** | Bulk soft-delete by rating group (Strong … No Go), Skipped, or unseen jobs older than 30 days |
 
 Search bar (top center) filters by title and company in real time.
 
@@ -79,7 +79,7 @@ Stale jobs are hard-deleted automatically on every scrape run. No UI action need
 
 Manually imported jobs (Add Job manually) have no LinkedIn age limit; they are only auto-deleted if the AI extracted an end date from the pasted text and that date has passed — and even then not while marked Applied.
 
-Hard-delete = row removed from DB entirely, not recoverable via `restore:all`.
+Hard-delete = row removed from DB entirely, not recoverable via the Deleted filter.
 
 ---
 
@@ -235,29 +235,23 @@ If the AI provider isn't reachable or the profile is empty, a run is skipped sil
 
 ---
 
-## Admin console
+## Deleted jobs
 
-`Ctrl+\` toggles the console. All commands accept partial job IDs (last 8 characters). Type `help` for the full reference.
+Deleting a job is a soft delete: the row stays in the database, which is what stops the next scrape from inserting the same listing again. Deleted jobs are hidden from the list, the counters, the map and the tracker.
 
-**Delete / restore**
+Pick **Deleted** in the ⊞ Filter dropdown to see them. The list is fetched the first time you open it, not on every page load. Each row has a **↺ Restore** button; a restored job comes back as **New**, keeping its score and label. Restoring never calls the AI — press **Recheck** in the detail panel if you want it re-rated.
 
-| Command | Effect |
-|---------|--------|
-| `delete:job <id>` | Soft-delete one job (hidden, restorable) |
-| `delete:status <status>` | Soft-delete all jobs with given status |
-| `delete:label <label>` | Soft-delete all with given fit label |
-| `restore:all` | Restore all soft-deleted jobs to unseen |
-| `purge:job <id>` | Permanent hard-delete of one job |
-| `purge:label <label>` | Permanent hard-delete of all with given fit label |
+**↺ RESTORE** next to the filter appears only while the Deleted filter is active. It restores whole rating groups at once: tick the groups, the button shows how many jobs that is, confirm.
 
-**Fit-check**
+Permanent deletion is not exposed in the UI, deliberately — purging a job that still exists at the source only makes it come back on the next scrape.
 
-| Command | Effect |
-|---------|--------|
-| `fitcheck:clear <id>` | Clear fit data for one job |
-| `fitcheck:clear-all` | Clear fit data for all jobs |
-| `fitcheck:recheck <id>` | Clear + recheck one job |
-| `fitcheck:recheck-all` | Clear all fit data and queue full batch recheck |
+---
+
+## Re-check by rating
+
+**⚙ Settings → Maintenance** re-scores whole rating groups. Tick the groups, confirm, and the app clears their fit data and then runs a normal batch fit-check over everything without a label.
+
+Costs one LLM call per job, same as any fit-check run.
 
 ---
 
@@ -276,6 +270,5 @@ Note: `update.sh` will overwrite this back to `latest` on next run — re-pin af
 
 | Shortcut             | Action |
 |----------------------|--------|
-| `Ctrl+\` (US layout) | Toggle admin console |
 | `Ctrl+K`             | Focus search bar |
 | `Escape`             | Close open modal / dropdown |

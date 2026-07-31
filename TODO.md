@@ -3,6 +3,7 @@
 ## Bugs
 - [ ] Bug: after scraping and fitcheck running in background through automode, all skipped jobs reset for some reason. Not reproducible, happened just once. 
 - [ ] Bug: Raspberry Pi 4 has issues with serving detail pages. May be internet, py read / write or code itself. 
+- [ ] Bug: `/api/jobs` never sends `scraped_at` (missing in `jobRecordToJson`, routes.cpp), so the Clean up category "Unseen > 30 days" always counts 0 and stays hidden. Predates the admin console retirement. 
 
 ## UX improvements
 - [ ] Overall simplify UI

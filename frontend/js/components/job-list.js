@@ -1,4 +1,5 @@
 import state from '../state.js';
+import { DELETED_URL } from '../api.js';
 import { fmtDate, getStatusIcon, escapeHtml } from '../utils/formatting.js';
 import { isClosedApplication } from '../application-status.js';
 import { renderDetail } from './detail.js';
@@ -104,38 +105,68 @@ function buildJobItemHtml(job) {
     </div>`;
 }
 
+// Deleted jobs are restore-only: no status icon, no click-through to the detail panel.
+function buildDeletedItemHtml(job) {
+  const fitInfo = getFitDisplayInfo(job);
+
+  return `
+    <div class="job-item deleted-item">
+      <div class="ji-title">${escapeHtml(job.title || 'Unknown')}</div>
+      <div class="ji-co">${escapeHtml(job.company_name || '—')}</div>
+      <div class="ji-foot">
+        <span class="stag ${fitInfo.cssClass}">${escapeHtml(fitInfo.label)} | ${fitInfo.score}</span>
+        <button class="restore-btn" data-id="${escapeHtml(job.job_id)}">↺ Restore</button>
+      </div>
+    </div>`;
+}
+
 // ============================================================================
 // Main Export Functions
 // ============================================================================
+
+export const DELETED_FILTER = 'deleted';
+
+export async function loadDeletedJobs() {
+  if (state.deletedJobsLoaded) return;
+
+  try {
+    const response = await fetch(DELETED_URL);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    state.deletedJobs = await response.json();
+    state.deletedJobsLoaded = true;
+  } catch (error) {
+    console.error('Failed to load deleted jobs:', error);
+  }
+}
+
+// Deleting or restoring leaves the cached list stale: drop it, and refetch right
+// away if it is the list currently on screen.
+export async function refreshDeletedJobs() {
+  state.deletedJobsLoaded = false;
+  if (state.currentFilter === DELETED_FILTER) await loadDeletedJobs();
+}
 
 export function renderList() {
   const jobListElement = document.getElementById('job-list');
   const countElement = document.getElementById('list-count');
 
-  // Filter and sort
-  let filteredJobs = filterJobs(
-    state.allJobs,
-    state.currentFilter,
-    state.searchQuery
-  );
+  const isDeletedView = state.currentFilter === DELETED_FILTER;
+  const jobs = isDeletedView
+    ? state.deletedJobs.filter(job => matchesSearch(job, state.searchQuery))
+    : filterJobs(state.allJobs, state.currentFilter, state.searchQuery);
 
-  if (state.sortMode === 'date') {
-    filteredJobs = sortByDate(filteredJobs);
-  } else {
-    filteredJobs = sortByScore(filteredJobs);
-  }
+  const sortedJobs = state.sortMode === 'date' ? sortByDate(jobs) : sortByScore(jobs);
 
-  // Update count
-  countElement.textContent = filteredJobs.length;
+  countElement.textContent = sortedJobs.length;
 
-  // Render empty state or list
-  if (filteredJobs.length === 0) {
-    jobListElement.innerHTML = '<div class="empty"><div class="empty-t">No jobs</div></div>';
+  if (sortedJobs.length === 0) {
+    const message = isDeletedView ? 'No deleted jobs' : 'No jobs';
+    jobListElement.innerHTML = `<div class="empty"><div class="empty-t">${message}</div></div>`;
     return;
   }
 
-  jobListElement.innerHTML = filteredJobs
-    .map(buildJobItemHtml)
+  jobListElement.innerHTML = sortedJobs
+    .map(isDeletedView ? buildDeletedItemHtml : buildJobItemHtml)
     .join('');
 }
 

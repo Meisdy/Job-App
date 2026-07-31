@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="/css/components/action-bar.css">
   <link rel="stylesheet" href="/css/components/modal.css">
   <link rel="stylesheet" href="/css/components/utilities.css">
-  <link rel="stylesheet" href="/css/components/console.css">
+  <link rel="stylesheet" href="/css/components/popover.css">
 
   <!-- Feature Styles -->
   <link rel="stylesheet" href="/css/features/fit-assessment.css">
@@ -52,7 +52,7 @@
       <button class="tool-btn fitcheck-btn" id="fitcheck-btn">🤖 Fit-Check</button>
       <div class="bulk-delete-wrap" style="position:relative">
         <button class="tool-btn cleanup-btn" id="bulk-delete-btn" aria-haspopup="true" aria-expanded="false">🗑 Clean up</button>
-        <div class="bulk-delete-menu" id="bulk-delete-menu"></div>
+        <div class="picker-panel picker-dropdown danger" id="bulk-delete-menu"></div>
       </div>
     </div>
     <div class="header-group header-nav">
@@ -71,7 +71,7 @@
       <span class="sb-label">Positions</span>
       <div style="display:flex;align-items:center;gap:8px">
         <div class="filter-dropdown" id="filter-dropdown">
-          <button id="filter-dropdown-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter positions">⊞ ALL</button>
+          <button class="sb-chip" id="filter-dropdown-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Filter positions">⊞ ALL</button>
           <div class="filter-dropdown-menu" id="filter-dropdown-menu" role="listbox">
             <button class="filter-btn active" id="filter-all" data-filter="all">All</button>
             <button class="filter-btn" id="filter-strong" data-filter="strong">Strong</button>
@@ -81,11 +81,16 @@
             <button class="filter-btn" id="filter-unseen" data-filter="unseen">New</button>
             <button class="filter-btn" id="filter-interested" data-filter="interested">Starred</button>
             <button class="filter-btn" id="filter-applied" data-filter="applied">Applied</button>
+            <button class="filter-btn" id="filter-deleted" data-filter="deleted">Deleted</button>
           </div>
         </div>
-        <button id="sort-btn" style="background:transparent;border:1px solid var(--border2);color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:4px;cursor:pointer;transition:all 0.15s;letter-spacing:0.04em" title="Toggle sort">⇅ SCORE</button>
+        <div class="restore-wrap" id="restore-wrap">
+          <button class="sb-chip" id="restore-btn" aria-haspopup="true" aria-expanded="false" title="Restore deleted jobs by rating">↺ RESTORE</button>
+        </div>
+        <button class="sb-chip" id="sort-btn" title="Toggle sort">⇅ SCORE</button>
         <span class="sb-count" id="list-count">—</span>
       </div>
+      <div class="picker-panel picker-dropdown picker-dropdown--sidebar" id="restore-menu"></div>
     </div>
     <div class="sb-scroll" id="job-list">
       <div class="ldw"><span class="ld">●</span><span class="ld">●</span><span class="ld">●</span></div>

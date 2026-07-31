@@ -79,14 +79,6 @@ Generated during onboarding, editable in **Profile**. Plain Markdown describing 
 
 Single field `{ "api_key": "..." }`. Written by the app when you save settings. Leave empty for local Ollama.
 
-## Admin console
-
-Press `Ctrl+\` in the browser. Commands accept partial job IDs (last 8 chars). Type `help` for the full list. Key operations:
-
-- Delete a job
-- Clear fit data for one or all jobs
-- Recheck one or all jobs via LLM
-
 ## Updating
 
 **Docker:**
