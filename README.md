@@ -40,7 +40,7 @@ sudo service docker start > /dev/null 2>&1
 
 1. **Scrape** — click Scrape in the UI. Backend hits jobs.ch for each query in your config (view via Settings), saves listings to SQLite, then fetches full posting text. LinkedIn is a second, optional source — no account needed, disabled by default (see [MANUAL.md](MANUAL.md#settings)).
 2. **Fit-check** — click Fit-Check. Every job with posting text but no score is sent to your LLM. Results: `fit_label` (Strong / Decent / Experimental / Weak / No Go), a weighted score, and structured reasoning. A progress bar tracks the batch; a fatal error (bad key, no credits, rate limit) stops the batch immediately and flags the button.
-3. **Track** — sort by score, filter by label, read reasoning, set status, write notes, rate jobs. Jobs you mark as **Applied** appear on the **Application Tracker** (📋 Applied button) — a follow-up dashboard with per-application status, dates, reactions, and notes. Applied jobs are never auto-deleted, even after the posting expires. The **🗺 Map** button shows all jobs on a Switzerland map, colored by fit label, with an optional home-position radius filter — geocoded fully client-side, no external service (see [MANUAL.md](MANUAL.md#map-view)).
+3. **Track** — sort by score, filter by label, read reasoning, set status, write notes, rate jobs. Jobs you mark as **Applied** appear on the **Application Tracker** (📋 Applied button) — a follow-up dashboard with per-application status, dates, reactions, and notes. Applied jobs are never auto-deleted, even after the posting expires, and **⬇ Export CSV** on that page writes your applied and interested jobs to a spreadsheet file so your work survives leaving the tool (see [MANUAL.md](MANUAL.md#export-csv)). The **🗺 Map** button shows all jobs on a Switzerland map, colored by fit label, with an optional home-position radius filter — geocoded fully client-side, no external service (see [MANUAL.md](MANUAL.md#map-view)).
 
 **First-time setup tip:** Start with a small scrape (1–2 queries, low `rows`). Fit-check those jobs, read the reasoning, and adjust your profile or LLM settings until the scores feel right. Once satisfied, scrape the full set and run a full batch fit-check.
 
@@ -118,6 +118,8 @@ The scraping components access **jobs.ch** and **LinkedIn**. These accesses may 
 You run this software **entirely at your own risk**. You alone are responsible for how you use it and for any consequences. The authors and contributors host nothing on your behalf, provide no service, and accept no liability for any use, misuse, damage, or legal claim arising from it. If you run it, you are the operator and the sole responsible party.
 
 ## Uninstall
+
+**Export your applications first.** Open the Application Tracker and click **⬇ Export CSV** — your applied and interested jobs, dates, reactions, and notes end up in a spreadsheet file. Everything below deletes the database, and nothing in it is recoverable afterwards.
 
 **Docker:**
 
