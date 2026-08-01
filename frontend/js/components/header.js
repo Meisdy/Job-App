@@ -218,6 +218,12 @@ const CLEANUP_CATEGORIES = [
 // so those groups start unticked even though they are listed.
 const CLEANUP_DEFAULT_CHECKED = new Set(['weak', 'no-go', 'skipped', 'old-unseen']);
 
+// The badge counts only what the menu ticks by default, so the number on the
+// button always matches the deletion the button actually offers.
+const CLEANUP_BADGE_CATEGORIES = CLEANUP_CATEGORIES.filter(
+  category => CLEANUP_DEFAULT_CHECKED.has(category.key)
+);
+
 function cleanupElements() {
   return {
     button: document.getElementById('bulk-delete-btn'),
@@ -302,11 +308,20 @@ async function runCleanup(categories) {
 function updateCleanupButton() {
   const { button } = cleanupElements();
   if (!button) return;
-  const total = countDistinct(state.allJobs, CLEANUP_CATEGORIES);
+  const badgeCount = countDistinct(state.allJobs, CLEANUP_BADGE_CATEGORIES);
+  const deletableCount = countDistinct(state.allJobs, CLEANUP_CATEGORIES);
   button.classList.remove('running', 'done', 'error');
-  button.disabled = total === 0;
-  button.title = total > 0 ? 'Review and delete jobs by rating or status' : 'Nothing to clean up';
-  button.textContent = total > 0 ? `🗑 Clean up (${total})` : '✓ Clean';
+  button.disabled = deletableCount === 0;
+  if (badgeCount > 0) {
+    button.title = 'Review and delete jobs by rating or status';
+    button.textContent = `🗑 Clean up (${badgeCount})`;
+  } else if (deletableCount > 0) {
+    button.title = 'Only rated keepers left — open to delete by label';
+    button.textContent = '🗑 Clean up';
+  } else {
+    button.title = 'Nothing to clean up';
+    button.textContent = '✓ Clean';
+  }
 }
 
 export function initBulkDeleteDropdown() {
