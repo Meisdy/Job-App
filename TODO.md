@@ -9,6 +9,34 @@
 - [ ] De-dupe for sources to save on AI querries and dont show the user doubles
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe pick questions / answers
 
+### De-dupe: attempt 1, reverted 2026-08-01
+
+Tried a normalized `company|title|place` key (`dupe_key` column), soft grouping,
+one card per group. Reverted — the key is not selective enough. Kept only as notes.
+
+What worked:
+- Diacritic folding is mandatory. LinkedIn writes `Zurich`, jobs.ch writes `Zürich`;
+  without folding almost nothing matches across sources.
+- Stripping `(m/w/d)`, `(a)`, `80-100%` and en-dash vs hyphen caught real duplicates.
+- On 1377 rows: 107 groups, 19 spanning both sources.
+
+Why it failed:
+- Company + title + place cannot separate genuinely distinct openings. VAT Vakuumventile
+  had three real `Product Quality Engineer` postings in Haag, different publication dates,
+  identical in every field the key uses. They collapsed into one card. Any fix needs a
+  signal from the posting body (description hash, reference number), not the header fields.
+- Expiry is asymmetric: 708 of 719 jobs.ch rows carry `publication_end_date`, 0 of 659
+  LinkedIn rows do. `delete_expired_jobs` hard-deletes, so the jobs.ch twin always dies
+  first and takes its rating, notes and fit result with it — the surviving LinkedIn row
+  comes back unseen and gets re-scored. Grouping needs user state written to every member
+  of a group, or it loses state on expiry.
+- Picking which row represents a group was arbitrary. `MIN(job_id)` is stable but decided
+  by the ID alphabet (jobs.ch UUIDs sort before `li_`), so the link you land on is incidental.
+
+Open question that outranks the implementation: whether a duplicate should be one card at
+all, or two cards that know about each other. Second option keeps both links and both
+end dates, and loses nothing when one expires.
+
 ## UX improvements
 - [ ] Overall further simplify UI
 
