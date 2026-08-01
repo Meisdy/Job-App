@@ -68,7 +68,8 @@ namespace {
         user_status, rating, notes, availability_status, detail_url,
         initial_publication_date, publication_end_date, fit_score, fit_label,
         fit_checked_at, fit_profile_hash,
-        source, application_status, applied_at, last_reaction, last_reaction_at
+        source, application_status, applied_at, last_reaction, last_reaction_at,
+        scraped_at
     )";
 
     std::vector<JobRecord> query_job_records(sqlite3* db, const std::string& where_clause) {
@@ -100,6 +101,7 @@ namespace {
             job.applied_at          = getColumn(stmt, 21);
             job.last_reaction       = getColumn(stmt, 22);
             job.last_reaction_at    = getColumn(stmt, 23);
+            job.scraped_at          = getColumn(stmt, 24);
             jobs.push_back(job);
         });
         return jobs;

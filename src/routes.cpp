@@ -47,6 +47,7 @@ static json jobRecordToJson(const JobRecord& job) {
     jobJson["detail_url"]          = job.detail_url;
     jobJson["pub_date"]            = job.pub_date;
     jobJson["end_date"]            = job.end_date;
+    jobJson["scraped_at"]          = job.scraped_at;
 
     // fit_summary, fit_reasoning, template_text intentionally omitted:
     // heavy columns, served by GET /api/jobs/:id/detail

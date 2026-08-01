@@ -27,6 +27,9 @@ struct Job {
 };
 
 struct JobRecord : Job {
+    // Refreshed on every re-scrape, so it reads as "last seen", not "first seen"
+    std::string scraped_at;
+
     // User state
     std::string user_status;
     int         rating {};
