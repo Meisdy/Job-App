@@ -68,16 +68,18 @@ Search bar (top center) filters by title and company in real time.
 
 ## Auto-deletion
 
-Stale jobs are hard-deleted automatically on every scrape run. No UI action needed.
+Stale jobs are hard-deleted automatically at the end of every scrape run, whichever sources are enabled. No UI action needed.
 
-| Source | Rule |
-|--------|------|
-| jobs.ch | Deleted when `publication_end_date` has passed |
-| LinkedIn | Deleted 60 days after first scraped |
+One rule for every source — a job is deleted when either applies:
 
-**Exception:** jobs marked **Applied** are never auto-deleted, regardless of source or age. They stay in the database for the [Application tracker](#application-tracker) until you remove them yourself.
+- its `publication_end_date` has passed, or
+- it has not been seen in a scrape for 60 days.
 
-Manually imported jobs (Add Job manually) have no LinkedIn age limit; they are only auto-deleted if the AI extracted an end date from the pasted text and that date has passed — and even then not while marked Applied.
+The second rule is what clears postings that quietly disappear from the board. A job that keeps showing up in results keeps a fresh timestamp and is never deleted for age.
+
+**Exception:** jobs marked **Applied** or **Starred** are never auto-deleted, regardless of source or age. They stay in the database for the [Application tracker](#application-tracker) until you remove the mark yourself — after which they fall under the normal rules again.
+
+Manually imported jobs (Add Job manually) are never re-scraped, so the 60-day rule removes them 60 days after import unless you mark them Applied or Starred.
 
 Hard-delete = row removed from DB entirely, not recoverable via the Deleted filter.
 

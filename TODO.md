@@ -7,10 +7,11 @@
 
 ## UX improvements
 - [ ] Overall simplify UI
+  - [ ] Settings for AI models seem overkill
 
 ## Logic
 - [ ] Refactor sourcing for modularity and security
-- [ ] Check that hard delete exists for every job at some point. Purge function from admin will be removed. 
+- [ ] Check that hard delete exists for every job at some point. Purge is gone with the admin console, so the only hard deletes left are the scraper's expired / 60-day-LinkedIn rules — soft-deleted rows otherwise stay forever by design (they stop re-inserts). 
 - [ ] De-dupe for sources
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe voice input or pick questions / answers
 

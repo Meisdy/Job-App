@@ -107,10 +107,12 @@ namespace {
 
 }
 
-void delete_job(sqlite3* db, const std::string &job_id) {
-    const std::string sql_delete_str = "DELETE FROM jobs WHERE job_id = ?";
+void delete_job_unless_saved(sqlite3* db, const std::string &job_id) {
+    const std::string sql_delete_str =
+        "DELETE FROM jobs WHERE job_id = ? "
+        "AND COALESCE(user_status, 'unseen') NOT IN ('applied', 'interested')";
     exec_write(db, sql_delete_str, {job_id});
-    std::cout << "[DB] delete_job(" << job_id << "): " << sqlite3_changes(db) << " rows" << std::endl;
+    std::cout << "[DB] delete_job_unless_saved(" << job_id << "): " << sqlite3_changes(db) << " rows" << std::endl;
 }
 
 void update_job_field(sqlite3 *db, const std::string &job_id, const std::string& field, const std::string &value) {
@@ -181,17 +183,16 @@ int bulk_soft_delete_by_status(sqlite3* db, const std::string& status, int older
     return sqlite3_changes(db);
 }
 
+// scraped_at is refreshed on every re-scrape, so the age rule only fires once a
+// posting has stopped showing up in results — a job still on the board stays.
 void delete_expired_jobs(sqlite3* db) {
     exec_write(db, R"(
         DELETE FROM jobs
-        WHERE publication_end_date != '' AND publication_end_date < date('now')
-          AND (user_status IS NULL OR user_status != 'applied')
+        WHERE COALESCE(user_status, 'unseen') NOT IN ('applied', 'interested')
+          AND ( (publication_end_date != '' AND publication_end_date < date('now'))
+                OR scraped_at < date('now', '-60 days') )
     )", {});
-    exec_write(db, R"(
-        DELETE FROM jobs
-        WHERE source = 'linkedin' AND scraped_at < date('now', '-60 days')
-          AND (user_status IS NULL OR user_status != 'applied')
-    )", {});
+    std::cout << "[DB] delete_expired_jobs: " << sqlite3_changes(db) << " rows" << std::endl;
 }
 
 void db_init(sqlite3 *db) {
@@ -254,7 +255,8 @@ std::vector<Job> get_jobs_needing_details(sqlite3* db) {
         "employment_grade, application_url, detail_url, initial_publication_date, "
         "publication_end_date, template_text, source "
         "FROM jobs "
-        "WHERE template_text IS NULL OR template_text = '' "
+        "WHERE (template_text IS NULL OR template_text = '') "
+        "AND COALESCE(user_status, 'unseen') != 'deleted' "
         "ORDER BY initial_publication_date DESC "
         "LIMIT 100";
 

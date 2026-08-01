@@ -175,7 +175,7 @@ void fetchJobDetails(std::vector<Job> jobs, sqlite3* db, std::mutex& db_mutex, P
                               << " — skipping" << std::endl;
                     {
                         std::lock_guard<std::mutex> lock(db_mutex);
-                        delete_job(db, job.job_id);
+                        delete_job_unless_saved(db, job.job_id);
                     }
                     failed++;
                     progress.failed++;
@@ -214,7 +214,7 @@ void fetchJobDetails(std::vector<Job> jobs, sqlite3* db, std::mutex& db_mutex, P
                     std::cerr << "[LI] 404 on detail " << job.job_id << " — job expired, skipping" << std::endl;
                     {
                         std::lock_guard<std::mutex> lock(db_mutex);
-                        delete_job(db, job.job_id);
+                        delete_job_unless_saved(db, job.job_id);
                     }
                     failed++;
                     progress.failed++;
@@ -308,10 +308,6 @@ int scrapeAllSources(AppState& state) {
                 insert_or_update_job(state.db, jobFromJson(doc));
                 inserted++;
             }
-            {
-                std::lock_guard<std::mutex> lock(state.db_mutex);
-                delete_expired_jobs(state.db);
-            }
 
         } catch (const std::exception& e) {
             std::cerr << "[ERROR] Failed to process search results for query '" << q
@@ -334,6 +330,11 @@ int scrapeAllSources(AppState& state) {
         } catch (const std::exception& e) {
             std::cerr << "[LI] Scrape error: " << e.what() << std::endl;
         }
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(state.db_mutex);
+        delete_expired_jobs(state.db);
     }
 
     std::cout << "[INFO] Scrape completed: " << inserted << " jobs processed" << std::endl;
