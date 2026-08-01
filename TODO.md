@@ -4,14 +4,13 @@
 - [ ] Bug: after scraping and fitcheck running in background through automode, all skipped jobs reset for some reason. Not reproducible, happened just once. 
 - [ ] Bug: Raspberry Pi 4 has issues with serving detail pages. May be internet, py read / write or code itself. 
 
-
-## UX improvements
-- [ ] Overall simplify UI
-
 ## Logic
 - [ ] Refactor sourcing for modularity and security (with possible distribution in mind)
-- [ ] De-dupe for sources
+- [ ] De-dupe for sources to save on AI querries and dont show the user doubles
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe pick questions / answers
+
+## UX improvements
+- [ ] Overall further simplify UI
 
 
 ## Ideas
@@ -19,6 +18,7 @@
 - Adding a general AI ask me questions logic to ask questions like, does A fit better than B, or maybe even adjust rating due to reason X.
 - Reminder system and generally full pipeline from searching to apply overview, reminders and more
 - .exe compilation probably not needed. But this results in a general user use-case overhaul
+
 
 
 # The Project and its main Issue

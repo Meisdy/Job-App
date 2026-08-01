@@ -272,7 +272,7 @@ function renderAiSection(aiConfig) {
     renderField(
       "API Key",
       `<input class="cfg-input" id="cfg-ai-key" type="password" ${!p.needsKey ? "disabled" : ""} placeholder="${p.needsKey ? "Enter New API Key" : "No key required for local Ollama"}">` +
-        `<div id="cfg-ai-key-note" style="font-size:11px;color:var(--text3);margin-top:4px">${p.needsKey ? "Stored in config/api_keys.json. Leave blank to keep current." : "Ollama local does not need an API key."}</div>`,
+        `<div class="cfg-hint" id="cfg-ai-key-note">${p.needsKey ? "Stored in config/api_keys.json. Leave blank to keep current." : "Ollama local does not need an API key."}</div>`,
     ),
   ];
 
@@ -393,15 +393,12 @@ function renderFitcheckSection(config) {
   const fields = [
     renderField("Job Limit", renderInput("cfg-fc-limit", fc.limit ?? 10)),
   ];
-  return renderSection("Fit-Check", renderGrid(fields));
-}
-
-function renderMaintenanceSection() {
   return renderSection(
-    "Maintenance",
-    `<div class="cfg-label">Re-check by rating</div>
-     <div class="picker-panel" id="recheck-picker" style="margin-top:6px"></div>
-     <div style="font-size:11px;color:var(--text3);margin-top:6px">Clears the fit data of the chosen groups, then re-scores them with the AI.</div>`,
+    "Fit-Check",
+    `${renderGrid(fields)}
+     <div class="cfg-subhead">Re-check by rating</div>
+     <div class="picker-panel" id="recheck-picker"></div>
+     <div class="cfg-hint">Clears the fit data of the chosen groups, then re-scores them with the AI.</div>`,
   );
 }
 
@@ -409,9 +406,8 @@ export function renderConfigForm(config, aiConfig) {
   return [
     renderAiSection(aiConfig || {}),
     renderScrapeSection(config),
-    renderAutomodeSection(config),
     renderFitcheckSection(config),
-    renderMaintenanceSection(),
+    renderAutomodeSection(config),
   ].join("");
 }
 
