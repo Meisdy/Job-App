@@ -225,8 +225,8 @@ function renderTextarea(id, value, options = {}) {
   return `<textarea class="cfg-textarea" id="${id}" placeholder="${escapeHtml(placeholder)}" style="min-height:${minHeight}">${escapeHtml(String(value))}</textarea>`;
 }
 
-function renderInput(id, value, type = "number") {
-  return `<input class="cfg-input" id="${id}" type="${type}" value="${escapeHtml(String(value))}">`;
+function renderInput(id, value) {
+  return `<input class="cfg-input" id="${id}" type="number" value="${escapeHtml(String(value))}">`;
 }
 
 function renderGrid(fields) {
@@ -386,25 +386,14 @@ function renderAutomodeSection(config) {
   return renderSection("Auto Mode", card);
 }
 
+// Sampling params (max_tokens, temperature, top_p, top_k) stay out of the UI on
+// purpose — they live in config_v2.json for whoever actually wants to tune them.
 function renderFitcheckSection(config) {
   const fc = config.fitcheck || {};
   const fields = [
-    renderField("Job Limit", renderInput("cfg-fc-limit", fc.limit ?? 50)),
-    renderField(
-      "Max Tokens",
-      renderInput("cfg-fc-max-tokens", fc.max_tokens ?? 4000),
-    ),
-    renderField(
-      "Temperature",
-      renderInput("cfg-fc-temperature", fc.temperature ?? 1.0, "number"),
-    ),
-    renderField(
-      "Top P",
-      renderInput("cfg-fc-top-p", fc.top_p ?? 0.95, "number"),
-    ),
-    renderField("Top K", renderInput("cfg-fc-top-k", fc.top_k ?? 64)),
+    renderField("Job Limit", renderInput("cfg-fc-limit", fc.limit ?? 10)),
   ];
-  return renderSection("Fit-Check (Advanced)", renderGrid(fields));
+  return renderSection("Fit-Check", renderGrid(fields));
 }
 
 function renderMaintenanceSection() {
@@ -496,13 +485,6 @@ function getIntValue(id, defaultValue = 0) {
   return isNaN(value) ? defaultValue : value;
 }
 
-function getFloatValue(id, defaultValue = 0) {
-  const element = document.getElementById(id);
-  if (!element) return defaultValue;
-  const value = parseFloat(element.value);
-  return isNaN(value) ? defaultValue : value;
-}
-
 function getStringValue(id, defaultValue = "") {
   const element = document.getElementById(id);
   return element ? element.value.trim() : defaultValue;
@@ -557,7 +539,7 @@ export async function saveSettings() {
       return;
     }
 
-    // Save main config (scrape + linkedin + advanced fitcheck params)
+    // Save main config (scrape + linkedin + fitcheck)
     const updated = JSON.parse(JSON.stringify(rawConfig));
     updated.scrape = {
       enabled: document.getElementById("cfg-jobsch-enabled")?.checked !== false,
@@ -580,16 +562,13 @@ export async function saveSettings() {
       1,
       getIntValue("cfg-automode-interval", 2),
     );
+    // Spread first so the sampling params we no longer render survive the save.
     updated.fitcheck = {
       ...(updated.fitcheck || {}),
       provider,
       endpoint,
       model,
-      limit: getIntValue("cfg-fc-limit", 50),
-      max_tokens: getIntValue("cfg-fc-max-tokens", 4000),
-      temperature: getFloatValue("cfg-fc-temperature", 1.0),
-      top_p: getFloatValue("cfg-fc-top-p", 0.95),
-      top_k: getIntValue("cfg-fc-top-k", 64),
+      limit: getIntValue("cfg-fc-limit", 10),
     };
 
     const cfgRes = await fetch(CONFIG_URL, {

@@ -67,6 +67,8 @@ Config files live in `config/` — on the host (Docker) or next to `Job_App.exe`
 | `fitcheck.top_p` | Nucleus sampling |
 | `fitcheck.top_k` | Top-k sampling (Ollama only) |
 
+The four sampling fields (`max_tokens`, `temperature`, `top_p`, `top_k`) are edited in this file only — **Settings** does not show them. Saving from **Settings** keeps whatever values the file holds, so hand-tuned sampling survives. Note `temperature` must stay within `0`–`1` or the server refuses the config.
+
 ### `system_prompt.txt`
 
 Prompt template sent to the LLM. Must contain `{{profile}}` and `{{jobText}}` — both are required or the server refuses to start.

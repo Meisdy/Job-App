@@ -7,13 +7,11 @@
 
 ## UX improvements
 - [ ] Overall simplify UI
-  - [ ] Settings for AI models seem overkill
 
 ## Logic
-- [ ] Refactor sourcing for modularity and security
-- [ ] Check that hard delete exists for every job at some point. Purge is gone with the admin console, so the only hard deletes left are the scraper's expired / 60-day-LinkedIn rules — soft-deleted rows otherwise stay forever by design (they stop re-inserts). 
+- [ ] Refactor sourcing for modularity and security (with possible distribution in mind)
 - [ ] De-dupe for sources
-- [ ] Onboarding questions not optimal, also tedious to fill out. Maybe voice input or pick questions / answers
+- [ ] Onboarding questions not optimal, also tedious to fill out. Maybe pick questions / answers
 
 
 
@@ -47,19 +45,7 @@ Known facts
 
 The distribution problem
 
-Both data sources are unlicensed and used against their ToS. No arrangement discussed removes this while keeping coverage:
-
-┌─────────────────────────┬────────┬──────────┬──────────────────────┐
-│      Configuration      │ Simple │ Coverage │ Uses unlicensed data │
-├─────────────────────────┼────────┼──────────┼──────────────────────┤
-│ Your server scrapes     │             │
-├─────────────────────────┼────────┼──────────┼──────────────────────┤
-│ Pipeline only, user-fed │             │
-├─────────────────────────┼────────┼──────────┼──────────────────────┤
-│ Client-side mass ingest │ ❌     │ ✅       │ Yes — the user       │
-├─────────────────────────┼─────────────┤
-│ Official APIs only      │ ✅     │ ❌       │ No                   │
-└─────────────────────────┴────────┴──────────┴──────────────────────┘
+Both data sources are unlicensed and used against their ToS. No arrangement discussed removes this while keeping coverage
 
 Client-side additionally needs the user's LinkedIn account and their browser open.
 
