@@ -1,9 +1,3 @@
-#define _WIN32_WINNT 0x0A00
-#ifdef _WIN32
-#include <winsock2.h>
-#include <windows.h>
-#include <shellapi.h>
-#endif
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -91,11 +85,7 @@ int main(int argc, char* argv[]) {
     httplib::Server server;
     registerRoutes(server, appState, AutoScheduler);
 
-#ifdef _WIN32
-    ShellExecuteA(nullptr, "open", "http://localhost:8080", nullptr, nullptr, SW_SHOWNORMAL);
-#else
     system("xdg-open http://localhost:8080 2>/dev/null &");
-#endif
 
     for (int attempt = 1; attempt <= 5; ++attempt) {
         std::cout << "[INFO] Server running on http://localhost:8080" << std::endl;

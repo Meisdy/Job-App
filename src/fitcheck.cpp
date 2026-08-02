@@ -39,11 +39,7 @@ static std::string generateManualJobId(const std::string& text) {
 static std::string todayIsoDate() {
     std::time_t now = std::time(nullptr);
     std::tm tm_buf{};
-#ifdef _WIN32
-    localtime_s(&tm_buf, &now);
-#else
     localtime_r(&now, &tm_buf);
-#endif
     char buf[11];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d", &tm_buf);
     return buf;

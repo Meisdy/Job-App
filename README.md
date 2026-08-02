@@ -2,22 +2,24 @@
 
 Scrape job listings from jobs.ch, linkedIn or import a job manually, score them against your profile with an LLM, and track applications — all in one self-hosted UI.
 
-Built for the **Swiss job market** and for any trade — the onboarding questions ask about CHF, Pensum, permit class and language regions, not about your tech stack. The map, the canton and postal-code fields and the jobs.ch source are Switzerland-bound; LinkedIn scraping, Import Text, fit-check and the tracker are not. See [Scope](MANUAL.md#scope) for the full split.
+Built for the **Swiss job market** — the onboarding questions ask about CHF, Pensum, permit class and language regions. The map, the canton and postal-code fields and the jobs.ch source are Switzerland-bound; LinkedIn scraping, Import Text, fit-check and the tracker are not. See [Scope](MANUAL.md#scope) for the full split.
 
 ## Quick start
 
-Two ways to run: a standalone Windows exe (no Docker) or a Docker image on Linux (recommended).
-
-### Windows (standalone exe)
-
-Download `Job_App-<version>-win64.zip` from the [Releases page](https://github.com/Meisdy/Job-App/releases/latest), unzip anywhere, and run `Job_App.exe`. No install, no DLLs, no Docker. The exe creates its `data/` folder on first run and opens your browser automatically.
-
-The zip contains the exe alongside `config/` and `frontend/` — keep them together in the same folder.
-
-### Linux (Docker)
+Runs as a Docker container. Images are published for `linux/amd64` and `linux/arm64`, so a Raspberry Pi works as well as a desktop.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | bash
+```
+
+The script installs Docker if it is missing, writes `~/Job-App`, and starts the container. It uses `apt-get`, so on non-Debian distros install Docker yourself first — every step after that is distro-neutral.
+
+**Windows 11:** no native build. Use Docker Desktop or Docker inside WSL2 — either way, run the command above from a WSL2 shell.
+
+**WSL users:** Docker does not auto-start on WSL boot. Start manually with `docker start job-app`, or add to `~/.bashrc`:
+
+```bash
+sudo service docker start > /dev/null 2>&1
 ```
 
 ### First run
@@ -25,12 +27,6 @@ curl -fsSL https://raw.githubusercontent.com/Meisdy/Job-App/master/setup.sh | ba
 Open **http://localhost:8080** and complete onboarding. Pick your AI provider, enter the endpoint and model, paste your API key. The app tests the connection before letting you continue — a bad key or endpoint is caught immediately, not at your first fit-check. The CV step accepts a PDF drop or plain text paste.
 
 **Supported AI providers:** Ollama (local/cloud), OpenRouter, DeepInfra, Mistral, or any custom OpenAI-compatible endpoint. Anthropic native API is not supported.
-
-**WSL users:** Docker does not auto-start on WSL boot. Start manually with `docker start job-app`, or add to `~/.bashrc`:
-
-```bash
-sudo service docker start > /dev/null 2>&1
-```
 
 ## How it works
 
@@ -50,7 +46,7 @@ All AI provider settings are configured in **Settings** (gear icon) — no file 
 
 ## Configuration
 
-Config files live in `config/` — on the host (Docker) or next to `Job_App.exe` (Windows). They survive container rebuilds and exe updates. Most fields are editable live in Settings without restart.
+Config files live in `config/` on the host. They survive container rebuilds. Most fields are editable live in Settings without restart.
 
 ### `config_v2.json`
 
@@ -83,16 +79,12 @@ Single field `{ "api_key": "..." }`. Written by the app when you save settings. 
 
 ## Updating
 
-**Docker:**
-
 ```bash
 cd ~/Job-App
 bash update.sh
 ```
 
 Pulls the latest pre-built image from GitHub Container Registry (~30 seconds). Database and config survive. The UI shows a notice when a newer version is available.
-
-**Windows exe:** download the newest `Job_App-<version>-win64.zip` from [Releases](https://github.com/Meisdy/Job-App/releases/latest) and replace `Job_App.exe`. Keep your existing `data/` and `config/api_keys.json` — your database and key survive.
 
 ## Logs
 
@@ -115,8 +107,6 @@ You run this software **entirely at your own risk**. You alone are responsible f
 
 **Export your applications first.** Open the Application Tracker and click **⬇ Export CSV** — your applied and interested jobs, dates, reactions, and notes end up in a spreadsheet file. Everything below deletes the database, and nothing in it is recoverable afterwards.
 
-**Docker:**
-
 ```bash
 cd ~/Job-App
 docker compose down          # stop and remove container
@@ -126,8 +116,6 @@ docker compose down --rmi all
 cd ~
 rm -rf ~/Job-App
 ```
-
-**Windows exe:** delete the unzipped folder. Nothing is installed system-wide.
 
 ## License
 

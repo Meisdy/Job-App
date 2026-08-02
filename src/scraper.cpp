@@ -36,11 +36,7 @@ static std::string httpGetLinkedInSearch(const std::string& url, long* out_statu
 static std::string parseLinkedInPubDate(const std::string& html) {
     std::time_t now = std::time(nullptr);
     std::tm tm = {};
-#ifdef _WIN32
-    localtime_s(&tm, &now);
-#else
     localtime_r(&now, &tm);
-#endif
     std::regex re(R"((\d+)\s+(day|days|week|weeks|month|months|hour|hours|minute|minutes)\s+ago)");
     std::smatch m;
     if (std::regex_search(html, m, re)) {
