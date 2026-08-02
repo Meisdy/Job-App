@@ -83,6 +83,29 @@ Manually imported jobs (Add Job manually) are never re-scraped, so the 60-day ru
 
 Hard-delete = row removed from DB entirely, not recoverable via the Deleted filter.
 
+Duplicates make this safe rather than lossy: your rating, notes, status and fit result sit on every listing of an opening, so the twin that expires first takes nothing with it. See [Duplicate listings](#duplicate-listings).
+
+---
+
+## Duplicate listings
+
+The same opening reaches the database more than once — jobs.ch and LinkedIn both carry it, and companies re-post the same job for days. Left alone that means one card per listing and one AI call per listing.
+
+Listings are matched on **company + job title + city**, after folding accents (`Bühler` = `Buhler`), dropping legal forms (`AG`, `GmbH`, `Group`), stripping `(m/w/d)` and `80-100%`, and reducing the place to its city (`Uzwil, St Gallen, Switzerland` = `Uzwil`).
+
+| What you see | Behavior |
+|--------------|----------|
+| **×N badge** | On the job card, right-aligned next to the source badge. The card stands for N listings |
+| **One card** | The most recently published listing represents the group — its link is the one still live |
+| **Also listed as** | Block near the bottom of the detail panel, above Notes. Every other listing with its own link and dates. Absent when there is only one |
+| **One AI call** | Fit-check scores the opening once, and the result is written to every listing |
+
+Everything you set — status, rating, notes, tracker fields, fit result — is written to **all** listings of the opening, not just the one on screen. That is what makes duplicates safe: it does not matter which listing expires, is deleted or comes back, the state is already on the survivors.
+
+Matching is deliberately not perfect. Two genuinely different openings with the same company, title and city will merge, and the merged card inherits one sibling's score. The `×N` badge and the listings block are how you spot it — nothing becomes unreachable. There is no "not a duplicate" split action.
+
+Listings with no company or no title never group; they always stand alone.
+
 ---
 
 ## Job detail
@@ -97,6 +120,8 @@ Click any job to open the detail panel.
 | Score | Weighted 0–100 |
 | Summary | One-line verdict |
 | Reasoning | Full dimension-by-dimension breakdown |
+
+Below the posting text, **Also listed as** shows the other boards carrying the same opening, each with its own link, publication date and expiry. Only appears when there is more than one — see [Duplicate listings](#duplicate-listings).
 
 **Actions**
 
@@ -242,6 +267,8 @@ If the AI provider isn't reachable or the profile is empty, a run is skipped sil
 Deleting a job is a soft delete: the row stays in the database, which is what stops the next scrape from inserting the same listing again. Deleted jobs are hidden from the list, the counters, the map and the tracker.
 
 Pick **Deleted** in the ⊞ Filter dropdown to see them. The list is fetched the first time you open it, not on every page load. Each row has a **↺ Restore** button; a restored job comes back as **New**, keeping its score and label. Restoring never calls the AI — press **Recheck** in the detail panel if you want it re-rated.
+
+Duplicates behave as one row here too: deleting a card hides every listing of that opening, the Deleted list shows it once, and Restore brings the whole group back.
 
 **↺ RESTORE** next to the filter appears only while the Deleted filter is active. It restores whole rating groups at once: tick the groups, the button shows how many jobs that is, confirm.
 

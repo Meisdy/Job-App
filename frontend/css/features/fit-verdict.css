@@ -228,6 +228,33 @@
 .fit-reasoning p { margin: 0 0 12px 0; }
 .fit-reasoning p:last-child { margin-bottom: 0; }
 
+/* === LISTINGS SECTION === */
+
+.listings-section {
+  padding: 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.listings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.listing-item { font-size: 14px; color: var(--text2); }
+.listing-item a { color: var(--accent); text-decoration: none; }
+.listing-item a:hover { text-decoration: underline; }
+
+.listing-dates {
+  color: var(--text3);
+  font-size: 12px;
+  margin-left: 6px;
+}
+
 /* === TEMPLATE SECTION === */
 
 .template-section {

@@ -1,41 +1,48 @@
 # TODO
 
 ## Bugs
-- [ ] Bug: after scraping and fitcheck running in background through automode, all skipped jobs reset for some reason. Not reproducible, happened just once. 
-- [ ] Bug: Raspberry Pi 4 has issues with serving detail pages. May be internet, py read / write or code itself. 
+- [ ] Bug: Raspberry Pi 4 has issues with serving detail pages. May be internet, py read / write speed, pi network stack or src code itself. 
 
 ## Logic
 - [ ] Refactor sourcing for modularity and security (with possible distribution in mind)
-- [ ] De-dupe for sources to save on AI querries and dont show the user doubles
+- [x] De-dupe for sources to save on AI querries and dont show the user doubles
 - [ ] Onboarding questions not optimal, also tedious to fill out. Maybe pick questions / answers
 
-### De-dupe: attempt 1, reverted 2026-08-01
+### De-dupe: shipped 2026-08-02
 
-Tried a normalized `company|title|place` key (`dupe_key` column), soft grouping,
-one card per group. Reverted — the key is not selective enough. Kept only as notes.
+`dupe_key = company|title|city`, diacritic-folded and lowercased, written on every path
+that can change those fields and swept at every start by `refresh_dupe_keys`. One card
+per group, chosen at read time by `initial_publication_date DESC, job_id`.
 
-What worked:
-- Diacritic folding is mandatory. LinkedIn writes `Zurich`, jobs.ch writes `Zürich`;
-  without folding almost nothing matches across sources.
-- Stripping `(m/w/d)`, `(a)`, `80-100%` and en-dash vs hyphen caught real duplicates.
-- On 1377 rows: 107 groups, 19 spanning both sources.
+The attempt-1 post-mortem that used to sit here was wrong about why it failed and has
+been deleted. Its headline claim — VAT Vakuumventile has "three real `Product Quality
+Engineer` postings in Haag" — does not hold: those rows are re-posts of one opening with
+byte-identical bodies. The alternative it proposed, a signal from the posting body, was
+tested and ranks the wrong way round: true cross-source duplicates sit at Jaccard
+0.48–0.53 because the two boards wrap the same job in different boilerplate, while
+same-source pairs sit at 0.63–0.97. No threshold separates them. Header fields win.
 
-Why it failed:
-- Company + title + place cannot separate genuinely distinct openings. VAT Vakuumventile
-  had three real `Product Quality Engineer` postings in Haag, different publication dates,
-  identical in every field the key uses. They collapsed into one card. Any fix needs a
-  signal from the posting body (description hash, reference number), not the header fields.
-- Expiry is asymmetric: 708 of 719 jobs.ch rows carry `publication_end_date`, 0 of 659
-  LinkedIn rows do. `delete_expired_jobs` hard-deletes, so the jobs.ch twin always dies
-  first and takes its rating, notes and fit result with it — the surviving LinkedIn row
-  comes back unseen and gets re-scored. Grouping needs user state written to every member
-  of a group, or it loses state on expiry.
-- Picking which row represents a group was arbitrary. `MIN(job_id)` is stable but decided
-  by the ID alphabet (jobs.ch UUIDs sort before `li_`), so the link you land on is incidental.
+The two failures that were real are fixed by mirroring instead of grouping:
+- **State does not die with the twin.** Every member row carries the same `user_status`,
+  rating, notes, tracker fields and fit result, so it does not matter which member
+  `delete_expired_jobs` hard-deletes first — verified by expiring the jobs.ch member of a
+  cross-source pair and finding the LinkedIn survivor still holding all of it.
+- **No arbitrary representative.** The newest listing represents the group, and since
+  state is mirrored it costs nothing when that changes. The other listings are reachable
+  from the detail panel, each with its own link and end date.
 
-Open question that outranks the implementation: whether a duplicate should be one card at
-all, or two cards that know about each other. Second option keeps both links and both
-end dates, and loses nothing when one expires.
+Mirroring also removed the need for a group table, a canonical-row pointer and promotion
+logic — every existing read query kept working.
+
+On the 1339-row dev snapshot: 106 groups, 21 spanning both sources, largest 8, 6 keyless
+rows that never group; 1339 rows collapse to 1194 cards, 152 visible to 141. The AI saving
+is real and measured: the fitcheck batch query collapses too (41 eligible rows → 37
+openings), and one fitcheck on a VAT row scored all three members in a single call.
+
+Known limit, accepted: Sensirion has a DE and an EN version of one `Hardware Engineer`
+@Stäfa posting plus a genuinely different PCB-layout role. They merge and the third
+inherits a sibling's score. The `×N` badge and the listings block are the escape hatch —
+nothing becomes unreachable. No split action, deliberately.
 
 ## UX improvements
 - [ ] Overall further simplify UI

@@ -85,14 +85,21 @@ function buildJobItemHtml(job) {
   const status = job.user_status || 'unseen';
   const fitInfo = getFitDisplayInfo(job);
 
+  // Badges share one container so the title row keeps two children: space-between
+  // would otherwise strand a lone badge in the middle of the row.
+  const badges = [
+    job.duplicate_count > 1 ? `<span class="source-badge dupe-badge" title="Listed ${job.duplicate_count} times">×${job.duplicate_count}</span>` : '',
+    job.source === 'linkedin' ? '<span class="source-badge source-linkedin">LI</span>' : ''
+  ].join('');
+
   return `
     <div
       class="job-item${isActive ? ' active' : ''} status-${status}"
       data-id="${escapeHtml(job.job_id)}"
     >
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px">
+      <div class="ji-head">
         <div class="ji-title">${escapeHtml(job.title || 'Unknown')}</div>
-        ${job.source === 'linkedin' ? '<span class="source-badge source-linkedin" style="flex-shrink:0;margin-top:1px">LI</span>' : ''}
+        ${badges ? `<div class="ji-badges">${badges}</div>` : ''}
       </div>
       <div class="ji-co">${escapeHtml(job.company_name || '—')}</div>
       <div class="ji-foot">

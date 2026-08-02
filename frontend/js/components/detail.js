@@ -53,12 +53,47 @@ function cleanTemplateText(text) {
   return cleaned;
 }
 
+function pickListingUrl(listing) {
+  const detailUrl = /^https?:\/\//.test(listing.detail_url || '') ? listing.detail_url : '';
+  const appUrl = /^https?:\/\//.test(listing.application_url || '') ? listing.application_url : '';
+  return detailUrl || appUrl;
+}
+
+// The card is one opening, but the boards it sits on each keep their own link and
+// their own expiry — the sibling stays reachable when the shown one runs out.
+function buildListingsSection(listings) {
+  if (!listings || listings.length < 2) return '';
+
+  const items = listings.map(listing => {
+    const url = pickListingUrl(listing);
+    const name = listing.source === 'linkedin' ? 'LinkedIn' : 'jobs.ch';
+    const dates = [
+      listing.pub_date ? `📅 ${fmtDate(listing.pub_date)}` : '',
+      listing.end_date ? `⏱️ ${fmtDate(listing.end_date)}` : ''
+    ].filter(Boolean).join(' · ');
+
+    const label = `${escapeHtml(name)}${dates ? ` <span class="listing-dates">${dates}</span>` : ''}`;
+    return `<li class="listing-item">${
+      url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${label} ↗</a>` : label
+    }</li>`;
+  }).join('');
+
+  return `
+    <div class="listings-section">
+      <div class="section-header">
+        <span class="section-icon">🔗</span>
+        <span class="section-title">Also listed as (${listings.length})</span>
+      </div>
+      <ul class="listings-list">${items}</ul>
+    </div>`;
+}
+
 function buildHeader(job, city, mapsUrl, displayScore, displayLabel, starsHtml) {
   const zip = escapeHtml(job.zipcode || '');
-  const detailUrl = /^https?:\/\//.test(job.detail_url || '') ? job.detail_url : '';
-  const appUrl = /^https?:\/\//.test(job.application_url || '') ? job.application_url : '';
-  const safeJobUrl = detailUrl || appUrl;
-  const jobUrlLabel = job.source === 'linkedin' ? 'View on LinkedIn ↗' : (detailUrl ? 'View on jobs.ch ↗' : 'View Job ↗');
+  const safeJobUrl = pickListingUrl(job);
+  const jobUrlLabel = job.source === 'linkedin'
+    ? 'View on LinkedIn ↗'
+    : (safeJobUrl && safeJobUrl === job.detail_url ? 'View on jobs.ch ↗' : 'View Job ↗');
 
   return `
     <div class="detail-header">
@@ -250,6 +285,7 @@ export function renderDetail() {
     buildHeader(job, city, mapsUrl, fitVerdict.score, fitVerdict.label, starsHtml) +
     buildFitSection(job) +
     buildTemplateSection(templateText) +
+    buildListingsSection(job.listings) +
     buildSecondaryInfo(job);
 
   setupActionBar(status);

@@ -30,6 +30,9 @@ struct JobRecord : Job {
     // Refreshed on every re-scrape, so it reads as "last seen", not "first seen"
     std::string scraped_at;
 
+    // Listings of this same opening, this row included
+    int         duplicate_count = 1;
+
     // User state
     std::string user_status;
     int         rating {};
@@ -56,6 +59,11 @@ void db_init(sqlite3* db);
 void db_v2_init(sqlite3* db);
 void db_v2_ensure_tables(sqlite3* db);
 
+// Duplicate detection
+std::string make_dupe_key(const Job& job);
+void refresh_dupe_keys(sqlite3* db);
+void refresh_dupe_key_for_job(sqlite3* db, const std::string& job_id);
+
 // Job CRUD
 void insert_or_update_job(sqlite3* db, const Job& job);
 void delete_job_unless_saved(sqlite3* db, const std::string& job_id);
@@ -73,10 +81,22 @@ struct JobDetail {
     std::string template_text;
 };
 
+// The collapsed card shows one link; these are the other boards the same opening
+// sits on, each with its own link and its own expiry
+struct JobListing {
+    std::string job_id;
+    std::string source;
+    std::string detail_url;
+    std::string application_url;
+    std::string pub_date;
+    std::string end_date;
+};
+
 // Job queries
 std::vector<JobRecord> get_all_jobs(sqlite3* db);
 std::vector<JobRecord> get_deleted_jobs(sqlite3* db);
 std::optional<JobDetail> get_job_detail(sqlite3* db, const std::string& job_id);
+std::vector<JobListing> get_duplicate_listings(sqlite3* db, const std::string& job_id);
 std::vector<Job> get_jobs_needing_details(sqlite3* db);
 std::vector<JobRecord> get_jobs_needing_fitcheck_v2(sqlite3* db, int limit);
 std::optional<std::string> get_job_template_text(sqlite3* db, const std::string& job_id);

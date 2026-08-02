@@ -48,6 +48,7 @@ static json jobRecordToJson(const JobRecord& job) {
     jobJson["pub_date"]            = job.pub_date;
     jobJson["end_date"]            = job.end_date;
     jobJson["scraped_at"]          = job.scraped_at;
+    jobJson["duplicate_count"]     = job.duplicate_count;
 
     // fit_summary, fit_reasoning, template_text intentionally omitted:
     // heavy columns, served by GET /api/jobs/:id/detail
@@ -114,18 +115,36 @@ void registerRoutes(httplib::Server& server, AppState& state, Scheduler& schedul
     server.Get("/api/jobs/:id/detail", [&state](const httplib::Request& req, httplib::Response& res) {
         std::string job_id = req.path_params.at("id");
         std::optional<JobDetail> detail;
+        std::vector<JobListing> listings;
         {
             std::lock_guard<std::mutex> lock(state.db_mutex);
             detail = get_job_detail(state.db, job_id);
+            if (detail) listings = get_duplicate_listings(state.db, job_id);
         }
         if (!detail) {
             sendError(res, 404, "Job not found: " + job_id);
             return;
         }
+
+        // Served here rather than with /api/jobs: this response is already lazy, so
+        // the list payload stays as small as it is
+        json listingsJson = json::array();
+        for (const JobListing& listing : listings) {
+            listingsJson.push_back({
+                {"job_id",          listing.job_id},
+                {"source",          listing.source.empty() ? "jobs_ch" : listing.source},
+                {"detail_url",      listing.detail_url},
+                {"application_url", listing.application_url},
+                {"pub_date",        listing.pub_date},
+                {"end_date",        listing.end_date}
+            });
+        }
+
         sendJson(res, {
             {"fit_summary",   detail->fit_summary},
             {"fit_reasoning", detail->fit_reasoning},
-            {"template_text", detail->template_text}
+            {"template_text", detail->template_text},
+            {"listings",      listingsJson}
         });
     });
 
